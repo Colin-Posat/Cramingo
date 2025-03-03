@@ -1,0 +1,44 @@
+/* Custom Fonts */
+@font-face {
+    font-family: 'WorkSans';
+    src: url('/fonts/WorkSans-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'WorkSans';
+    src: url('/fonts/WorkSans-Bold.ttf') format('truetype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'WorkSans';
+    src: url('/fonts/WorkSans-Regular.ttf') format('truetype');
+    font-style: italic;
+}
+
+/* Global Styles */
+:root {
+    --white: #ffffff;
+    --black: #000000;
+    --off-white: #fcfcfc;
+    --light-gray: #bdbdbd;
+    --dark-gray: #343434;
+    --almost-black: #161615;
+    --dark-blue: #004a74;
+    --light-blue: #e3f3ff;
+    --medium-blue: #00659f;
+    --red: #ff3131;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Apply Font Globally */
+body {
+  font-family: 'WorkSans', sans-serif;
+}
