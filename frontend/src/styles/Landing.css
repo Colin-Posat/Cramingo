@@ -1,4 +1,5 @@
 
+
 /* General Styles */
 body {
     margin: 0;
@@ -9,10 +10,20 @@ body {
     min-height: 100vh; /* Full viewport height */
     display: flex;
     flex-direction: column;
+    overflow-x: hidden; /* Only prevents horizontal scrolling */
+    overflow-y: auto;
 }
+
+.landing-container {
+    height: auto; /* Instead of 100vh, allow content to expand */
+    min-height: 100vh; /* Ensures it covers the screen initially */
+    overflow-y: auto; /* Enables scrolling */
+}
+
 /* Push the footer down when there's not enough content */
 main {
     flex: 1;
+    
 }
 #particles {
     position: fixed;
@@ -22,6 +33,7 @@ main {
     height: 100vh;
     z-index: -1;
     pointer-events: none; /* Prevents interactions with elements behind */
+    min-height: 100vh;
 }
 
 /**/

@@ -10,19 +10,37 @@ body {
     font-family: 'WorkSans', sans-serif;
 }
 
-/* Signup Container */
+/* Prevent body from scrolling */
+body, html {
+    height: 100vh;
+    overflow: hidden; /* Ensures no scrolling on the entire page */
+}
+
+/* Wrapper to center everything */
 .signup-container {
-    background: white;
-    padding: 40px 65px;
-    border-radius: 20px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    width: clamp(400px, 50vw, 750px);
-    max-height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full viewport height */
+    width: 100vw; /* Full viewport width */
+}
+
+/* Only allow scrolling inside the signup box */
+.signup-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    width: clamp(400px, 50vw, 750px);
+    max-height: 90vh; /* Prevents box from getting too tall */
+    max-width: calc(100vw - 30px); /* 100% width minus margins */
+    overflow-y: auto; /* ✅ Enables scrolling inside only if needed */
+    text-align: center;
 }
+
 
 /* Signup Title */
 h1 {
@@ -65,3 +83,136 @@ input {
 .signup-btn:hover {
     background-color: #00659f;
 }
+
+/* Responsive Height Adaptations */
+@media (max-height: 990px) {
+    .signup-content {
+        padding: 30px 40px;
+        max-height: 85vh;
+    }
+
+    h1 {
+        font-size: clamp(40px, 5vw, 100px);
+    }
+
+    input {
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    .signup-btn {
+        padding: 14px;
+        font-size: 18px;
+    }
+
+    .logo {
+        width: clamp(130px, 30vw, 180px);
+    }
+}
+
+/* New Stage: Logo still visible, everything smaller */
+@media (max-height: 910px) {
+    .signup-content {
+        padding: 25px 35px;
+        max-height: 82vh;
+    }
+
+    h1 {
+        font-size: clamp(34px, 4.5vw, 90px);
+    }
+
+    input {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .signup-btn {
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    .logo {
+        margin-top: 5px;
+        width: clamp(130px, 30vw, 150px);
+    }
+}
+
+@media (max-height: 850px) {
+    .signup-content {
+        padding: 20px 30px;
+        max-height: 90vh;
+    }
+
+    h1 {
+        font-size: clamp(30px, 4vw, 80px);
+    }
+
+    input {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .signup-btn {
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    .logo {
+        width: clamp(100px, 30vw, 130px);
+    }
+}
+
+/* At 450px, logo disappears and scrolling enabled */
+@media (max-height: 710px) {
+    .signup-content {
+        padding: 15px 20px;
+        max-height: 75vh;
+        overflow-y: auto; /* ✅ Allows scrolling inside the box only */
+    }
+
+    h1 {
+        font-size: clamp(24px, 3.5vw, 60px);
+    }
+
+    input {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .signup-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .logo {
+        display: none;
+    }
+}
+
+/* At 350px, even smaller and scroll enabled */
+@media (max-height: 350px) {
+    .signup-content {
+        padding: 10px 15px;
+        max-height: 70vh;
+        overflow-y: auto; /* ✅ Ensures scrolling is only inside signup-content */
+    }
+
+    h1 {
+        font-size: clamp(20px, 3vw, 50px);
+    }
+
+    input {
+        padding: 6px;
+        font-size: 10px;
+    }
+
+    .signup-btn {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .logo {
+        display: none;
+    }
+}
+
