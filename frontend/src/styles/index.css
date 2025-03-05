@@ -40,3 +40,17 @@
 }
 
 
+#root {
+    min-height: 100vh;
+}
+
+#particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none; /* Prevents interactions with elements behind */
+    min-height: 100vh;
+}

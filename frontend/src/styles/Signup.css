@@ -13,7 +13,7 @@ body {
 /* Prevent body from scrolling */
 body, html {
     height: 100vh;
-    overflow: hidden; /* Ensures no scrolling on the entire page */
+  /* Ensures no scrolling on the entire page */
 }
 
 /* Wrapper to center everything */
@@ -31,35 +31,39 @@ body, html {
     flex-direction: column;
     align-items: center;
     background: white;
-    padding: 40px;
+    padding: 40px; /* ⬆️ Increased padding */
     border-radius: 12px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     width: clamp(400px, 50vw, 750px);
     max-height: 90vh; /* Prevents box from getting too tall */
-    max-width: calc(100vw - 30px); /* 100% width minus margins */
+    max-width: calc(100vw - 39px); /* 100% width minus margins */
     overflow-y: auto; /* ✅ Enables scrolling inside only if needed */
     text-align: center;
 }
-
 
 /* Signup Title */
 h1 {
     font-size: clamp(50px, 6vw, 120px);
     font-weight: bold;
+    margin-bottom: 2px; /* ⬆️ Increased space below title */
+}
+
+.already-have-account{
+    padding: 10px;
 }
 
 /* Error Message */
 .error-message {
     color: red;
     font-size: 14px;
-    margin-bottom: 10px;
+    margin-bottom: 15px; /* ⬆️ More space between error and form */
 }
 
 /* Input Fields */
 input {
     width: 100%;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 14px; /* ⬆️ Increased padding */
+    margin: 15px 0; /* ⬆️ More space between inputs */
     border: 2px solid #004a74;
     border-radius: 8px;
     font-size: 18px;
@@ -68,12 +72,12 @@ input {
 
 /* Signup Button */
 .signup-btn {
-    margin-top: 20px;
+    margin-top: 30px; /* ⬆️ More space between last input and button */
     width: 100%;
-    padding: 15px;
+    padding: 18px; /* ⬆️ Increased button size */
     background-color: #004a74;
     color: white;
-    font-size: 18px;
+    font-size: 20px; /* ⬆️ Slightly bigger text */
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -83,6 +87,15 @@ input {
 .signup-btn:hover {
     background-color: #00659f;
 }
+
+
+/* Fliply Logo */
+.logo {
+    width: clamp(150px, 30vw, 200px);
+    height: auto;
+    margin-top: 30px; /* Ensures spacing below button */
+}
+
 
 /* Responsive Height Adaptations */
 @media (max-height: 990px) {
@@ -111,7 +124,7 @@ input {
 }
 
 /* New Stage: Logo still visible, everything smaller */
-@media (max-height: 910px) {
+@media (max-height: 940px) {
     .signup-content {
         padding: 25px 35px;
         max-height: 82vh;
@@ -167,7 +180,7 @@ input {
     .signup-content {
         padding: 15px 20px;
         max-height: 75vh;
-        overflow-y: auto; /* ✅ Allows scrolling inside the box only */
+        overflow: scroll;
     }
 
     h1 {
@@ -194,7 +207,7 @@ input {
     .signup-content {
         padding: 10px 15px;
         max-height: 70vh;
-        overflow-y: auto; /* ✅ Ensures scrolling is only inside signup-content */
+        overflow: scroll;
     }
 
     h1 {

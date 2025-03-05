@@ -2,14 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { Brain, Share2, Search } from "lucide-react";
 import "../styles/Landing.css";
 import "../styles/index.css";
-import ParticlesBackground from "../components/ParticlesBackground"; // ✅ Import
+import ParticlesBackground from "../components/ParticlesBackground";
 
 const Landing = () => {
   const navigate = useNavigate();
 
   return (
     <div className="landing-container">
-      <ParticlesBackground /> {/* ✅ Use the component here */}
+      <ParticlesBackground />
 
       {/* HEADER */}
       <header className="header">

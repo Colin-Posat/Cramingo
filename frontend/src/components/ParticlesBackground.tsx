@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Particle } from "../utils/particle"; // Ensure this is correctly imported
+import { Particle } from "../utils/particle"; 
 
 const ParticlesBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -28,17 +28,16 @@ const ParticlesBackground = () => {
 
     const resizeCanvas = () => {
       if (resizeTimeout) clearTimeout(resizeTimeout);
-
-      // Fade out particles
       canvas.style.transition = "opacity 0.3s ease-out";
       canvas.style.opacity = "0";
 
       resizeTimeout = setTimeout(() => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        // ✅ Regenerate particles after resizing
         initParticles();
 
-        // Fade in particles
         canvas.style.transition = "opacity 0.3s ease-in";
         canvas.style.opacity = "1";
 

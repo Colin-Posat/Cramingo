@@ -1,50 +1,41 @@
 import { Request, Response } from "express";
 import admin from "firebase-admin";
 
-
-export const testFirebase = async (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const db = admin.firestore();
-    const testRef = db.collection("test").doc("serverCheck");
+    const { email, password, username } = req.body; // ✅ Accept username
 
-    await testRef.set({ message: "Firebase is connected!", timestamp: new Date() });
+    if (!email || !password || !username) {
+      res.status(400).json({ message: "All fields are required" });
+      return;
+    }
 
-    return res.status(200).json({ success: true, message: "Firebase is working!" });
-  } catch (error: unknown) {
-    const err = error as Error; // ✅ Ensures proper type casting
-    console.error("🔥 Firebase connection failed:", err.message);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
+    const auth = admin.auth();
+    const db = admin.firestore(); // ✅ Firestore instance
 
-// Ensure Firebase Admin is initialized only once
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // Uses service account
-  });
-}
-
-const auth = admin.auth();
-
-export const signup = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { email, password } = req.body;
-
-    // ✅ Use Firebase Admin to create a user
+    // ✅ Create user in Firebase Authentication
     const userRecord = await auth.createUser({
       email,
       password,
     });
 
-    return res.status(201).json({
+    // ✅ Store additional user details in Firestore
+    await db.collection("users").doc(userRecord.uid).set({
+      username,
+      email,
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({
       message: "User created successfully",
       user: {
         uid: userRecord.uid,
+        username, // ✅ Send username back
         email: userRecord.email,
       },
     });
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       message: "Signup failed",
       error: (error as Error).message,
     });
