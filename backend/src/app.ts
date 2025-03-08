@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes"; // Import the auth routes
+import { signupInit, completeSignup } from "./controllers/authController";
 
 dotenv.config();
 
@@ -15,5 +16,7 @@ app.use(
   );
 app.use(express.json());
 app.use("/api/auth", authRoutes);
+app.post("/api/auth/signup-init", signupInit);
+app.post("/api/auth/complete-signup", completeSignup);
 
 export default app;

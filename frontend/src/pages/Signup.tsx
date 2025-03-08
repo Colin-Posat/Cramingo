@@ -7,7 +7,7 @@ import ParticlesBackground from "../components/ParticlesBackground";
 const Signup = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");  // ✅ Added username
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,18 +26,18 @@ const Signup = () => {
     }
   
     try {
-      const response = await fetch("http://localhost:6500/api/auth/signup", {
+      const response = await fetch("http://localhost:6500/api/auth/signup-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }), // ✅ Include username
+        body: JSON.stringify({ email, username, password }),
       });
-  
-      const data = await response.json();
+
       if (response.ok) {
-        console.log("User signed up:", data);
-        localStorage.setItem("user", JSON.stringify(data.user)); // ✅ Store user info
-        navigate("/dashboard"); // Redirect after successful signup
+        console.log("User credentials stored, proceeding to details page");
+        localStorage.setItem("pendingEmail", email); // ✅ Store email for details step
+        navigate("/details"); // ✅ Redirect to details page
       } else {
+        const data = await response.json();
         setError(data.message || "Signup failed");
       }
     } catch (err) {
@@ -45,47 +45,22 @@ const Signup = () => {
       setError("Something went wrong. Try again.");
     }
   };
-  
 
   return (
     <div className="signup-container">
       <ParticlesBackground />
       <div className="signup-content">
-        <h1>Welcome!</h1>
+        <h1 className="signup-title">Welcome!</h1>
         {error && <p className="error-message">{error}</p>}
         <p className="already-have-account">
-          Already have an account? <a className="sign-in-link" href="/login" >Sign In</a>
+          Already have an account? <a className="sign-in-link" href="/login">Sign In</a>
         </p>
 
         <form onSubmit={handleSignup}>
-          <input
-            type="email"
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Create Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)} // ✅ Added username field
-            required
-          />
-          <input
-            type="password"
-            placeholder="Create Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
+          <input type="email" placeholder="Enter Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="text" placeholder="Create Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <input type="password" placeholder="Create Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
           <button type="submit" className="signup-btn">Sign Up</button>
         </form>
 

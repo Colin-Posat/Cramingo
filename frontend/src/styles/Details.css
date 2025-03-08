@@ -1,0 +1,48 @@
+.details-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--dark-blue);
+    background-color: transparent; /* ✅ Prevents covering particles */
+}
+
+.details-title{
+    color: black;
+    font-size: clamp(50px, 6vw, 90px);
+    font-weight: bold;
+    margin-bottom: 2px;
+
+}
+
+.details-content {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    width: clamp(400px, 50vw, 750px);
+    max-height: 90vh;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.details-btn {
+    margin-top: 30px;
+    width: 100%;
+    padding: 15px;
+    background-color: var(--dark-blue);
+    color: white;
+    font-size: 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.details-btn:hover {
+    background-color: var(--medium-blue);
+}
+
+.details-logo {
+    width: 150px;
+    margin-top: 20px;
+}

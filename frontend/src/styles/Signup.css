@@ -46,7 +46,7 @@ body, html {
 }
 
 /* Signup Title */
-h1 {
+.signup-title {
     color: black;
     font-size: clamp(50px, 6vw, 120px);
     font-weight: bold;
