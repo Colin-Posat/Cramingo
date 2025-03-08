@@ -25,6 +25,10 @@ body, html {
     width: 100vw; /* Full viewport width */
 }
 
+.sign-in-link {
+    color: var(--dark-blue);
+}
+
 /* Only allow scrolling inside the signup box */
 .signup-content {
     display: flex;

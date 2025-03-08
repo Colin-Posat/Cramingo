@@ -54,15 +54,7 @@ body {
 .nav-title {
     color: white;
 }
-#particles {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
-    pointer-events: none; /* Prevents interaction */
-}
+
 
 
 .nav a {
@@ -115,7 +107,7 @@ main {
     margin: 0 auto 20px;
 }
 
-.btn {
+.get-started-btn {
     margin-top: 20px;
     display: inline-flex;
     align-items: center;
@@ -124,13 +116,16 @@ main {
     font-weight: bold;
     border: none;
     padding: 18px 50px;
-    font-size: 1.5rem;
+    font-size: 2rem;
     border-radius: 6px;
     cursor: pointer;
     transition: .3s;
+    width: 300px;
+    justify-content: center;
+
 }
 
-.btn:hover {
+.get-started-btn:hover {
     transform: scale(1.05);
 }
 

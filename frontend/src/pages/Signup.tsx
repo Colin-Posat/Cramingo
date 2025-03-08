@@ -54,7 +54,7 @@ const Signup = () => {
         <h1>Welcome!</h1>
         {error && <p className="error-message">{error}</p>}
         <p className="already-have-account">
-          Already have an account? <a href="/login">Sign In</a>
+          Already have an account? <a className="sign-in-link" href="/login" >Sign In</a>
         </p>
 
         <form onSubmit={handleSignup}>

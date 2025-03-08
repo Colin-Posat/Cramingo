@@ -28,7 +28,7 @@ const Landing = () => {
         <section className="hero">
           <h1>Create, Share, and Study Smarter with Fliply</h1>
           <p>The shortcut to better grades</p>
-          <button onClick={() => navigate("/signup")} className="btn">
+          <button onClick={() => navigate("/signup")} className="get-started-btn">
             <span className="btn-text">Get Started</span>
           </button>
         </section>
