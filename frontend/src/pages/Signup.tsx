@@ -89,7 +89,7 @@ const Signup = () => {
           <button type="submit" className="signup-btn">Sign Up</button>
         </form>
 
-        <img src="/images/fliply_logo.png" alt="Fliply Logo" className="logo" />
+        <img src="/images/fliply_logo.png" alt="Fliply Logo" className="signup-logo" />
       </div>
     </div>
   );

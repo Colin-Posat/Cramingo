@@ -51,6 +51,5 @@
     width: 100vw;
     height: 100vh;
     z-index: -1;
-    pointer-events: none; /* Prevents interactions with elements behind */
-    min-height: 100vh;
+    pointer-events: none; /* Prevents interaction */
 }

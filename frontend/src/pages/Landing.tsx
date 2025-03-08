@@ -57,7 +57,7 @@ const Landing = () => {
 
       {/* FOOTER */}
       <footer>
-        <p>© 2024 SlugWise. All rights reserved.</p>
+        <p>© 2024 Fliply. All rights reserved.</p>
         <nav>
           <Link to="/terms">Terms of Service</Link>
           <Link to="/privacy">Privacy</Link>

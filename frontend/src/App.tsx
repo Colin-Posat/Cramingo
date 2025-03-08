@@ -6,9 +6,9 @@ const App = () => {
   return (
       <Routes>
         <Route path="/" element={<Landing />} /> 
-        <Route path="/landing" element={<Landing />} /> {/* ✅ Explicitly add Landing route */}
+        <Route path="/landing" element={<Landing />} /> 
         <Route path="/signup" element={<Signup />} />
-        <Route path="*" element={<Navigate to="/" />} /> {/* ✅ Redirect unknown routes */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
   );
 };
