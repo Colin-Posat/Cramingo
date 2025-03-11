@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/Signup.css"; 
-import "../styles/index.css";
-import ParticlesBackground from "../components/ParticlesBackground";
+import "../../styles/login_signup/Signup.css"; 
+import "../../styles/index.css";
+import ParticlesBackground from "../../components/ParticlesBackground";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ const Signup = () => {
           <button type="submit" className="signup-btn">Sign Up</button>
         </form>
 
-        <img src="/images/fliply_logo.png" alt="Fliply Logo" className="signup-logo" />
+       
       </div>
     </div>
   );

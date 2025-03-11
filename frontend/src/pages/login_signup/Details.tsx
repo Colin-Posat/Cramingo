@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/Details.css";
-import "../styles/index.css";
-import ParticlesBackground from "../components/ParticlesBackground";
+import "../../styles/login_signup/Details.css";
+import "../../styles/index.css";
+import ParticlesBackground from "../../components/ParticlesBackground";
 
 const Details = () => {
   const navigate = useNavigate();

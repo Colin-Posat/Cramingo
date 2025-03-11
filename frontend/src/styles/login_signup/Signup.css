@@ -61,7 +61,8 @@ body, html {
 .error-message {
     color: red;
     font-size: 14px;
-    margin-bottom: 15px; /* ⬆️ More space between error and form */
+    margin-bottom: 6px; /* ⬆️ More space between error and form */
+    margin-top: 6px; 
 }
 
 /* Input Fields */
@@ -101,7 +102,7 @@ input {
 }
 
 /* Responsive Height Adaptations */
-@media (max-height: 990px) {
+@media (max-height: 1200px) {
     .signup-content {
         padding: 30px 40px;
         max-height: 85vh;
