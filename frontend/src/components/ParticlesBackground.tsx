@@ -1,66 +1,77 @@
-import { useEffect, useRef } from "react";
-import { Particle } from "../utils/particle"; 
+import React, { useEffect, useRef } from 'react';
+import { Particle } from '../utils/particle';
 
 const ParticlesBackground = () => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  let particlesArray: Particle[] = [];
-  let animationFrameId: number;
-  let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const animationFrameRef = useRef<number>(0);
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const initParticles = () => {
-      particlesArray = Array.from({ length: 100 }, () => new Particle(ctx, canvas.width, canvas.height));
+    
+    // Set canvas to full window size
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // If particles already exist, update their canvas size
+      if (particlesRef.current.length > 0) {
+        particlesRef.current.forEach(particle => 
+          particle.updateCanvasSize(canvas.width, canvas.height)
+        );
+      } else {
+        // Initialize particles
+        particlesRef.current = Array(100).fill(0).map(() => 
+          new Particle(ctx, canvas.width, canvas.height)
+        );
+      }
     };
-
-    const animateParticles = () => {
+    
+    // Initial setup
+    resizeCanvas();
+    
+    // Animation loop
+    const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particlesArray.forEach((particle) => {
+      
+      particlesRef.current.forEach(particle => {
         particle.update();
         particle.draw();
       });
-      animationFrameId = requestAnimationFrame(animateParticles);
+      
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
-
-    const resizeCanvas = () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      canvas.style.transition = "opacity 0.3s ease-out";
-      canvas.style.opacity = "0";
-
-      resizeTimeout = setTimeout(() => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        // ✅ Regenerate particles after resizing
-        initParticles();
-
-        canvas.style.transition = "opacity 0.3s ease-in";
-        canvas.style.opacity = "1";
-
-        animateParticles();
-      }, 50);
-    };
-
-    // Initial setup
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    canvas.style.opacity = "1";
-    initParticles();
-    animateParticles();
-
-    window.addEventListener("resize", resizeCanvas);
-
+    
+    animate();
+    
+    // Handle resize
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Cleanup
     return () => {
-      window.removeEventListener("resize", resizeCanvas);
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationFrameRef.current);
     };
   }, []);
-
-  return <canvas ref={canvasRef} id="particles"></canvas>;
+  
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed', // Change from 'absolute' to 'fixed'
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: -1, // Keep it behind all content
+        pointerEvents: 'none' // This is key - allows clicks to pass through
+      }}
+    />
+  );
 };
 
 export default ParticlesBackground;

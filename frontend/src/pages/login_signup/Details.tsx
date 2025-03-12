@@ -55,7 +55,7 @@ const Details = () => {
           <button type="submit" className="details-btn">Done</button>
         </form>
 
-        <img src="/images/fliply_logo.png" alt="Fliply Logo" className="details-logo" />
+        
       </div>
     </div>
   );

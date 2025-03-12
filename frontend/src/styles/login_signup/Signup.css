@@ -4,16 +4,16 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    width: 100vw;
     margin: 0;
     font-family: 'WorkSans', sans-serif;
+    height: 100%;
+    overflow: hidden;
 }
 
-/* Prevent body from scrolling */
-body, html {
-    height: 100vh;
-  /* Ensures no scrolling on the entire page */
+/* Ensure full viewport coverage */
+html, body {
+    height: 100%;
+    width: 100%;
 }
 
 /* Wrapper to center everything */
@@ -21,213 +21,228 @@ body, html {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Full viewport height */
-    width: 100vw; /* Full viewport width */
+    height: 100%;
+    width: 100%;
+    position: relative; /* For positioning particles background */
 }
 
+/* Sign in link styling */
 .sign-in-link {
-    color: var(--dark-blue);
+    color: #004a74;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
 }
 
-/* Only allow scrolling inside the signup box */
+.sign-in-link:hover {
+    color: #00659f;
+    text-decoration: underline;
+}
+
+/* Signup content box - INCREASED SIZE */
 .signup-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     background: white;
-    padding: 40px; /* ⬆️ Increased padding */
+    padding: 3rem;
     border-radius: 12px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    width: clamp(400px, 50vw, 750px);
-    max-height: 90vh; /* Prevents box from getting too tall */
-    max-width: calc(100vw - 39px); /* 100% width minus margins */
-    overflow-y: auto; /* ✅ Enables scrolling inside only if needed */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: min(550px, 90vw); /* Increased from 450px to 550px */
+    max-height: 90vh;
+    overflow-y: auto;
     text-align: center;
+    scrollbar-width: thin;
+    scrollbar-color: #004a74 #f1f1f1;
 }
 
-/* Signup Title */
+/* Custom scrollbar */
+.signup-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.signup-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.signup-content::-webkit-scrollbar-thumb {
+    background: #004a74;
+    border-radius: 10px;
+}
+
+/* Title styling - INCREASED SIZE */
 .signup-title {
-    color: black;
-    font-size: clamp(50px, 6vw, 120px);
-    font-weight: bold;
-    margin-bottom: 2px; /* ⬆️ Increased space below title */
+    color: #004a74;
+    font-size: min(3.5rem, 8vw); /* Increased from 3rem to 3.5rem */
+    font-weight: 700;
+    margin-bottom: 0.8rem; /* Increased from 0.5rem to 0.8rem */
+    margin-top: 0;
+    line-height: 1.1;
 }
 
-.already-have-account{
-    padding: 10px;
+.already-have-account {
+    padding: 0.5rem;
+    margin-top: 0;
+    color: #555;
+    font-size: 1rem; /* Slight increase from 0.95rem */
 }
 
 /* Error Message */
 .error-message {
-    color: red;
-    font-size: 14px;
-    margin-bottom: 6px; /* ⬆️ More space between error and form */
-    margin-top: 6px; 
+    color: #e53935;
+    font-size: 0.875rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background-color: rgba(229, 57, 53, 0.1);
+    border-radius: 4px;
+    width: 100%;
 }
 
-/* Input Fields */
+/* Form styling */
+form {
+    width: 100%;
+}
+
+/* Input Fields - INCREASED SIZE */
 input {
     width: 100%;
-    padding: 17px; /* ⬆️ Increased padding */
-    margin: 15px 0; /* ⬆️ More space between inputs */
-    border: 2px solid #004a74;
-    border-radius: 8px;
-    font-size: 18px;
+    padding: 1rem 1.2rem; /* Increased from 0.9rem 1rem */
+    margin: 0.8rem 0; /* Increased from 0.6rem */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px; /* Increased from 6px */
+    font-size: 1.05rem; /* Increased from 1rem */
     outline: none;
+    transition: border 0.3s, box-shadow 0.3s;
+    box-sizing: border-box;
 }
 
-/* Signup Button */
+input:focus {
+    border-color: #004a74;
+    box-shadow: 0 0 0 3px rgba(0, 74, 116, 0.1);
+}
+
+/* Signup Button - INCREASED SIZE */
 .signup-btn {
-    margin-top: 30px; /* ⬆️ More space between last input and button */
+    margin-top: 1.8rem; /* Increased from 1.5rem */
     width: 100%;
-    padding: 18px; /* ⬆️ Increased button size */
+    padding: 1rem; /* Increased from 0.9rem */
     background-color: #004a74;
     color: white;
-    font-size: 20px; /* ⬆️ Slightly bigger text */
+    font-size: 1.1rem; /* Increased from 1.05rem */
+    font-weight: 500;
     border: none;
-    border-radius: 8px;
+    border-radius: 8px; /* Increased from 6px */
     cursor: pointer;
-    transition: 0.3s;
+    transition: background 0.3s, transform 0.1s;
 }
 
 .signup-btn:hover {
     background-color: #00659f;
 }
 
-/* Fliply Logo */
-.signup-logo {
-    width: clamp(150px, 30vw, 200px);
-    height: auto;
-    margin-top: 30px; /* Ensures spacing below button */
+.signup-btn:active {
+    transform: scale(0.98);
 }
 
-/* Responsive Height Adaptations */
-@media (max-height: 1200px) {
+/* Fliply Logo - INCREASED SIZE */
+.signup-logo {
+    width: min(180px, 30%); /* Increased from 150px */
+    height: auto;
+    margin-top: 2rem; /* Increased from 1.5rem */
+    opacity: 0.9;
+}
+
+/* Height-based responsive adjustments */
+@media (max-height: 750px) { /* Adjusted from 700px */
     .signup-content {
-        padding: 30px 40px;
+        padding: 2.2rem; /* Adjusted from 1.8rem */
+    }
+    
+    .signup-title {
+        font-size: min(3rem, 8vw); /* Adjusted from 2.5rem */
+    }
+    
+    input, .signup-btn {
+        padding: 0.9rem; /* Adjusted from 0.8rem */
+    }
+}
+
+@media (max-height: 650px) { /* Adjusted from 600px */
+    .signup-content {
+        padding: 1.8rem; /* Adjusted from 1.5rem */
         max-height: 85vh;
     }
-
-    h1 {
-        font-size: clamp(40px, 5vw, 100px);
+    
+    .signup-title {
+        font-size: min(2.5rem, 7vw); /* Adjusted from 2rem */
     }
-
+    
     input {
-        padding: 15px;
-        font-size: 16px;
+        margin: 0.6rem 0; /* Adjusted from 0.5rem */
+        padding: 0.8rem; /* Adjusted from 0.7rem */
     }
-
+    
     .signup-btn {
-        padding: 14px;
-        font-size: 18px;
+        padding: 0.8rem; /* Adjusted from 0.7rem */
+        margin-top: 1.2rem; /* Adjusted from 1rem */
     }
-
+    
     .signup-logo {
-        width: clamp(130px, 30vw, 180px);
+        width: min(140px, 25%); /* Adjusted from 120px */
+        margin-top: 1.2rem; /* Adjusted from 1rem */
     }
 }
 
-/* New Stage: Logo still visible, everything smaller */
-@media (max-height: 940px) {
-    .signup-content {
-        padding: 25px 35px;
-        max-height: 82vh;
+@media (max-height: 550px) { /* Adjusted from 500px */
+    .signup-title {
+        font-size: min(2rem, 6vw); /* Adjusted from 1.8rem */
     }
-
-    h1 {
-        font-size: clamp(34px, 4.5vw, 90px);
+    
+    .already-have-account {
+        padding: 0.3rem;
+        font-size: 0.9rem;
     }
-
+    
     input {
-        padding: 13px;
-        font-size: 14px;
+        padding: 0.7rem; /* Adjusted from 0.6rem */
+        margin: 0.5rem 0; /* Adjusted from 0.4rem */
     }
-
+    
     .signup-btn {
-        padding: 12px;
-        font-size: 16px;
+        padding: 0.7rem; /* Adjusted from 0.6rem */
+        font-size: 1rem; /* Adjusted from 0.95rem */
     }
-
+    
     .signup-logo {
-        margin-top: 5px;
-        width: clamp(130px, 30vw, 150px);
+        width: min(120px, 20%); /* Adjusted from 100px */
     }
 }
 
-@media (max-height: 850px) {
+/* At very small heights, optimize for scrolling */
+@media (max-height: 450px) { /* Adjusted from 400px */
     .signup-content {
-        padding: 20px 30px;
-        max-height: 90vh;
+        padding: 1.2rem; /* Adjusted from 1rem */
+        max-height: 80vh;
     }
-
-    h1 {
-        font-size: clamp(30px, 4vw, 80px);
+    
+    .signup-title {
+        font-size: min(1.8rem, 6vw); /* Adjusted from 1.5rem */
+        margin-bottom: 0.3rem; /* Adjusted from 0.2rem */
     }
-
+    
     input {
-        padding: 12px;
-        font-size: 14px;
+        padding: 0.6rem; /* Adjusted from 0.5rem */
+        margin: 0.4rem 0; /* Adjusted from 0.3rem */
+        font-size: 0.95rem; /* Adjusted from 0.9rem */
     }
-
+    
     .signup-btn {
-        padding: 12px;
-        font-size: 16px;
+        margin-top: 0.8rem; /* Adjusted from 0.7rem */
+        padding: 0.6rem; /* Adjusted from 0.5rem */
+        font-size: 0.95rem; /* Adjusted from 0.9rem */
     }
-
-    .signup-logo {
-        width: clamp(100px, 30vw, 130px);
-    }
-}
-
-/* At 450px, logo disappears and scrolling enabled */
-@media (max-height: 710px) {
-    .signup-content {
-        padding: 15px 20px;
-        max-height: 75vh;
-        overflow: scroll;
-    }
-
-    h1 {
-        font-size: clamp(24px, 3.5vw, 60px);
-    }
-
-    input {
-        padding: 10px;
-        font-size: 12px;
-    }
-
-    .signup-btn {
-        padding: 10px;
-        font-size: 14px;
-    }
-
-    .signup-logo {
-        display: none;
-    }
-}
-
-/* At 350px, even smaller and scroll enabled */
-@media (max-height: 350px) {
-    .signup-content {
-        padding: 10px 15px;
-        max-height: 70vh;
-        overflow: scroll;
-    }
-
-    h1 {
-        font-size: clamp(20px, 3vw, 50px);
-    }
-
-    input {
-        padding: 8px;
-        font-size: 10px;
-    }
-
-    .signup-btn {
-        padding: 8px;
-        font-size: 12px;
-    }
-
+    
     .signup-logo {
         display: none;
     }
