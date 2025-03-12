@@ -1,4 +1,11 @@
 /* Full Page Layout */
+
+html, body, #root, .App {
+    min-height: 100%;
+    overflow-y: hidden !important;
+}
+
+
 body {
     background-color: #004a74;
     display: flex;
