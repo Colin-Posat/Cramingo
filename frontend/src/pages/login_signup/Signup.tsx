@@ -21,18 +21,18 @@ const Signup = () => {
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    
+  
     // Form validation
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-    
+  
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-    
+  
     try {
       setLoading(true);
       const response = await fetch("http://localhost:6500/api/auth/signup-init", {
@@ -40,13 +40,14 @@ const Signup = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),
       });
-      
+  
+      const data = await response.json();
+  
       if (response.ok) {
         console.log("User credentials stored, proceeding to details page");
         localStorage.setItem("pendingEmail", email);
         navigate("/details");
       } else {
-        const data = await response.json();
         setError(data.message || "Signup failed");
       }
     } catch (err) {
@@ -56,6 +57,7 @@ const Signup = () => {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="signup-container">

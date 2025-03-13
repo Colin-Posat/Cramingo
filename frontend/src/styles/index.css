@@ -54,9 +54,8 @@
     pointer-events: none; /* Prevents interaction */
 }
 
-body:not(.signup-page) html,
-body:not(.signup-page) body,{
-    height: auto !important;
+html, body, #root, .App {
+
     min-height: 100%;
     overflow-y: auto !important;
 }

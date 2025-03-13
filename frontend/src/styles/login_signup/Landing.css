@@ -125,7 +125,7 @@ main {
     display: inline-flex;
     align-items: center;
     background: white;
-    color: black;
+    color: var(--dark-blue);
     font-weight: bold;
     border: none;
     padding: 18px 50px;
@@ -164,6 +164,7 @@ main {
     width: 560px;
     height: 220px;
     text-align: center;
+    color: var(--dark-blue);
 }
 
 /* Responsive: Stack cards on smaller screens */
@@ -211,9 +212,4 @@ footer nav a:hover {
   }
   
 
-html, body, #root, .App {
-
-    min-height: 100%;
-    overflow-y: auto !important;
-}
 
