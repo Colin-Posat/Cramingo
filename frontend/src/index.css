@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Custom Fonts */
 @font-face {
     font-family: 'WorkSans';
@@ -55,6 +59,33 @@ html, body, #root {
 }
 
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'WorkSans', sans-serif;
+}
+
+
+#root {
+    min-height: 100vh;
+}
+
+#particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none; /* Prevents interaction */
+}
+
+html, body, #root, .App {
+
+    min-height: 100%;
+    overflow-y: auto !important;
+}
 
 
 

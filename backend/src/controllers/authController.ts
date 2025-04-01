@@ -13,7 +13,7 @@ export const signupInit = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     
-    // Check if email already exists in Firebase Auth
+    // Check if email already exists in Firebase Auth.
     try {
       const existingUser = await auth.getUserByEmail(email);
       if (existingUser) {
