@@ -16,7 +16,7 @@ const Login: React.FC = () => {
     secondaryColor: "rgba(173, 216, 230, 0.5)",
     accentColor: "rgba(135, 206, 250, 0.7)",
     particleSize: { min: 2, max: 6 },
-    particleSpeed: 0.3
+    particleSpeed: 0.1
   }), []);
 
   // Memoize handlers to prevent unnecessary re-renders

@@ -56,7 +56,7 @@ export const completeSignup = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // ✅ Fetch stored credentials
+    // Fetch stored credentials
     const userRef = db.collection("pendingUsers").doc(email);
     const userDoc = await userRef.get();
     const userData = userDoc.data();
@@ -66,22 +66,23 @@ export const completeSignup = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // ✅ Create user in Firebase Authentication
+    // Create user in Firebase Authentication
     const userRecord = await auth.createUser({
       email: userData.email,
       password: userData.password,
     });
 
-    // ✅ Store full user details in Firestore
+    // Store full user details in Firestore
     await db.collection("users").doc(userRecord.uid).set({
       username: userData.username,
       email: userData.email,
       university,
       fieldOfStudy,
-      createdAt: new Date(),
+      likes: 0, // Initialize likes to 0
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // ✅ Cleanup pending user data
+    // Cleanup pending user data
     await userRef.delete();
 
     res.status(201).json({
@@ -94,22 +95,24 @@ export const completeSignup = async (req: Request, res: Response): Promise<void>
   }
 };
 
-
-
-// Alternative approach with Firebase Admin SDK
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
     
+    if (!email || !password) {
+      res.status(400).json({ message: "Email and password are required" });
+      return;
+    }
+    
     // Get user by email
-    const userRecord = await admin.auth().getUserByEmail(email)
+    const userRecord = await auth.getUserByEmail(email)
       .catch(() => {
         throw new Error("Invalid email or password");
       });
     
-    // Since we can't verify password with admin SDK directly,
-    // you'd need to use the Firebase Auth REST API or client SDK
-    // For simplicity here, we're just returning the user if found
+    // Since Firebase Admin SDK can't verify passwords directly,
+    // client should use Firebase Auth SDK for actual authentication
+    // Here we're just returning user info assuming client has properly authenticated
     
     // Get user details from Firestore
     const userDoc = await db.collection("users").doc(userRecord.uid).get();
@@ -121,14 +124,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     
     const userData = userDoc.data();
 
+    // Generate a custom token for the client
+    const customToken = await auth.createCustomToken(userRecord.uid);
+
     res.status(200).json({
       message: "Login successful",
+      token: customToken,
       user: {
         uid: userRecord.uid,
         email: userRecord.email,
         username: userData?.username ?? "Unknown",
         university: userData?.university ?? "Unknown",
-        fieldOfStudy: userData?.fieldOfStudy ?? "Unknown"
+        fieldOfStudy: userData?.fieldOfStudy ?? "Unknown",
+        likes: userData?.likes ?? 0
       }
     });
 
@@ -136,5 +144,46 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(401).json({ 
       message: error instanceof Error ? error.message : "Authentication failed" 
     });
+  }
+};
+
+export const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get the token from the authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    
+    const idToken = authHeader.split('Bearer ')[1];
+    
+    // Verify the ID token
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+    
+    // Get user data from Firestore
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    
+    const userData = userDoc.data();
+    
+    res.status(200).json({
+      uid,
+      email: userData?.email,
+      username: userData?.username,
+      university: userData?.university,
+      fieldOfStudy: userData?.fieldOfStudy,
+      likes: userData?.likes ?? 0
+    });
+    
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(401).json({ message: "Authentication failed" });
   }
 };

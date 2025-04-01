@@ -9,12 +9,11 @@ const FeatureCard: React.FC<{
   description: string;
 }> = ({ icon, title, description }) => {
   const processedIcon = React.isValidElement(icon)
-    ? React.cloneElement(icon, {
-        className: `${
-          (icon.props as { className?: string }).className || ''
-        } mx-auto w-10 h-10 text-[#004a74]`
-      })
-    : icon;
+  ? React.cloneElement(icon as React.ReactElement<any>, {
+      size: 40,
+      className: "mx-auto text-[#004a74]"
+    })
+  : icon;
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 text-center">
@@ -39,7 +38,7 @@ const Landing: React.FC = () => {
         secondaryColor="rgba(173, 216, 230, 0.5)"
         accentColor="rgba(135, 206, 250, 0.7)"
         particleSize={{ min: 2, max: 6 }}
-        particleSpeed={0.3}
+        particleSpeed={0.1}
       />
       
       {/* Main Content */}
@@ -86,15 +85,11 @@ const Landing: React.FC = () => {
                 </p>
                 <button 
                   onClick={() => navigate("/signup")} 
-                  className="group bg-white text-[#004a74] font-bold py-4 px-8 rounded-full text-xl 
-                             hover:bg-blue-100 transition-all duration-300 
-                             flex items-center justify-center mx-auto space-x-2"
+                  className="group bg-white text-[#004a74] font-bold py-4 px-10 rounded-full text-2xl 
+                              transition-all duration-300 
+                             flex items-center justify-center mx-auto space-x-2 hover:scale-105"
                 >
-                  <span>Get Started</span>
-                  <ChevronRight 
-                    className="transform group-hover:translate-x-1 transition-transform" 
-                    size={24} 
-                  />
+                  <span className="text-dark-blue" >Get Started</span>
                 </button>
               </section>
               

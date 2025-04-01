@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
 
@@ -8,6 +8,13 @@ const Details: React.FC = () => {
   const [fieldOfStudy, setFieldOfStudy] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // University autocomplete states
+  const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
+  const [allUniversities, setAllUniversities] = useState<string[]>([]);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState<boolean>(true);
+  const autocompleteRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Memoize particle background props to prevent re-rendering
   const particleProps = useMemo(() => ({
@@ -16,18 +23,40 @@ const Details: React.FC = () => {
     secondaryColor: "rgba(173, 216, 230, 0.5)",
     accentColor: "rgba(135, 206, 250, 0.7)",
     particleSize: { min: 2, max: 6 },
-    particleSpeed: 0.3
+    particleSpeed: 0.1
   }), []);
 
-  // Memoized error clearing function
-  const clearError = useCallback(() => {
-    if (error) setError("");
-  }, [error]);
-
-  // Clear error when user starts typing again
+  // Load universities from CSV
   useEffect(() => {
-    clearError();
-  }, [university, fieldOfStudy, clearError]);
+    const fetchUniversities = async () => {
+      try {
+        setIsLoadingUniversities(true);
+        
+        // Fetch the CSV file
+        const response = await fetch('/data/schools.csv'); 
+        const text = await response.text();
+        
+        // Parse CSV - simple split by new line
+        const universities = text.split('\n')
+          .map(school => school.trim())
+          .filter(school => 
+            school.length > 0 && 
+            !school.includes('<!doctype') && 
+            !school.includes('<script') &&
+            !school.includes('import')
+          );
+        
+        console.log('✅ Loaded universities:', universities);
+        setAllUniversities(universities);
+        setIsLoadingUniversities(false);
+      } catch (error) {
+        console.error('❌ Error loading universities:', error);
+        setIsLoadingUniversities(false);
+      }
+    };
+
+    fetchUniversities();
+  }, []);
 
   // Debug logging for page load and email check
   useEffect(() => {
@@ -40,9 +69,91 @@ const Details: React.FC = () => {
     }
   }, []);
 
+  // Filter universities - only show matches that START WITH or INCLUDE the input
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUniversity(value);
+    setError("");
+    
+    if (value.length > 0) {
+      // Filter universities that START WITH or INCLUDE the input value
+      const filteredResults = allUniversities
+        .filter(school => 
+          school.toLowerCase().startsWith(value.toLowerCase()) || 
+          school.toLowerCase().includes(value.toLowerCase())
+        )
+        .slice(0, 5); // Limit to 5 results
+      
+      setAutocompleteResults(filteredResults);
+    } else {
+      setAutocompleteResults([]);
+    }
+  }, [allUniversities]);
+
+  // Handle autocomplete item selection
+  const handleAutocompleteSelect = useCallback((school: string) => {
+    setUniversity(school);
+    setAutocompleteResults([]);
+    setError("");
+  }, []);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        autocompleteRef.current && 
+        !autocompleteRef.current.contains(event.target as Node) &&
+        inputRef.current !== event.target
+      ) {
+        setAutocompleteResults([]);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // Handle input blur - validate input exactly like in SearchSetsPage
+  const handleBlur = useCallback(() => {
+    // Small timeout to allow click on autocomplete item to register first
+    setTimeout(() => {
+      if (university.trim() !== '' && !allUniversities.some(school => 
+        school.toLowerCase() === university.trim().toLowerCase()
+      )) {
+        setError('Please select a valid university from the list');
+        // Don't clear right away
+        setTimeout(() => {
+          setUniversity('');
+          // Clear error message after a delay
+          setTimeout(() => {
+            setError('');
+          }, 3000);
+        }, 1500);
+      }
+    }, 100);
+  }, [university, allUniversities]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+
+    // Validate university selection
+    if (university.trim() === '') {
+      setError("Please select your university");
+      return;
+    }
+
+    // Check if the university is valid (case-insensitive)
+    const isValidUniversity = allUniversities.some(school => 
+      school.toLowerCase() === university.trim().toLowerCase()
+    );
+    
+    if (!isValidUniversity) {
+      setError("Please select a valid university from the list");
+      return;
+    }
 
     const email = localStorage.getItem("pendingEmail");
     if (!email) {
@@ -55,7 +166,11 @@ const Details: React.FC = () => {
       const response = await fetch("http://localhost:6500/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, university, fieldOfStudy }),
+        body: JSON.stringify({ 
+          email, 
+          university, 
+          fieldOfStudy 
+        }),
       });
 
       const data = await response.json();
@@ -93,23 +208,55 @@ const Details: React.FC = () => {
         </h1>
 
         {error && (
-          <p className="text-[#e53935] text-sm my-2 p-2 bg-[rgba(229,57,53,0.1)] rounded-md w-full">
-            {error}
-          </p>
+          <div className="text-[#e53935] text-sm mb-4 p-3 bg-[rgba(229,57,53,0.1)] rounded-md w-full animate-fadeIn">
+            ❌ {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="w-full">
-          <input
-            type="text"
-            placeholder="Select Your University"
-            value={university}
-            onChange={(e) => setUniversity(e.target.value)}
-            required
-            aria-label="University"
-            className="w-full p-4 my-3 border border-[#e0e0e0] rounded-lg text-lg 
-              outline-none transition-all duration-300 
-              focus:border-[#004a74] focus:shadow-[0_0_0_3px_rgba(0,74,116,0.1)]"
-          />
+          {/* University dropdown with autocomplete */}
+          <div className="relative w-full mb-3">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={isLoadingUniversities ? "Loading universities..." : "Select Your University"}
+              value={university}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              required
+              disabled={isLoadingUniversities}
+              aria-label="University"
+              className={`w-full p-4 border ${error.includes('university') ? 'border-[#e53935]' : 'border-[#e0e0e0]'} rounded-lg text-lg 
+                outline-none transition-all duration-300 
+                focus:border-[#004a74] focus:shadow-[0_0_0_3px_rgba(0,74,116,0.1)]`}
+              autoComplete="off"
+            />
+            
+            {/* Autocomplete dropdown list */}
+            {autocompleteResults.length > 0 && (
+              <ul 
+                ref={autocompleteRef}
+                className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg"
+                style={{
+                  width: '100%',
+                  maxHeight: '240px',
+                  overflowY: 'auto',
+                  overscrollBehavior: 'contain',
+                  zIndex: 1000
+                }}
+              >
+                {autocompleteResults.map((school, index) => (
+                  <li 
+                    key={index}
+                    className="p-3 hover:bg-[#e3f3ff] cursor-pointer border-b border-gray-100 text-left font-medium"
+                    onMouseDown={() => handleAutocompleteSelect(school)}
+                  >
+                    {school}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           
           <input
             type="text"
@@ -124,7 +271,7 @@ const Details: React.FC = () => {
           
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isLoadingUniversities}
             className="mt-7 w-full p-4 bg-[#004a74] text-white text-lg font-medium 
               rounded-lg cursor-pointer transition-all duration-300 
               hover:bg-[#00659f] active:scale-[0.98] 
@@ -137,5 +284,23 @@ const Details: React.FC = () => {
     </div>
   );
 };
+
+// Add CSS for animation
+const fadeInAnimation = `
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out forwards;
+}
+`;
+
+// Add the animation styles to the document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = fadeInAnimation;
+  document.head.appendChild(style);
+}
 
 export default Details;

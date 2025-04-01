@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  BookIcon, 
+  BookmarkIcon, 
   XIcon,
-  PlusIcon
+  SearchIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 
@@ -12,21 +12,21 @@ type FlashcardSet = {
   id: string;
   title: string;
   description?: string;
-  isPublic?: boolean;
+  owner?: string;
   cardCount?: number;
 };
 
-const CreatedSets: React.FC = () => {
+const SavedSets: React.FC = () => {
   const navigate = useNavigate();
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [showHelper, setShowHelper] = useState(false);
 
-  // Fetch created sets when component mounts
+  // Fetch saved sets when component mounts
   useEffect(() => {
-    const fetchSets = async () => {
+    const fetchSavedSets = async () => {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const response = await fetch(`http://localhost:6500/api/sets/created/${user.id}`);
+        const response = await fetch(`http://localhost:6500/api/sets/saved/${user.id}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -34,27 +34,22 @@ const CreatedSets: React.FC = () => {
 
           // Show helper only if no sets and first visit
           if (data.length === 0) {
-            const hasSeenHelper = localStorage.getItem('hasSeenCreatedSetsHelper');
+            const hasSeenHelper = localStorage.getItem('hasSeenSavedSetsHelper');
             if (!hasSeenHelper) {
               setShowHelper(true);
-              localStorage.setItem('hasSeenCreatedSetsHelper', 'true');
+              localStorage.setItem('hasSeenSavedSetsHelper', 'true');
             }
           }
         } else {
-          console.error('Failed to fetch sets');
+          console.error('Failed to fetch saved sets');
         }
       } catch (error) {
-        console.error('Error fetching sets:', error);
+        console.error('Error fetching saved sets:', error);
       }
     };
 
-    fetchSets();
+    fetchSavedSets();
   }, []);
-
-  // Handle create set button click
-  const handleCreateSet = () => {
-    navigate('/set-creator');
-  };
 
   // Close helper
   const closeHelper = () => {
@@ -65,18 +60,6 @@ const CreatedSets: React.FC = () => {
     <div className="min-h-screen bg-white">
       {/* Navigation Bar */}
       <NavBar />
-
-      {/* Create Set Button - Top Left */}
-      <button 
-        onClick={handleCreateSet}
-        className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
-          py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-          transition-all flex items-center justify-center gap-3 
-          shadow-md z-10 text-xl"
-      >
-        <PlusIcon className="w-5 h-5" />
-        <span>Create Set</span>
-      </button>
 
       {/* Sets Container */}
       <div className="pt-24 px-6 pb-6">
@@ -101,10 +84,8 @@ const CreatedSets: React.FC = () => {
                   <span className="text-sm text-gray-500">
                     {set.cardCount || 0} cards
                   </span>
-                  {set.isPublic ? (
-                    <span className="text-sm text-green-600">Public</span>
-                  ) : (
-                    <span className="text-sm text-gray-500">Private</span>
+                  {set.owner && (
+                    <span className="text-sm text-gray-600">By: {set.owner}</span>
                   )}
                 </div>
               </div>
@@ -114,20 +95,20 @@ const CreatedSets: React.FC = () => {
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
             <div className="bg-blue-50 rounded-xl p-8 shadow-md max-w-md w-full text-center">
-              <BookIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
+              <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
               <h2 className="text-2xl font-bold text-[#004a74] mb-4">
-                No Study Sets Yet
+                No Saved Sets Yet
               </h2>
               <p className="text-gray-600 mb-6">
-                You haven't created any study sets yet. Get started by clicking the "Create Set" button in the top left corner.
+                You haven't saved any study sets yet. Click the "Search Sets" link in the navigation bar to find and save sets for your classes.
               </p>
               <div className="flex items-center justify-center gap-3 bg-[#e3f3ff] p-3 rounded-lg">
                 <div className="flex items-center text-[#004a74]">
-                  <PlusIcon className="w-5 h-5" />
-                  <span className="font-bold ml-1">Create Set</span>
+                  <SearchIcon className="w-5 h-5" />
+                  <span className="font-bold ml-1">Search Sets</span>
                 </div>
                 <span className="text-gray-500">→</span>
-                <span className="text-gray-600">Top left corner</span>
+                <span className="text-gray-600">In the navigation bar</span>
               </div>
             </div>
           </div>
@@ -138,12 +119,12 @@ const CreatedSets: React.FC = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="relative bg-white rounded-xl max-w-xl w-full shadow-2xl">
               <div className="p-6 text-center">
-                <BookIcon className="mx-auto w-16 h-16 text-[#004a74] mb-4" />
+                <BookmarkIcon className="mx-auto w-16 h-16 text-[#004a74] mb-4" />
                 <h2 className="text-2xl font-bold text-[#004a74] mb-4">
-                  Welcome to Your Study Sets!
+                  Welcome to Your Saved Sets!
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  It looks like you don't have any study sets yet. Click "Create Set" to get started and boost your learning!
+                  This is where you'll find study sets you've saved from other students. Click the "Search Sets" tab in the navigation bar to find and save sets for your classes.
                 </p>
                 <button 
                   onClick={closeHelper}
@@ -163,4 +144,22 @@ const CreatedSets: React.FC = () => {
   );
 };
 
-export default CreatedSets;
+// Add CSS for animation
+const fadeInAnimation = `
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out forwards;
+}
+`;
+
+// Add the animation styles to the document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = fadeInAnimation;
+  document.head.appendChild(style);
+}
+
+export default SavedSets;
