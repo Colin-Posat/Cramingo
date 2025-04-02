@@ -53,7 +53,23 @@ const Signup: React.FC = () => {
   
       if (response.ok) {
         console.log("User credentials stored, proceeding to details page");
+        
+        // IMPORTANT: Ensure the username is properly stored
+        const initialUserData = {
+          username: username.trim(), // Make sure to trim whitespace
+          email: email,
+          likes: 0,
+          university: '',
+          fieldOfStudy: '',
+          uid: data.uid || '' // If your API returns a user ID
+        };
+        
+        console.log("Saving initial user data:", initialUserData);
+        
+        // Store both pendingEmail (for backward compatibility) and the user object
         localStorage.setItem("pendingEmail", email);
+        localStorage.setItem("user", JSON.stringify(initialUserData));
+        
         navigate("/details");
       } else {
         setError(data.message || "Signup failed");

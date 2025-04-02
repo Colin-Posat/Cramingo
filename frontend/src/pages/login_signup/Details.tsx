@@ -141,7 +141,7 @@ const Details: React.FC = () => {
 
     // Validate university selection
     if (university.trim() === '') {
-      setError("Please select your university");
+      setError("Please enter your university");
       return;
     }
 
@@ -219,7 +219,7 @@ const Details: React.FC = () => {
             <input
               ref={inputRef}
               type="text"
-              placeholder={isLoadingUniversities ? "Loading universities..." : "Select Your University"}
+              placeholder={isLoadingUniversities ? "Loading universities..." : "Enter Your University"}
               value={university}
               onChange={handleInputChange}
               onBlur={handleBlur}

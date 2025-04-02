@@ -25,7 +25,7 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        // Get the user data from localStorage
+        // Get the user data from localStorage first for the user ID
         const storedUser = localStorage.getItem('user');
         if (!storedUser) {
           setError('Not authenticated. Please log in.');
@@ -42,19 +42,24 @@ const ProfilePage: React.FC = () => {
           return;
         }
 
-        // Update profile with stored data first
+        // Set initial profile data from localStorage as a fallback
+        const localStorageUsername = userData.username && userData.username.trim() !== '' 
+          ? userData.username.trim() 
+          : 'No username';
+          
         setUserProfile({
-          username: userData.username || 'No username',
-          likes: userData.likes || 0,
+          username: localStorageUsername,
+          likes: userData.likes ?? 0,
           university: userData.university || 'No university',
           fieldOfStudy: userData.fieldOfStudy || 'No field of study',
           email: userData.email,
           uid: userData.uid
         });
 
-        // Then try to get fresh data from the API
+        // First try to get data directly from Firestore through your API
         try {
-          const response = await fetch('http://localhost:6500/api/user/profile', {
+          // This endpoint should fetch the user document directly from Firestore
+          const response = await fetch('http://localhost:6500/api/user/firestore-profile', {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json'
@@ -64,16 +69,133 @@ const ProfilePage: React.FC = () => {
 
           if (response.ok) {
             const data = await response.json();
-            console.log('Profile data from API:', data);
+            console.log('Firestore profile data:', data);
+            
+            // Update profile with Firestore data
             setUserProfile(prev => ({
               ...prev,
-              ...data
+              username: data.username || prev.username,
+              likes: data.likes ?? prev.likes,
+              university: data.university || prev.university,
+              fieldOfStudy: data.fieldOfStudy || prev.fieldOfStudy,
+              email: data.email || prev.email,
+              uid: data.uid || prev.uid
             }));
-            // Update stored data
-            localStorage.setItem('user', JSON.stringify({ ...userData, ...data }));
+            
+            // Also update localStorage with the Firestore data
+            const updatedUserData = {
+              ...userData,
+              username: data.username || userData.username,
+              likes: data.likes ?? userData.likes,
+              university: data.university || userData.university,
+              fieldOfStudy: data.fieldOfStudy || userData.fieldOfStudy,
+              email: data.email || userData.email,
+              uid: data.uid || userData.uid
+            };
+            
+            console.log('Updating localStorage with Firestore data:', updatedUserData);
+            localStorage.setItem('user', JSON.stringify(updatedUserData));
           } else {
-            console.warn('Could not refresh profile data from API');
-            // Continue with stored data
+            console.warn('Could not fetch Firestore profile data, falling back to API');
+            
+            // Fall back to the regular profile API if Firestore endpoint fails
+            const fallbackResponse = await fetch('http://localhost:6500/api/user/profile', {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              console.log('Fallback profile data from API:', fallbackData);
+              
+              // Get username from Firestore via your user ID if available
+              const firebaseUserId = userData.uid || fallbackData.uid;
+              if (firebaseUserId) {
+                try {
+                  // Try to get specific user document by ID
+                  const userDocResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}`, {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                  });
+                  
+                  if (userDocResponse.ok) {
+                    const userDocData = await userDocResponse.json();
+                    console.log('User document data:', userDocData);
+                    
+                    // Use Firestore username if available
+                    const firestoreUsername = userDocData.username && userDocData.username.trim() !== ''
+                      ? userDocData.username
+                      : fallbackData.username && fallbackData.username.trim() !== ''
+                        ? fallbackData.username
+                        : localStorageUsername;
+                        
+                    setUserProfile(prev => ({
+                      ...prev,
+                      username: firestoreUsername,
+                      likes: userDocData.likes ?? fallbackData.likes ?? prev.likes,
+                      university: userDocData.university || fallbackData.university || prev.university,
+                      fieldOfStudy: userDocData.fieldOfStudy || fallbackData.fieldOfStudy || prev.fieldOfStudy,
+                      email: userDocData.email || fallbackData.email || prev.email
+                    }));
+                    
+                    // Update localStorage
+                    const updatedUserData = {
+                      ...userData,
+                      username: firestoreUsername,
+                      likes: userDocData.likes ?? fallbackData.likes ?? userData.likes,
+                      university: userDocData.university || fallbackData.university || userData.university,
+                      fieldOfStudy: userDocData.fieldOfStudy || fallbackData.fieldOfStudy || userData.fieldOfStudy,
+                      email: userDocData.email || fallbackData.email || userData.email
+                    };
+                    
+                    console.log('Updating localStorage with user document data:', updatedUserData);
+                    localStorage.setItem('user', JSON.stringify(updatedUserData));
+                  } else {
+                    // If we can't get the Firestore document, use the fallback data
+                    const updatedUsername = fallbackData.username && fallbackData.username.trim() !== ''
+                      ? fallbackData.username
+                      : localStorageUsername;
+                      
+                    setUserProfile(prev => ({
+                      ...prev,
+                      username: updatedUsername,
+                      likes: fallbackData.likes ?? prev.likes,
+                      university: fallbackData.university || prev.university,
+                      fieldOfStudy: fallbackData.fieldOfStudy || prev.fieldOfStudy,
+                      email: fallbackData.email || prev.email
+                    }));
+                    
+                    // Update localStorage
+                    const updatedUserData = {
+                      ...userData,
+                      username: updatedUsername,
+                      likes: fallbackData.likes ?? userData.likes,
+                      university: fallbackData.university || userData.university,
+                      fieldOfStudy: fallbackData.fieldOfStudy || userData.fieldOfStudy,
+                      email: fallbackData.email || userData.email
+                    };
+                    
+                    localStorage.setItem('user', JSON.stringify(updatedUserData));
+                  }
+                } catch (userDocError) {
+                  console.error('Error fetching user document:', userDocError);
+                  // Continue with fallback data
+                  handleFallbackData(fallbackData, localStorageUsername, userData);
+                }
+              } else {
+                // No user ID available, use fallback data
+                handleFallbackData(fallbackData, localStorageUsername, userData);
+              }
+            } else {
+              console.warn('Could not fetch profile from any API');
+              // Keep using localStorage data
+            }
           }
         } catch (apiError) {
           console.error('API fetch error:', apiError);
@@ -85,6 +207,38 @@ const ProfilePage: React.FC = () => {
         setError('Failed to load profile. Please try again later.');
         setIsLoading(false);
       }
+    };
+
+    // Helper function to handle fallback data
+    const handleFallbackData = (
+      fallbackData: any, 
+      localStorageUsername: string, 
+      userData: any
+    ) => {
+      const updatedUsername = fallbackData.username && fallbackData.username.trim() !== ''
+        ? fallbackData.username
+        : localStorageUsername;
+        
+      setUserProfile(prev => ({
+        ...prev,
+        username: updatedUsername,
+        likes: fallbackData.likes ?? prev.likes,
+        university: fallbackData.university || prev.university,
+        fieldOfStudy: fallbackData.fieldOfStudy || prev.fieldOfStudy,
+        email: fallbackData.email || prev.email
+      }));
+      
+      // Update localStorage
+      const updatedUserData = {
+        ...userData,
+        username: updatedUsername,
+        likes: fallbackData.likes ?? userData.likes,
+        university: fallbackData.university || userData.university,
+        fieldOfStudy: fallbackData.fieldOfStudy || userData.fieldOfStudy,
+        email: fallbackData.email || userData.email
+      };
+      
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
     };
 
     fetchUserProfile();
