@@ -269,104 +269,107 @@ const formatDate = (dateValue: any) => {
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Create Set Button - Top Left */}
-      <button 
-        onClick={handleCreateSet}
-        className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
-          py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-          transition-all flex items-center justify-center gap-3 
-          shadow-md z-10 text-xl"
-      >
-        <PlusIcon className="w-5 h-5" />
-        <span>Create Set</span>
-      </button>
+          {/* Create Set Button - Top Left */}
+          <button 
+            onClick={handleCreateSet}
+            className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
+              py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
+              transition-all flex items-center justify-center gap-3 
+              shadow-md z-10 text-xl"
+          >
+            <PlusIcon className="w-5 h-5" />
+            <span>Create Set</span>
+          </button>
 
-      {/* Sets Container */}
-      <div className="pt-32 px-6 pb-6">
-        
-        {/* Error message */}
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
-            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Show grid of sets if there are any */}
-        {sets.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-10">
-            {sets.map((set) => (
-              <div 
-                key={set.id} 
-                className="bg-blue-50 rounded-xl p-6 shadow-md hover:shadow-xl 
-                  transition-all duration-300 relative overflow-hidden
-                  cursor-pointer group min-h-52"
-                onClick={() => navigate(`/study/${set.id}`)}
-              >
-                {/* Card content */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl font-bold text-[#004a74] line-clamp-2">
-                      {set.title}
-                    </h3>
-                    
-                    {set.isPublic ? (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                        Public
-                      </span>
-                    ) : (
-                      <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
-                        Private
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="text-sm text-gray-600 mb-2">
-                    {set.classCode}
-                  </div>
-                  
-                  {set.createdAt && (
-                    <div className="text-sm text-gray-500 mb-2">
-                      Created: {formatDate(set.createdAt)}
-                    </div>
-                  )}
-                  
-                  <div className="text-sm font-medium text-[#004a74] mt-3">
-                    {set.numCards || set.flashcards?.length || 0} cards
-                  </div>
-                </div>
-                
-                {/* Action buttons that appear on hover */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-4 
-                  transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-2">
+          {/* Sets Container */}
+          <div className="pt-32 px-6 pb-6">
+            
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
+                <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-bold">Error</p>
+                  <p>{error}</p>
                   <button 
-                    onClick={(e) => handleEditSet(e, set)}
-                    className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
-                    aria-label="Edit set"
+                    onClick={() => window.location.reload()}
+                    className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
                   >
-                    <Edit3Icon className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={(e) => confirmDelete(e, set.id)}
-                    className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
-                    aria-label="Delete set"
-                  >
-                    <TrashIcon className="w-4 h-4" />
+                    Try Again
                   </button>
                 </div>
               </div>
-            ))}
+            )}
+
+      {/* Show grid of sets if there are any */}
+    {sets.length > 0 ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-10">
+        {sets.map((set) => (
+          <div
+            key={set.id}
+            className="bg-blue-50 rounded-xl p-6 shadow-md hover:shadow-xl
+              transition-all duration-300 relative overflow-hidden 
+              cursor-pointer group min-h-64 flex flex-col"
+            onClick={() => navigate(`/study/${set.id}`)}
+          >
+            {/* Card content */}
+            <div className="mb-4 flex-grow">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-2xl font-bold text-[#004a74] mb-2 break-words">
+                  {set.title}
+                </h3>
+                
+                {set.isPublic ? (
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2">
+                    Public
+                  </span>
+                ) : (
+                  <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2">
+                    Private
+                  </span>
+                )}
+              </div>
+              
+              <div className="text-base text-gray-600 mb-2">
+                {set.classCode}
+              </div>
+              
+              {set.createdAt && (
+                <div className="text-sm text-gray-500 mb-2">
+                  Created: {formatDate(set.createdAt)}
+                </div>
+              )}
+              
+              <div className="text-base font-medium text-[#004a74] mt-3">
+                {set.numCards || set.flashcards?.length || 0} cards
+              </div>
+            </div>
+            
+            {/* Action buttons that appear on hover */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-4
+              transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-2">
+              <button 
+                onClick={(e) => handleEditSet(e, set)}
+                className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
+                aria-label="Edit set"
+              >
+                <Edit3Icon className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={(e) => confirmDelete(e, set.id)}
+                className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
+                aria-label="Delete set"
+              >
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        ) : (
+        ))}
+      </div>
+    ) : (
+      // Your empty state content here
+
+
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
             <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
