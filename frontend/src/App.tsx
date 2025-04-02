@@ -27,6 +27,8 @@ const App = () => {
       <Route path="/study/:setId" element={<SetViewingPage/>} />
       <Route path="/study/:setId/flashcards" element={<FlashcardViewMode/>} />
       <Route path="/study/:setId/quiz" element={<QuizViewMode/>} />
+      <Route path="/quiz/:setId/text" element={<QuizViewMode quizType="text-input" />} />
+      <Route path="/quiz/:setId/multiple-choice" element={<QuizViewMode quizType="multiple-choice" />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

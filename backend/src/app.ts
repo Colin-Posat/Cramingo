@@ -2,7 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes";
-import setsRoutes from "./routes/setRoutes"; // Import the sets routes
+import setsRoutes from "./routes/setRoutes";
+import distractorRoutes from "./routes/distractorRoutes"; // Import the new distractor routes
+
 import { signupInit, completeSignup } from "./controllers/authController";
 
 dotenv.config();
@@ -20,7 +22,8 @@ app.use(express.json());
 
 // Route registrations
 app.use("/api/auth", authRoutes);
-app.use("/api/sets", setsRoutes); // Add the sets routes
+app.use("/api/sets", setsRoutes);
+app.use("/api/quiz", distractorRoutes); // Add the distractor routes
 
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);

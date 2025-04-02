@@ -301,66 +301,68 @@ const formatDate = (dateValue: any) => {
               </div>
             )}
 
-      {/* Show grid of sets if there are any */}
+    {/* Show grid of sets if there are any */}
     {sets.length > 0 ? (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-10">
         {sets.map((set) => (
           <div
             key={set.id}
-            className="bg-blue-50 rounded-xl p-6 shadow-md hover:shadow-xl
+            className="bg-blue-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl
               transition-all duration-300 relative overflow-hidden 
-              cursor-pointer group min-h-64 flex flex-col"
+              cursor-pointer group min-h-80 flex flex-col border-2 border-transparent 
+              hover:border-[#004a74]/20"
             onClick={() => navigate(`/study/${set.id}`)}
           >
             {/* Card content */}
-            <div className="mb-4 flex-grow">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-2xl font-bold text-[#004a74] mb-2 break-words">
+            <div className="mb-6 flex-grow">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-3xl font-bold text-[#004a74] mb-2 break-words pr-4">
                   {set.title}
                 </h3>
                 
                 {set.isPublic ? (
-                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2">
+                  <span className="bg-green-100 text-green-800 text-sm px-3 py-1.5 rounded-full flex-shrink-0 ml-2">
                     Public
                   </span>
                 ) : (
-                  <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2">
+                  <span className="bg-gray-100 text-gray-800 text-sm px-3 py-1.5 rounded-full flex-shrink-0 ml-2">
                     Private
                   </span>
                 )}
               </div>
               
-              <div className="text-base text-gray-600 mb-2">
+              <div className="text-lg text-gray-700 mb-3 font-medium">
                 {set.classCode}
               </div>
               
               {set.createdAt && (
-                <div className="text-sm text-gray-500 mb-2">
+                <div className="text-base text-gray-600 mb-3">
                   Created: {formatDate(set.createdAt)}
                 </div>
               )}
               
-              <div className="text-base font-medium text-[#004a74] mt-3">
+              <div className="text-xl font-semibold text-[#004a74] mt-4 flex items-center">
+                <BookIcon className="w-6 h-6 mr-2 text-[#004a74]/70" />
                 {set.numCards || set.flashcards?.length || 0} cards
               </div>
             </div>
             
             {/* Action buttons that appear on hover */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-4
-              transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-2">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-6
+              transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-4">
               <button 
                 onClick={(e) => handleEditSet(e, set)}
-                className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
+                className="bg-white text-[#004a74] p-3 rounded-full hover:bg-blue-100 transition shadow-md"
                 aria-label="Edit set"
               >
-                <Edit3Icon className="w-5 h-5" />
+                <Edit3Icon className="w-6 h-6" />
               </button>
               <button 
                 onClick={(e) => confirmDelete(e, set.id)}
-                className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
+                className="bg-white text-red-500 p-3 rounded-full hover:bg-red-100 transition shadow-md"
                 aria-label="Delete set"
               >
-                <TrashIcon className="w-5 h-5" />
+                <TrashIcon className="w-6 h-6" />
               </button>
             </div>
           </div>

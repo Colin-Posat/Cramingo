@@ -10,21 +10,29 @@ type Flashcard = {
 
 type QuizViewModeProps = {
   flashcards?: Flashcard[];
+  quizType?: 'text-input' | 'multiple-choice';
 };
 
 type QuizState = {
   currentIndex: number;
-  showAnswer: boolean;
+  showAnswer: boolean; // Tracks if the *current* card's answer is being shown after checking
   userAnswers: string[];
-  results: ('correct' | 'incorrect' | '')[];
+  results: ('correct' | 'incorrect' | '')[]; // Store result per card index
+  answeredFlags: boolean[]; // Track if a question has been attempted/answered
   quizCompleted: boolean;
+  options: string[][]; // Array of options for each question
 };
 
-// Make sure to add the default export
-const QuizViewMode: React.FC<QuizViewModeProps> = ({ flashcards: propFlashcards }) => {
-  const { setId } = useParams<{ setId: string }>();
+const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
+  flashcards: propFlashcards,
+  quizType: propQuizType, // Rename prop to avoid conflict
+}) => {
+  const { setId, quizType: paramQuizType } = useParams<{ setId: string; quizType?: string }>(); // Get quizType from URL params too
   const navigate = useNavigate();
-  
+
+  // Determine quiz type precedence: URL param > prop > default
+  const quizType = (paramQuizType || propQuizType || 'text-input') as 'text-input' | 'multiple-choice';
+
   // State for standalone mode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,60 +41,71 @@ const QuizViewMode: React.FC<QuizViewModeProps> = ({ flashcards: propFlashcards 
     classCode?: string;
     flashcards: Flashcard[];
   }>({ flashcards: [] });
-  
+
   const [userInput, setUserInput] = useState('');
-  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [score, setScore] = useState({ correct: 0, incorrect: 0 }); // Track incorrect too
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
   // Determine if component is being used standalone or as a child
   const isStandalone = !propFlashcards;
-  
+
   // Get flashcards from props or fetched data
   const flashcards = propFlashcards || flashcardSet.flashcards || [];
-  
-  const [quizState, setQuizState] = useState<QuizState>({
+
+  // --- State Initialization ---
+  const initializeQuizState = (cards: Flashcard[]): QuizState => ({
     currentIndex: 0,
     showAnswer: false,
-    userAnswers: Array(flashcards.length).fill(''),
-    results: Array(flashcards.length).fill(''),
-    quizCompleted: false
+    userAnswers: Array(cards.length).fill(''),
+    results: Array(cards.length).fill(''),
+    answeredFlags: Array(cards.length).fill(false), // Initialize answered flags
+    quizCompleted: false,
+    options: Array(cards.length).fill([]),
   });
 
-  // Initialize quiz state when flashcards change
+  const [quizState, setQuizState] = useState<QuizState>(initializeQuizState(flashcards));
+
+  // --- Effects ---
+
+  // Re-initialize quiz state when flashcards change or quiz type changes
   useEffect(() => {
-    setQuizState({
-      currentIndex: 0,
-      showAnswer: false,
-      userAnswers: Array(flashcards.length).fill(''),
-      results: Array(flashcards.length).fill(''),
-      quizCompleted: false
-    });
-    setUserInput('');
-    setScore({ correct: 0, total: 0 });
-  }, [flashcards]);
-  
+    const newQuizState = initializeQuizState(flashcards);
+    setQuizState(newQuizState);
+    setUserInput(''); // Clear input field
+    setScore({ correct: 0, incorrect: 0 }); // Reset score
+
+    // If quiz type is multiple-choice, generate options for the first question
+    if (quizType === 'multiple-choice' && flashcards.length > 0) {
+      generateOptionsForCardIfNeeded(0, flashcards, newQuizState.options);
+    }
+  }, [flashcards, quizType]); // Add quizType dependency
+
   // Fetch data if in standalone mode
   useEffect(() => {
     if (isStandalone && setId) {
       fetchFlashcardSet();
     }
-  }, [isStandalone, setId]);
+  }, [isStandalone, setId]); // Removed quizType dependency here, fetch only based on set ID
 
-  // Fetch flashcard set data
+  // Update userInput when navigating back to a previously answered text question
+  useEffect(() => {
+      if (!quizState.showAnswer && quizType === 'text-input') {
+          setUserInput(quizState.userAnswers[quizState.currentIndex] || '');
+      }
+  }, [quizState.currentIndex, quizState.showAnswer, quizType, quizState.userAnswers]);
+
+
+  // --- Data Fetching & Option Generation ---
+
   const fetchFlashcardSet = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch(`http://localhost:6500/api/sets/${setId}`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
+      const response = await fetch(`http://localhost:6500/api/sets/${setId}`, { credentials: 'include' });
+      if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const data = await response.json();
       setFlashcardSet(data);
+      // Initialization (including option generation) is handled by the flashcards useEffect
     } catch (error) {
       console.error('Error fetching flashcard set:', error);
       setError("Failed to load flashcard set. Please check your connection.");
@@ -95,215 +114,439 @@ const QuizViewMode: React.FC<QuizViewModeProps> = ({ flashcards: propFlashcards 
     }
   };
 
-  // Handle when there are no flashcards (embedded mode)
-  if (!isStandalone && (!flashcards || flashcards.length === 0)) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-blue-50 rounded-xl text-center">
-        <p className="text-2xl text-[#004a74] font-medium mb-4">No flashcards in this set</p>
-        <p className="text-gray-600">Add some flashcards to start studying!</p>
-      </div>
-    );
-  }
+  // Generate options only if needed (not already generated)
+  const generateOptionsForCardIfNeeded = async (index: number, cards = flashcards, currentOptions: string[][]) => {
+      // Check if options are needed and not already available/loading
+      if (quizType !== 'multiple-choice' || cards.length === 0 || index >= cards.length || (currentOptions[index] && currentOptions[index].length > 0) || loadingOptions) {
+          return;
+      }
 
-  // Loading state
-  if (isStandalone && loading) {
-    return (
-      <div className="min-h-screen bg-white">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
-            <p className="mt-4 text-[#004a74] font-medium">Loading quiz...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+      const currentCard = cards[index];
+      setLoadingOptions(true); // Indicate loading specifically for this action
 
-  // Error state
-  if (isStandalone && error) {
-    return (
-      <div className="min-h-screen bg-white">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6">
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded flex items-start">
-            <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-          <button 
-            onClick={() => navigate('/created-sets')}
-            className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded flex items-center"
-          >
-            <ChevronLeft className="w-5 h-5 mr-1" />
-            Back to Created Sets
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  // Empty state - after loading completed
-  if (isStandalone && (!flashcards || flashcards.length === 0)) {
-    return (
-      <div className="min-h-screen bg-white">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6">
-          <div className="bg-blue-50 p-6 rounded-xl text-center">
-            <p className="text-xl text-[#004a74]">This set doesn't have any flashcards yet.</p>
-            <button 
-              onClick={() => navigate(`/set-creator`)}
-              className="mt-4 bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
-            >
-              Add Flashcards
-            </button>
-          </div>
-          <button 
-            onClick={() => navigate('/created-sets')}
-            className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded flex items-center"
-          >
-            <ChevronLeft className="w-5 h-5 mr-1" />
-            Back to Created Sets
-          </button>
-        </div>
-      </div>
-    );
-  }
+      try {
+          const response = await fetch('http://localhost:6500/api/quiz/generate-distractors', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  correctAnswer: currentCard.answer,
+                  question: currentCard.question,
+                  numberOfDistractors: 3
+              }),
+              credentials: 'include'
+          });
 
-  const totalCards = flashcards.length;
-  const currentCard = flashcards[quizState.currentIndex];
-  
-  // Check answer and move to next card
-  const checkAnswer = () => {
-    const isCorrect = userInput.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
-    
+          if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
+          const distractors = await response.json();
+          const allOptions = [currentCard.answer, ...distractors];
+          const shuffledOptions = shuffleArray(allOptions);
+
+          setQuizState(prev => {
+              const updatedOptions = [...prev.options];
+              // Ensure we don't overwrite if another process generated options faster
+              if (!updatedOptions[index] || updatedOptions[index].length === 0) {
+                updatedOptions[index] = shuffledOptions;
+              }
+              return { ...prev, options: updatedOptions };
+          });
+
+      } catch (error) {
+          console.error(`Error generating options for index ${index}:`, error);
+          // Fallback: Use only the correct answer if generation fails
+          setQuizState(prev => {
+              const updatedOptions = [...prev.options];
+              if (!updatedOptions[index] || updatedOptions[index].length === 0) {
+                  updatedOptions[index] = [currentCard.answer];
+              }
+              return { ...prev, options: updatedOptions };
+          });
+      } finally {
+          setLoadingOptions(false);
+      }
+  };
+
+
+  const shuffleArray = (array: string[]) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+
+  // --- Core Quiz Logic ---
+
+  const checkAnswer = (userAnswer: string) => {
+    if (!flashcards || flashcards.length === 0) return; // Guard against no flashcards
+    const currentCard = flashcards[quizState.currentIndex];
+    if (!currentCard) return; // Guard against invalid index
+
+    const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
+    const alreadyAnswered = quizState.answeredFlags[quizState.currentIndex];
+    const previousResult = quizState.results[quizState.currentIndex];
+
     setQuizState(prev => {
       const updatedUserAnswers = [...prev.userAnswers];
-      updatedUserAnswers[prev.currentIndex] = userInput;
-      
+      updatedUserAnswers[prev.currentIndex] = userAnswer;
+
       const updatedResults = [...prev.results];
       updatedResults[prev.currentIndex] = isCorrect ? 'correct' : 'incorrect';
-      
+
+      const updatedAnsweredFlags = [...prev.answeredFlags];
+      updatedAnsweredFlags[prev.currentIndex] = true; // Mark as answered
+
       return {
         ...prev,
         userAnswers: updatedUserAnswers,
         results: updatedResults,
-        showAnswer: true
+        answeredFlags: updatedAnsweredFlags,
+        showAnswer: true, // Show feedback
       };
     });
-    
-    // Update score
-    setScore(prev => ({
-      correct: isCorrect ? prev.correct + 1 : prev.correct,
-      total: prev.total + 1
-    }));
-  };
-  
-  // Move to next question
-  const nextQuestion = () => {
-    if (quizState.currentIndex < totalCards - 1) {
-      setQuizState(prev => ({
-        ...prev,
-        currentIndex: prev.currentIndex + 1,
-        showAnswer: false
-      }));
-      setUserInput('');
-    } else {
-      // Quiz completed
-      setQuizState(prev => ({
-        ...prev,
-        quizCompleted: true
-      }));
+
+    // Update score only if it wasn't answered correctly before,
+    // or if it was answered incorrectly before and now is correct.
+    // Prevents double-counting correct answers or penalizing changing incorrect->incorrect.
+    setScore(prev => {
+        let correctDelta = 0;
+        let incorrectDelta = 0;
+
+        if (!alreadyAnswered) {
+            // First time answering this question in this session
+            if (isCorrect) correctDelta = 1;
+            else incorrectDelta = 1;
+        } else {
+            // Re-answering
+            if (isCorrect && previousResult === 'incorrect') {
+                correctDelta = 1;
+                incorrectDelta = -1; // Was incorrect, now correct
+            } else if (!isCorrect && previousResult === 'correct') {
+                correctDelta = -1; // Was correct, now incorrect
+                incorrectDelta = 1;
+            }
+            // If incorrect -> incorrect, or correct -> correct, no change
+        }
+
+        return {
+            correct: prev.correct + correctDelta,
+            incorrect: prev.incorrect + incorrectDelta,
+        };
+    });
+
+    // Clear text input only after checking text answer
+    if (quizType === 'text-input') {
+        // Keep userInput for display in the "Your Answer" section,
+        // It will be cleared/updated by the useEffect when navigating OR
+        // explicitly cleared when proceeding to the next *unanswered* question.
     }
   };
-  
-  // Reset the quiz
-  const resetQuiz = () => {
-    setQuizState({
-      currentIndex: 0,
-      showAnswer: false,
-      userAnswers: Array(flashcards.length).fill(''),
-      results: Array(flashcards.length).fill(''),
-      quizCompleted: false
-    });
-    setUserInput('');
-    setScore({ correct: 0, total: 0 });
+
+  const handleTextCheck = () => {
+    checkAnswer(userInput);
+  }
+
+  const handleMultipleChoiceSelect = (selectedOption: string) => {
+    checkAnswer(selectedOption);
+  }
+
+  // --- Navigation Logic ---
+
+  const goToPreviousQuestion = () => {
+    if (quizState.currentIndex > 0) {
+      const prevIndex = quizState.currentIndex - 1;
+      setQuizState(prev => ({
+        ...prev,
+        currentIndex: prevIndex,
+        showAnswer: prev.answeredFlags[prevIndex], // Show answer only if previously answered
+      }));
+       // Option generation handled by useEffect or generateOptionsForCardIfNeeded if needed on demand elsewhere
+       // User input for text is handled by useEffect
+    }
   };
 
-  // Standalone wrapper for the quiz UI
-  const renderQuizContent = () => {
-    // Results screen
-    if (quizState.quizCompleted) {
-      const percentageScore = Math.round((score.correct / score.total) * 100);
-      
+  const goToNextQuestion = () => {
+    if (quizState.currentIndex < flashcards.length - 1) {
+      const nextIndex = quizState.currentIndex + 1;
+      // Ensure options are ready for the next card *before* navigating state
+      generateOptionsForCardIfNeeded(nextIndex, flashcards, quizState.options);
+      setQuizState(prev => ({
+        ...prev,
+        currentIndex: nextIndex,
+        showAnswer: prev.answeredFlags[nextIndex], // Show answer only if previously answered
+      }));
+      // User input for text is handled by useEffect
+    }
+  };
+
+  // This function is called ONLY by the button that appears AFTER an answer is checked
+  const proceedToNextOrFinish = () => {
+    const isLastCard = quizState.currentIndex === flashcards.length - 1;
+
+    if (isLastCard) {
+      setQuizState(prev => ({ ...prev, quizCompleted: true }));
+    } else {
+      const nextIndex = quizState.currentIndex + 1;
+      generateOptionsForCardIfNeeded(nextIndex, flashcards, quizState.options); // Pre-load options
+      setQuizState(prev => ({
+        ...prev,
+        currentIndex: nextIndex,
+        showAnswer: prev.answeredFlags[nextIndex], // Show answer if already answered
+      }));
+      // Clear text input specifically when moving to the *next* question after *answering*
+      if (quizType === 'text-input' && !quizState.answeredFlags[nextIndex]) {
+          setUserInput('');
+      }
+    }
+  };
+
+  const resetQuiz = () => {
+    const newQuizState = initializeQuizState(flashcards);
+    setQuizState(newQuizState);
+    setUserInput('');
+    setScore({ correct: 0, incorrect: 0 });
+    // Generate options for the first question again
+    if (quizType === 'multiple-choice' && flashcards.length > 0) {
+      generateOptionsForCardIfNeeded(0, flashcards, newQuizState.options);
+    }
+  };
+
+  // --- Rendering ---
+
+  // Handle loading/error/empty states for standalone mode
+  if (isStandalone) {
+    if (loading) {
       return (
-        <div className="w-full max-w-4xl mx-auto mt-8 bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-3xl font-bold text-[#004a74] mb-6">Quiz Results</h2>
-          
-          <div className="text-6xl font-bold mb-6 text-center">
-            {percentageScore}%
-            <div className="text-2xl font-normal text-gray-600 mt-2">
-              {score.correct} out of {score.total} correct
+        <div className="min-h-screen bg-white">
+          <NavBar />
+          <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+              <p className="mt-4 text-[#004a74] font-medium">Loading quiz...</p>
             </div>
           </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-6 mb-8">
-            <div 
-              className={`h-6 rounded-full ${
-                percentageScore >= 80 ? 'bg-green-500' : 
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="min-h-screen bg-white">
+          <NavBar />
+          <div className="pt-24 px-6 pb-6">
+            {/* ... (error display code - unchanged) ... */}
+             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded flex items-start">
+              <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-bold">Error</p>
+                <p>{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/created-sets')}
+              className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded flex items-center"
+            >
+              <ChevronLeft className="w-5 h-5 mr-1" />
+              Back to Created Sets
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!flashcards || flashcards.length === 0) {
+      return (
+        <div className="min-h-screen bg-white">
+          <NavBar />
+          <div className="pt-24 px-6 pb-6">
+            {/* ... (empty set display code - unchanged) ... */}
+            <div className="bg-blue-50 p-6 rounded-xl text-center">
+              <p className="text-xl text-[#004a74]">This set doesn't have any flashcards yet.</p>
+              <button
+                onClick={() => navigate(`/set-creator`)} // Assuming this is the correct route
+                className="mt-4 bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
+              >
+                Add Flashcards
+              </button>
+            </div>
+            <button
+              onClick={() => navigate('/created-sets')}
+              className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded flex items-center"
+            >
+              <ChevronLeft className="w-5 h-5 mr-1" />
+              Back to Created Sets
+            </button>
+          </div>
+        </div>
+      );
+    }
+  } else {
+      // Embedded mode: Handle no flashcards
+      if (!flashcards || flashcards.length === 0) {
+         return (
+            <div className="flex flex-col items-center justify-center p-8 bg-blue-50 rounded-xl text-center">
+                <p className="text-2xl text-[#004a74] font-medium mb-4">No flashcards in this set</p>
+                <p className="text-gray-600">Add some flashcards to start studying!</p>
+            </div>
+        );
+      }
+  }
+
+  // Guard clause for rendering quiz content if flashcards array is somehow empty after checks
+  if (flashcards.length === 0) {
+    return <div>Error: No flashcards available to display.</div>;
+  }
+
+  const totalCards = flashcards.length;
+  const currentCard = flashcards[quizState.currentIndex];
+   // Add a check for currentCard existence before accessing its properties
+  if (!currentCard) {
+    console.error("Error: currentCard is undefined at index", quizState.currentIndex);
+    // Optionally, reset or show an error state
+     return <div>Error: Could not load current card. <button onClick={resetQuiz}>Reset Quiz</button></div>;
+  }
+
+
+  // Render function for the multiple choice options
+  const renderMultipleChoiceOptions = () => {
+    const options = quizState.options[quizState.currentIndex];
+
+    if (loadingOptions || !options) { // Check if options array exists
+      return (
+        <div className="flex justify-center items-center h-36 w-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#004a74]"></div>
+          <p className="ml-3 text-[#004a74]">Loading options...</p>
+        </div>
+      );
+    }
+     if (options.length === 0 && !loadingOptions) {
+       // Handle case where options failed to load or are empty after loading attempt
+        return (
+            <div className="text-center text-red-600 p-4 bg-red-50 rounded">
+                Could not load options for this question.
+            </div>
+        );
+    }
+
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full"> {/* Responsive grid */}
+        {options.map((option, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleMultipleChoiceSelect(option)}
+            // Disable button if answer is shown OR if it's the correct/incorrect selection already highlighted
+            disabled={quizState.showAnswer}
+            className={`p-4 rounded-lg text-left text-lg transition-all duration-200 border-2
+              ${quizState.showAnswer
+                ? option.toLowerCase() === currentCard.answer.toLowerCase() // Correct answer
+                  ? 'bg-green-100 border-green-500 text-green-800 ring-2 ring-green-300' // Clearly mark correct
+                  : option === quizState.userAnswers[quizState.currentIndex] // Incorrect user choice
+                    ? 'bg-red-100 border-red-500 text-red-800 ring-2 ring-red-300' // Clearly mark incorrect selection
+                    : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed opacity-70' // Other incorrect options
+                : 'bg-white border-gray-300 hover:border-[#004a74] hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-[#004a74] focus:ring-opacity-50' // Default state
+              }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Main quiz content rendering
+  const renderQuizContent = () => {
+    const totalAnswered = quizState.answeredFlags.filter(Boolean).length;
+
+    // --- Results Screen ---
+    if (quizState.quizCompleted) {
+        const finalScore = score.correct; // Use the tracked score
+        const totalAttempted = score.correct + score.incorrect; // Base percentage on attempted Qs
+        const percentageScore = totalAttempted > 0 ? Math.round((finalScore / totalAttempted) * 100) : 0;
+
+      return (
+        <div className="w-full max-w-7xl mx-auto mt-8 bg-white rounded-xl shadow-lg p-6 md:p-8">
+          <h2 className="text-3xl font-bold text-[#004a74] mb-6 text-center">Quiz Results</h2>
+
+          <div className="text-center mb-8">
+            <div className="text-6xl font-bold text-[#004a74]">
+              {percentageScore}%
+            </div>
+            <div className="text-xl text-gray-600 mt-2">
+              {finalScore} correct out of {totalAttempted} attempted questions ({totalCards} total)
+            </div>
+          </div>
+
+           <div className="w-full bg-gray-200 rounded-full h-4 md:h-6 mb-8">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                percentageScore >= 80 ? 'bg-green-500' :
                 percentageScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
               }`}
               style={{ width: `${percentageScore}%` }}
             ></div>
           </div>
-          
+
+          {/* Question Review Section */}
           <div className="w-full mb-8">
             <h3 className="text-2xl font-semibold mb-4 text-[#004a74]">Question Review:</h3>
             {flashcards.map((card, index) => (
-              <div key={index} className="mb-6 border-b pb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  {quizState.results[index] === 'correct' ? (
-                    <Check className="w-6 h-6 text-green-500" />
-                  ) : (
-                    <X className="w-6 h-6 text-red-500" />
-                  )}
-                  <p className="font-medium text-lg">Question {index + 1}:</p>
+              <div key={index} className={`mb-4 border rounded-lg p-4 ${
+                quizState.results[index] === 'correct' ? 'border-green-200 bg-green-50' :
+                quizState.results[index] === 'incorrect' ? 'border-red-200 bg-red-50' :
+                'border-gray-200 bg-gray-50' // Not answered
+               }`}>
+                <div className="flex items-start gap-2 mb-2">
+                   <div className="flex-shrink-0 w-6 h-6 mt-1">
+                     {quizState.results[index] === 'correct' ? (
+                        <Check className="w-6 h-6 text-green-600" />
+                     ) : quizState.results[index] === 'incorrect' ? (
+                        <X className="w-6 h-6 text-red-600" />
+                     ) : (
+                        <span className="w-6 h-6 inline-block text-gray-400">-</span> // Placeholder for unanswered
+                     )}
+                   </div>
+
+                  <p className="font-medium text-lg text-gray-800">Question {index + 1}: <span className="font-normal">{card.question}</span></p>
                 </div>
-                <p className="mb-2 pl-7 text-lg">{card.question}</p>
-                <div className="pl-7">
-                  <p className="text-base text-gray-600">Your answer:</p>
-                  <p className={`font-medium text-lg ${
-                    quizState.results[index] === 'correct' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {quizState.userAnswers[index] || '(No answer provided)'}
-                  </p>
-                  
-                  {quizState.results[index] === 'incorrect' && (
-                    <div className="mt-1">
-                      <p className="text-base text-gray-600">Correct answer:</p>
-                      <p className="text-green-600 font-medium text-lg">{card.answer}</p>
+                 {quizState.answeredFlags[index] ? ( // Only show answers if attempted
+                    <div className="pl-8">
+                    <p className="text-sm text-gray-500">Your answer:</p>
+                    <p className={`font-medium text-base mb-1 ${
+                        quizState.results[index] === 'correct' ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                        {quizState.userAnswers[index] || '(No answer provided)'}
+                    </p>
+
+                    {quizState.results[index] === 'incorrect' && (
+                        <>
+                        <p className="text-sm text-gray-500">Correct answer:</p>
+                        <p className="text-green-700 font-medium text-base">{card.answer}</p>
+                        </>
+                    )}
                     </div>
-                  )}
-                </div>
+                 ) : (
+                     <div className="pl-8 text-gray-500 italic">Not answered</div>
+                 )}
               </div>
             ))}
           </div>
-          
+
           <div className="flex justify-center">
-            <button 
+            <button
               onClick={resetQuiz}
-              className="flex items-center gap-2 bg-[#004a74] text-white px-8 py-4 rounded-xl
-                hover:bg-[#00659f] transition-all font-bold text-xl"
+              className="flex items-center gap-2 bg-[#004a74] text-white px-6 py-3 rounded-lg
+                hover:bg-[#00659f] transition-all font-semibold text-lg"
             >
-              <RotateCw className="w-6 h-6" />
+              <RotateCw className="w-5 h-5" />
               Take Quiz Again
             </button>
           </div>
@@ -311,122 +554,204 @@ const QuizViewMode: React.FC<QuizViewModeProps> = ({ flashcards: propFlashcards 
       );
     }
 
-    // Quiz taking screen
+    // --- Quiz Taking Screen ---
     return (
-      <div className="flex flex-col items-center w-full max-w-4xl mx-auto">
-        {/* Progress */}
-        <div className="w-full mb-6">
-          <div className="flex justify-between mb-2">
-            <span className="text-2xl font-bold text-[#004a74]">
-              Question {quizState.currentIndex + 1} of {totalCards}
-            </span>
-            <span className="text-2xl font-bold text-[#004a74]">
-              Score: {score.correct}/{score.total}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-4">
-            <div 
-              className="bg-[#004a74] h-4 rounded-full transition-all" 
-              style={{ width: `${((quizState.currentIndex) / totalCards) * 100}%` }}
-            ></div>
-          </div>
+      <div className="flex flex-col items-center w-full max-w-7xl mx-auto">
+        {/* Progress Bar and Score */}
+         <div className="w-full mb-4">
+            <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
+                <span>Question {quizState.currentIndex + 1} of {totalCards}</span>
+                <span>Score: {score.correct} Correct, {score.incorrect} Incorrect</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                    className="bg-[#004a74] h-2.5 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${((quizState.currentIndex + 1) / totalCards) * 100}%` }} // Progress based on current question
+                ></div>
+            </div>
         </div>
 
-        {/* Question card */}
-        <div className="w-full bg-[#004a74] rounded-xl shadow-xl p-8 mb-10"
-             style={{boxShadow: '0 15px 30px rgba(0, 0, 0, 0.2)', minHeight: '550px'}}>
-          <h3 className="text-white text-2xl font-bold mb-6">Question:</h3>
-          <div className="bg-white text-black rounded-lg p-8 mb-6 h-48 flex items-center justify-center overflow-auto shadow-inner">
-            <p className="text-2xl">{currentCard.question}</p>
-          </div>
-          
-          {quizState.showAnswer ? (
-            <div className="bg-gray-100 rounded-lg p-6">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-[#004a74] font-bold text-xl">Your Answer:</h3>
-                {quizState.results[quizState.currentIndex] === 'correct' ? (
-                  <span className="bg-green-100 text-green-800 px-4 py-2 rounded-full flex items-center gap-1 text-lg">
-                    <Check className="w-5 h-5" /> Correct
-                  </span>
-                ) : (
-                  <span className="bg-red-100 text-red-800 px-4 py-2 rounded-full flex items-center gap-1 text-lg">
-                    <X className="w-5 h-5" /> Incorrect
-                  </span>
-                )}
-              </div>
-              <p className="text-xl">{userInput || "(No answer provided)"}</p>
-              
-              {quizState.results[quizState.currentIndex] === 'incorrect' && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h3 className="text-[#004a74] font-bold text-xl">Correct Answer:</h3>
-                  <p className="text-xl">{currentCard.answer}</p>
+
+        {/* Question Card */}
+        <div className="w-full bg-white border border-gray-200 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+          {/* Question Display */}
+           <div className="mb-6 min-h-[80px]"> {/* Ensure minimum height */}
+             <p className="text-gray-500 text-sm font-medium mb-1">QUESTION</p>
+             <p className="text-xl md:text-2xl text-gray-800">{currentCard.question}</p>
+           </div>
+
+
+          {/* Answer Area (Input or Feedback) */}
+          <div className="min-h-[180px]"> {/* Ensure consistent height */}
+            {quizState.showAnswer ? (
+              // Feedback Section
+              <div className={`rounded-lg p-4 border ${
+                  quizState.results[quizState.currentIndex] === 'correct'
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+              }`}>
+                 <div className="flex justify-between items-center mb-2">
+                    <h3 className={`font-bold text-lg ${
+                        quizState.results[quizState.currentIndex] === 'correct' ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                        Your Answer:
+                    </h3>
+                    {quizState.results[quizState.currentIndex] === 'correct' ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            <Check className="w-4 h-4" /> Correct
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                            <X className="w-4 h-4" /> Incorrect
+                        </span>
+                    )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Type your answer here..."
-                className="w-full p-4 rounded-lg border-2 border-gray-300 focus:border-[#004a74] focus:outline-none
-                  h-36 resize-none text-xl"
-              />
-              <button 
-                onClick={checkAnswer}
-                className="bg-white text-[#004a74] py-4 px-6 rounded-lg hover:bg-blue-50
-                  transition-colors font-bold text-xl"
-              >
-                Check Answer
-              </button>
-            </div>
-          )}
+                <p className="text-lg text-gray-700 break-words">{quizState.userAnswers[quizState.currentIndex] || "(No answer provided)"}</p>
+
+                 {quizState.results[quizState.currentIndex] === 'incorrect' && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                        <h3 className="font-bold text-lg text-green-700">Correct Answer:</h3>
+                        <p className="text-lg text-gray-700 break-words">{currentCard.answer}</p>
+                    </div>
+                 )}
+              </div>
+            ) : (
+              // Input Section
+              quizType === 'multiple-choice' ? (
+                renderMultipleChoiceOptions()
+              ) : (
+                // Text Input
+                 <div className="flex flex-col gap-4">
+                    <textarea
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    placeholder="Type your answer here..."
+                    rows={4} // Set a reasonable number of rows
+                    className="w-full p-3 rounded-lg border border-[#004a74] focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 text-base resize-vertical transition-all"
+                    />
+                    <button
+                    onClick={handleTextCheck}
+                    disabled={!userInput.trim()} // Disable if input is empty
+                    className={`w-full bg-[#004a74] text-white py-3 px-fdfs6 rounded-lg hover:bg-[#00659f] transition-colors font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                    >
+                    Check Answer
+                    </button>
+                </div>
+              )
+            )}
+          </div>
         </div>
 
-        {/* Navigation */}
-        {quizState.showAnswer && (
-          <div className="flex justify-center w-full mt-4">
-            <button 
-              onClick={nextQuestion}
-              className="flex items-center gap-3 bg-[#004a74] text-white px-8 py-4 rounded-xl
-                hover:bg-[#00659f] transition-all font-bold text-xl shadow-md hover:shadow-lg"
+        {/* Navigation Buttons */}
+        <div className="w-full flex items-center justify-between mt-2">
+           {/* Previous Button */}
+            <button
+                onClick={goToPreviousQuestion}
+                disabled={quizState.currentIndex === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white border border-[#004a74] hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Previous question"
             >
-              {quizState.currentIndex < totalCards - 1 ? (
-                <>
-                  Next Question
-                  <ChevronRight className="w-6 h-6" />
-                </>
-              ) : (
-                'See Results'
-              )}
+                <ChevronLeft className="w-5 h-5" />
+                Previous
             </button>
-          </div>
-        )}
+
+           {/* Conditional Button: Either "Next Question" after answer check OR "See Results" */}
+            {quizState.showAnswer ? (
+                 <button
+                    onClick={proceedToNextOrFinish}
+                    className="flex items-center gap-2 px-5 py-3 rounded-lg bg-[#28a745] text-white hover:bg-[#218838] transition-colors font-semibold text-lg shadow hover:shadow-md"
+                    aria-label={quizState.currentIndex < totalCards - 1 ? "Next question" : "See results"}
+                >
+                    {quizState.currentIndex < totalCards - 1 ? 'Next Question' : 'See Results'}
+                    {quizState.currentIndex < totalCards - 1 && <ChevronRight className="w-5 h-5" />}
+                 </button>
+            ) : (
+                // Placeholder to maintain layout spacing when Check Answer/MC options are shown
+                // Or potentially show a "Skip" button here if desired.
+                 <div className="w-[130px]"></div> // Adjust width to roughly match button size
+             )}
+
+           {/* Next Button (Always available except on last card if answer not shown) */}
+           {/* Hide the general 'Next' if the 'Proceed' button is shown */}
+           {!quizState.showAnswer && (
+                <button
+                    onClick={goToNextQuestion}
+                    disabled={quizState.currentIndex === totalCards - 1}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white border border-[#004a74] hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Next question"
+                >
+                    Next
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+           )}
+           {/* Show an empty div matching Next button size when 'Proceed' is shown to keep 'Previous' aligned left */}
+           {quizState.showAnswer && quizState.currentIndex !== totalCards - 1 && (
+                <div className="w-[100px]"></div> // Adjust width to match Next button size
+           )}
+           {/* Hide next button completely on last card when answer is shown */}
+            {quizState.showAnswer && quizState.currentIndex === totalCards - 1 && (
+                 <div className="w-[100px]"></div> // Adjust width to match Next button size
+            )}
+
+        </div>
+
       </div>
     );
   };
 
-  // Standalone view with navbar
+  // --- Component Return ---
+
   if (isStandalone) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50"> {/* Lighter background */}
         <NavBar />
-        
-        <div className="pt-20 px-6 md:px-12 max-w-6xl mx-auto">
-          {/* Back Button */}
-          <button 
-            onClick={() => navigate(`/study/${setId}`)}
-            className="mb-6 flex items-center text-[#004a74] hover:underline"
-          >
-            <ChevronLeft className="w-5 h-5 mr-1" />
-            Back to Set
-          </button>
-          
-          {/* Set Title if available */}
-          {flashcardSet.title && (
-            <h1 className="text-2xl font-bold text-[#004a74] mb-4">{flashcardSet.title}</h1>
-          )}
-          
+        <div className="pt-24 pb-12 px-4 md:px-6 max-w-7xl mx-auto">
+           {/* Back Button */}
+            <button
+                onClick={() => navigate(`/study/${setId}`)} // Navigate back to the specific set study page
+                className="mb-4 flex items-center text-sm text-[#004a74] hover:underline"
+            >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back to Set Page
+            </button>
+
+          {/* Set Title and Quiz Type */}
+          <div className="mb-6 text-center md:text-left">
+             {flashcardSet.title && (
+                <h1 className="text-2xl md:text-3xl font-bold text-[#004a74] mb-2">{flashcardSet.title}</h1>
+             )}
+              <p className="text-lg text-gray-600">
+                  Quiz Mode: <span className="font-semibold">{quizType === 'multiple-choice' ? 'Multiple Choice' : 'Text Input'}</span>
+              </p>
+          </div>
+
+
+          {/* Quiz Type Selector (Consider moving or simplifying if navigation is primary) */}
+          <div className="mb-6 flex justify-center">
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                onClick={() => navigate(`/quiz/${setId}/text`)} // Use navigate for SPA behavior
+                className={`px-4 py-2 text-sm font-medium rounded-l-lg transition-colors duration-150 ${
+                  quizType === 'text-input'
+                    ? 'bg-[#004a74] text-white z-10 ring-2 ring-[#004a74]'
+                    : 'bg-white text-[#004a74] border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Text Input
+              </button>
+              <button
+                onClick={() => navigate(`/quiz/${setId}/multiple-choice`)} // Use navigate
+                className={`px-4 py-2 text-sm font-medium rounded-r-lg transition-colors duration-150 ${
+                  quizType === 'multiple-choice'
+                    ? 'bg-[#004a74] text-white z-10 ring-2 ring-[#004a74]'
+                    : 'bg-white text-[#004a74] border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Multiple Choice
+              </button>
+            </div>
+          </div>
+
           {/* Main quiz content */}
           {renderQuizContent()}
         </div>
@@ -434,9 +759,8 @@ const QuizViewMode: React.FC<QuizViewModeProps> = ({ flashcards: propFlashcards 
     );
   }
 
-  // Embedded version (used as a child component)
+  // Embedded version
   return renderQuizContent();
 };
 
-// Make sure to add the default export
-export default QuizViewMode;
+export default MultipleChoiceQuiz;
