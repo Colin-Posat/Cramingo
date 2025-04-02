@@ -7,6 +7,7 @@ import CreatedSets from "./pages/dashboard/CreatedSets";
 import ProfilePage from "./pages/dashboard/Profile";
 import SearchSetsPage from "./pages/dashboard/SearchSets";
 import SavedSets from "./pages/dashboard/SavedSets";
+import SetCreator from "./pages/set_creation/SetCreator";
 
 
 const App = () => {
@@ -21,6 +22,7 @@ const App = () => {
         <Route path="/profile" element={<ProfilePage/>} /> 
         <Route path="/search-sets" element={<SearchSetsPage/>} /> 
         <Route path="/saved-sets" element={<SavedSets/>} /> 
+        <Route path="/set-creator" element={<SetCreator/>} /> 
       </Routes>
   );
 };

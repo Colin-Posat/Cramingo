@@ -11,15 +11,13 @@ const FeatureCard: React.FC<{
   const processedIcon = React.isValidElement(icon)
   ? React.cloneElement(icon as React.ReactElement<any>, {
       size: 40,
-      className: "mx-auto text-[#004a74]"
+      className: "mx-auto text-[#004a74] mb-4"
     })
   : icon;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 text-center">
-      <div className="mb-4">
-        {processedIcon}
-      </div>
+    <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 text-center">
+      {processedIcon}
       <h3 className="text-xl font-bold mb-3 text-gray-800">{title}</h3>
       <p className="text-gray-600">{description}</p>
     </div>
@@ -93,22 +91,22 @@ const Landing: React.FC = () => {
                 </button>
               </section>
               
-              {/* Features Section */}
-              <section className="grid md:grid-cols-3 gap-8">
+              {/* Features Section - 3 Column Layout like in reference */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-12 w-full max-w-20xl mx-auto px-0">
                 <FeatureCard 
                   icon={<Brain />}
                   title="AI-Powered Creation"
-                  description="Upload your notes and let our advanced AI transform them into comprehensive, organized study sets in moments."
+                  description="Simply upload your notes and let our AI transform them into comprehensive study sets that you can view as flashcards or as a quiz"
                 />
                 <FeatureCard 
                   icon={<Share2 />}
-                  title="Collaborative Learning"
-                  description="Share study sets with classmates, get insights from peers, and accelerate your learning through community knowledge."
+                  title="Share with Peers"
+                  description="Post your study sets and help others learn. Collaborate with classmates"
                 />
                 <FeatureCard 
                   icon={<Search />}
-                  title="Discover Insights"
-                  description="Browse a vast library of study sets created by students, finding resources tailored to your coursework and exams."
+                  title="Discover Class Sets"
+                  description="Browse study sets created by students to find content similar to past homework, quizzes, and exams from your class"
                 />
               </section>
             </main>

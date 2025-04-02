@@ -3,48 +3,97 @@ import { useNavigate } from 'react-router-dom';
 import { 
   BookIcon, 
   XIcon,
-  PlusIcon
+  PlusIcon,
+  Edit3Icon,
+  TrashIcon,
+  AlertCircleIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 
-// Type for Flashcard Set
+// Enhanced type for Flashcard Set
 type FlashcardSet = {
   id: string;
   title: string;
-  description?: string;
+  classCode: string;
+  numCards?: number;
   isPublic?: boolean;
-  cardCount?: number;
+  icon?: string;
+  createdAt?: string;
+  flashcards?: Array<{question: string, answer: string}>;
 };
 
 const CreatedSets: React.FC = () => {
   const navigate = useNavigate();
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [showHelper, setShowHelper] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [setToDelete, setSetToDelete] = useState<string | null>(null);
 
   // Fetch created sets when component mounts
   useEffect(() => {
     const fetchSets = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const response = await fetch(`http://localhost:6500/api/sets/created/${user.id}`);
+        setLoading(true);
+        setError(null);
         
-        if (response.ok) {
-          const data = await response.json();
-          setSets(data);
-
-          // Show helper only if no sets and first visit
-          if (data.length === 0) {
-            const hasSeenHelper = localStorage.getItem('hasSeenCreatedSetsHelper');
-            if (!hasSeenHelper) {
-              setShowHelper(true);
-              localStorage.setItem('hasSeenCreatedSetsHelper', 'true');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userId = user.id || user.uid;
+        
+        console.log('User from localStorage:', user);
+        console.log('Using userId:', userId);
+        
+        if (!userId) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Fetching sets for user ID:', userId);
+        
+        // First try to get the response as text to see what's happening
+        try {
+          const response = await fetch(`http://localhost:6500/api/sets/user/${userId}`, {
+            credentials: 'include' // Include cookies for authentication
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response headers:', response.headers);
+          
+          const responseText = await response.text();
+          console.log('Response text:', responseText);
+          
+          // Now try to parse as JSON if possible
+          let data;
+          try {
+            data = JSON.parse(responseText);
+            console.log('Parsed data:', data);
+            
+            // Update state with the parsed data
+            setSets(Array.isArray(data) ? data : []);
+            
+            // Show helper only if no sets and first visit
+            if (Array.isArray(data) && data.length === 0) {
+              const hasSeenHelper = localStorage.getItem('hasSeenCreatedSetsHelper');
+              if (!hasSeenHelper) {
+                setShowHelper(true);
+                localStorage.setItem('hasSeenCreatedSetsHelper', 'true');
+              }
             }
+          } catch (parseError) {
+            console.error('Error parsing response as JSON:', parseError);
+            setError(`Server returned invalid data. Please try again later.`);
           }
-        } else {
-          console.error('Failed to fetch sets');
+        } catch (fetchError) {
+          console.error('Fetch error:', fetchError);
+          setError(`Failed to connect to server. Please check your connection.`);
         }
       } catch (error) {
-        console.error('Error fetching sets:', error);
+        console.error('Error in fetchSets function:', error);
+        setError("An unexpected error occurred. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -56,10 +105,164 @@ const CreatedSets: React.FC = () => {
     navigate('/set-creator');
   };
 
+  // Handle edit set
+  const handleEditSet = (e: React.MouseEvent, set: FlashcardSet) => {
+    e.stopPropagation(); // Prevent navigation to set details
+    
+    // Store the set data for editing
+    localStorage.setItem("editingFlashcardSet", JSON.stringify(set));
+    
+    // Navigate to the set creator
+    navigate('/set-creator');
+  };
+
+  // Handle delete confirmation
+  const confirmDelete = (e: React.MouseEvent, setId: string) => {
+    e.stopPropagation(); // Prevent navigation to set details
+    setSetToDelete(setId);
+    setShowDeleteModal(true);
+  };
+
+  // Handle actual deletion
+  const deleteSet = async () => {
+    if (!setToDelete) return;
+    
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user.uid;
+      
+      const response = await fetch(`http://localhost:6500/api/sets/delete/${setToDelete}?userId=${userId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Remove the deleted set from the state
+        setSets(sets.filter(set => set.id !== setToDelete));
+        setShowDeleteModal(false);
+        setSetToDelete(null);
+      } else {
+        console.error('Failed to delete set:', await response.text());
+        alert('Failed to delete the set. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting set:', error);
+      alert('Failed to delete the set. Please check your connection.');
+    }
+  };
+
+// Format date with Firestore Timestamp handling
+const formatDate = (dateValue: any) => {
+  if (!dateValue) return '';
+  
+  try {
+    // For Firestore Timestamp objects - standard format
+    if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
+      console.log('Firestore Timestamp detected:', dateValue);
+      // Convert Firestore timestamp to milliseconds
+      const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
+      const date = new Date(milliseconds);
+      
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
+    }
+    
+    // For Firestore Timestamp objects with underscore prefix - serialized format
+    if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
+      console.log('Serialized Firestore Timestamp detected:', dateValue);
+      // Convert Firestore timestamp to milliseconds
+      const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
+      const date = new Date(milliseconds);
+      
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
+    }
+    
+    // Regular Date objects
+    if (dateValue instanceof Date) {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(dateValue);
+    }
+    
+    // String or number handling for ISO dates or timestamps
+    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date);
+      }
+      
+      // Try to handle numeric strings (Unix timestamps)
+      if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
+        const timestamp = parseInt(dateValue);
+        const timestampDate = new Date(timestamp);
+        if (!isNaN(timestampDate.getTime())) {
+          return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }).format(timestampDate);
+        }
+      }
+    }
+    
+    // Generic object handling with logging to help debugging
+    if (typeof dateValue === 'object') {
+      console.log('Unknown date object format:', dateValue);
+      try {
+        console.log('JSON representation:', JSON.stringify(dateValue));
+        
+        // Try some common properties that might contain date information
+        const possibleDateProps = ['date', 'time', 'timestamp', 'value', '_seconds', '_nanoseconds'];
+        for (const prop of possibleDateProps) {
+          if (prop in dateValue) {
+            console.log(`Found property ${prop}:`, dateValue[prop]);
+          }
+        }
+      } catch (jsonError) {
+        console.log('Failed to stringify date object');
+      }
+    }
+    
+    console.log('Could not format date value:', dateValue);
+    return 'Recently created'; // Fallback text
+  } catch (e) {
+    console.error('Error formatting date:', e);
+    return 'Recently created';
+  }
+};
+
   // Close helper
   const closeHelper = () => {
     setShowHelper(false);
   };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <NavBar />
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+            <p className="mt-4 text-[#004a74] font-medium">Loading your study sets...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -79,33 +282,86 @@ const CreatedSets: React.FC = () => {
       </button>
 
       {/* Sets Container */}
-      <div className="pt-24 px-6 pb-6">
+      <div className="pt-32 px-6 pb-6">
+        
+        {/* Error message */}
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
+            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold">Error</p>
+              <p>{error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Show grid of sets if there are any */}
         {sets.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-10">
             {sets.map((set) => (
               <div 
                 key={set.id} 
                 className="bg-blue-50 rounded-xl p-6 shadow-md hover:shadow-xl 
-                  transition-all duration-300 transform hover:-translate-y-2 
-                  cursor-pointer"
-                onClick={() => navigate(`/set/${set.id}`)}
+                  transition-all duration-300 relative overflow-hidden
+                  cursor-pointer group min-h-52"
+                onClick={() => navigate(`/study/${set.id}`)}
               >
-                <h3 className="text-2xl font-bold text-[#004a74] mb-2">
-                  {set.title}
-                </h3>
-                {set.description && (
-                  <p className="text-gray-600 mb-4">{set.description}</p>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    {set.cardCount || 0} cards
-                  </span>
-                  {set.isPublic ? (
-                    <span className="text-sm text-green-600">Public</span>
-                  ) : (
-                    <span className="text-sm text-gray-500">Private</span>
+                {/* Card content */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl font-bold text-[#004a74] line-clamp-2">
+                      {set.title}
+                    </h3>
+                    
+                    {set.isPublic ? (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                        Public
+                      </span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="text-sm text-gray-600 mb-2">
+                    {set.classCode}
+                  </div>
+                  
+                  {set.createdAt && (
+                    <div className="text-sm text-gray-500 mb-2">
+                      Created: {formatDate(set.createdAt)}
+                    </div>
                   )}
+                  
+                  <div className="text-sm font-medium text-[#004a74] mt-3">
+                    {set.numCards || set.flashcards?.length || 0} cards
+                  </div>
+                </div>
+                
+                {/* Action buttons that appear on hover */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-4 
+                  transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-2">
+                  <button 
+                    onClick={(e) => handleEditSet(e, set)}
+                    className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
+                    aria-label="Edit set"
+                  >
+                    <Edit3Icon className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => confirmDelete(e, set.id)}
+                    className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
+                    aria-label="Delete set"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -113,21 +369,21 @@ const CreatedSets: React.FC = () => {
         ) : (
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-            <div className="bg-blue-50 rounded-xl p-8 shadow-md max-w-md w-full text-center">
-              <BookIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
-              <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
+              <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
+              <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                 No Study Sets Yet
               </h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-lg text-gray-600 mb-8">
                 You haven't created any study sets yet. Get started by clicking the "Create Set" button in the top left corner.
               </p>
-              <div className="flex items-center justify-center gap-3 bg-[#e3f3ff] p-3 rounded-lg">
+              <div className="flex items-center justify-center gap-4 bg-[#e3f3ff] p-4 rounded-lg">
                 <div className="flex items-center text-[#004a74]">
-                  <PlusIcon className="w-5 h-5" />
-                  <span className="font-bold ml-1">Create Set</span>
+                  <PlusIcon className="w-6 h-6" />
+                  <span className="font-bold ml-2 text-lg">Create Set</span>
                 </div>
                 <span className="text-gray-500">→</span>
-                <span className="text-gray-600">Top left corner</span>
+                <span className="text-gray-600 text-lg">Top left corner</span>
               </div>
             </div>
           </div>
@@ -136,23 +392,49 @@ const CreatedSets: React.FC = () => {
         {/* No Sets Helper */}
         {showHelper && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="relative bg-white rounded-xl max-w-xl w-full shadow-2xl">
-              <div className="p-6 text-center">
-                <BookIcon className="mx-auto w-16 h-16 text-[#004a74] mb-4" />
-                <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+            <div className="relative bg-white rounded-xl max-w-2xl w-full shadow-2xl">
+              <div className="p-8 text-center">
+                <BookIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
+                <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                   Welcome to Your Study Sets!
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p className="text-xl text-gray-600 mb-8">
                   It looks like you don't have any study sets yet. Click "Create Set" to get started and boost your learning!
                 </p>
                 <button 
                   onClick={closeHelper}
-                  className="bg-[#004a74] text-white px-6 py-3 rounded-full 
+                  className="bg-[#004a74] text-white px-8 py-4 rounded-full 
                     hover:bg-[#00659f] transition-colors flex items-center 
-                    justify-center mx-auto gap-2"
+                    justify-center mx-auto gap-3 text-lg"
                 >
-                  <XIcon className="w-5 h-5" />
+                  <XIcon className="w-6 h-6" />
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl p-8">
+              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Delete Study Set?</h2>
+              <p className="text-lg text-gray-600 mb-8">
+                Are you sure you want to delete this study set? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-4">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition text-lg"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={deleteSet}
+                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-lg"
+                >
+                  Delete
                 </button>
               </div>
             </div>
