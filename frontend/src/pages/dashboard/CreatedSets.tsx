@@ -151,52 +151,18 @@ const CreatedSets: React.FC = () => {
     }
   };
 
-// Format date with Firestore Timestamp handling
-const formatDate = (dateValue: any) => {
-  if (!dateValue) return '';
-  
-  try {
-    // For Firestore Timestamp objects - standard format
-    if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
-      console.log('Firestore Timestamp detected:', dateValue);
-      // Convert Firestore timestamp to milliseconds
-      const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
-      const date = new Date(milliseconds);
-      
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }).format(date);
-    }
+  // Format date with Firestore Timestamp handling
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return '';
     
-    // For Firestore Timestamp objects with underscore prefix - serialized format
-    if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
-      console.log('Serialized Firestore Timestamp detected:', dateValue);
-      // Convert Firestore timestamp to milliseconds
-      const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
-      const date = new Date(milliseconds);
-      
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }).format(date);
-    }
-    
-    // Regular Date objects
-    if (dateValue instanceof Date) {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }).format(dateValue);
-    }
-    
-    // String or number handling for ISO dates or timestamps
-    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
+    try {
+      // For Firestore Timestamp objects - standard format
+      if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
+        console.log('Firestore Timestamp detected:', dateValue);
+        // Convert Firestore timestamp to milliseconds
+        const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
+        const date = new Date(milliseconds);
+        
         return new Intl.DateTimeFormat('en-US', {
           month: 'short',
           day: 'numeric',
@@ -204,45 +170,79 @@ const formatDate = (dateValue: any) => {
         }).format(date);
       }
       
-      // Try to handle numeric strings (Unix timestamps)
-      if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
-        const timestamp = parseInt(dateValue);
-        const timestampDate = new Date(timestamp);
-        if (!isNaN(timestampDate.getTime())) {
+      // For Firestore Timestamp objects with underscore prefix - serialized format
+      if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
+        console.log('Serialized Firestore Timestamp detected:', dateValue);
+        // Convert Firestore timestamp to milliseconds
+        const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
+        const date = new Date(milliseconds);
+        
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date);
+      }
+      
+      // Regular Date objects
+      if (dateValue instanceof Date) {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(dateValue);
+      }
+      
+      // String or number handling for ISO dates or timestamps
+      if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
           return new Intl.DateTimeFormat('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
-          }).format(timestampDate);
+          }).format(date);
         }
-      }
-    }
-    
-    // Generic object handling with logging to help debugging
-    if (typeof dateValue === 'object') {
-      console.log('Unknown date object format:', dateValue);
-      try {
-        console.log('JSON representation:', JSON.stringify(dateValue));
         
-        // Try some common properties that might contain date information
-        const possibleDateProps = ['date', 'time', 'timestamp', 'value', '_seconds', '_nanoseconds'];
-        for (const prop of possibleDateProps) {
-          if (prop in dateValue) {
-            console.log(`Found property ${prop}:`, dateValue[prop]);
+        // Try to handle numeric strings (Unix timestamps)
+        if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
+          const timestamp = parseInt(dateValue);
+          const timestampDate = new Date(timestamp);
+          if (!isNaN(timestampDate.getTime())) {
+            return new Intl.DateTimeFormat('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }).format(timestampDate);
           }
         }
-      } catch (jsonError) {
-        console.log('Failed to stringify date object');
       }
+      
+      // Generic object handling with logging to help debugging
+      if (typeof dateValue === 'object') {
+        console.log('Unknown date object format:', dateValue);
+        try {
+          console.log('JSON representation:', JSON.stringify(dateValue));
+          
+          // Try some common properties that might contain date information
+          const possibleDateProps = ['date', 'time', 'timestamp', 'value', '_seconds', '_nanoseconds'];
+          for (const prop of possibleDateProps) {
+            if (prop in dateValue) {
+              console.log(`Found property ${prop}:`, dateValue[prop]);
+            }
+          }
+        } catch (jsonError) {
+          console.log('Failed to stringify date object');
+        }
+      }
+      
+      console.log('Could not format date value:', dateValue);
+      return 'Recently created'; // Fallback text
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Recently created';
     }
-    
-    console.log('Could not format date value:', dateValue);
-    return 'Recently created'; // Fallback text
-  } catch (e) {
-    console.error('Error formatting date:', e);
-    return 'Recently created';
-  }
-};
+  };
 
   // Close helper
   const closeHelper = () => {
@@ -269,109 +269,118 @@ const formatDate = (dateValue: any) => {
       {/* Navigation Bar */}
       <NavBar />
 
-          {/* Create Set Button - Top Left */}
-          <button 
-            onClick={handleCreateSet}
-            className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
-              py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-              transition-all flex items-center justify-center gap-3 
-              shadow-md z-10 text-xl"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Set</span>
-          </button>
+      {/* Create Set Button - Top Left */}
+      <button 
+        onClick={handleCreateSet}
+        className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
+          py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
+          transition-all flex items-center justify-center gap-3 
+          shadow-md z-10 text-xl"
+      >
+        <PlusIcon className="w-5 h-5" />
+        <span>Create Set</span>
+      </button>
 
-          {/* Sets Container */}
-          <div className="pt-32 px-6 pb-6">
-            
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
-                <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">Error</p>
-                  <p>{error}</p>
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            )}
-
-    {/* Show grid of sets if there are any */}
-    {sets.length > 0 ? (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-10">
-        {sets.map((set) => (
-          <div
-            key={set.id}
-            className="bg-blue-50 rounded-2xl p-8 shadow-lg hover:shadow-2xl
-              transition-all duration-300 relative overflow-hidden 
-              cursor-pointer group min-h-80 flex flex-col border-2 border-transparent 
-              hover:border-[#004a74]/20"
-            onClick={() => navigate(`/study/${set.id}`)}
-          >
-            {/* Card content */}
-            <div className="mb-6 flex-grow">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-3xl font-bold text-[#004a74] mb-2 break-words pr-4">
-                  {set.title}
-                </h3>
-                
-                {set.isPublic ? (
-                  <span className="bg-green-100 text-green-800 text-sm px-3 py-1.5 rounded-full flex-shrink-0 ml-2">
-                    Public
-                  </span>
-                ) : (
-                  <span className="bg-gray-100 text-gray-800 text-sm px-3 py-1.5 rounded-full flex-shrink-0 ml-2">
-                    Private
-                  </span>
-                )}
-              </div>
-              
-              <div className="text-lg text-gray-700 mb-3 font-medium">
-                {set.classCode}
-              </div>
-              
-              {set.createdAt && (
-                <div className="text-base text-gray-600 mb-3">
-                  Created: {formatDate(set.createdAt)}
-                </div>
-              )}
-              
-              <div className="text-xl font-semibold text-[#004a74] mt-4 flex items-center">
-                <BookIcon className="w-6 h-6 mr-2 text-[#004a74]/70" />
-                {set.numCards || set.flashcards?.length || 0} cards
-              </div>
-            </div>
-            
-            {/* Action buttons that appear on hover */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#004a74] to-transparent p-6
-              transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 flex justify-end gap-4">
+      {/* Sets Container */}
+      <div className="pt-32 px-6 pb-6">
+        
+        {/* Error message */}
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
+            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold">Error</p>
+              <p>{error}</p>
               <button 
-                onClick={(e) => handleEditSet(e, set)}
-                className="bg-white text-[#004a74] p-3 rounded-full hover:bg-blue-100 transition shadow-md"
-                aria-label="Edit set"
+                onClick={() => window.location.reload()}
+                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
               >
-                <Edit3Icon className="w-6 h-6" />
-              </button>
-              <button 
-                onClick={(e) => confirmDelete(e, set.id)}
-                className="bg-white text-red-500 p-3 rounded-full hover:bg-red-100 transition shadow-md"
-                aria-label="Delete set"
-              >
-                <TrashIcon className="w-6 h-6" />
+                Try Again
               </button>
             </div>
           </div>
-        ))}
-      </div>
-    ) : (
-      // Your empty state content here
+        )}
 
-
+        {/* Show grid of sets if there are any */}
+        {sets.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-10">
+            {sets.map((set) => (
+              <div
+                key={set.id}
+                className="bg-blue-50 rounded-2xl shadow-lg hover:shadow-2xl
+                  transition-all duration-300 relative overflow-hidden 
+                  cursor-pointer group border-2 border-transparent 
+                  hover:border-[#004a74]/20 flex flex-col w-full min-h-[250px]"
+                onClick={() => navigate(`/study/${set.id}`)}
+              >
+                {/* Card Header with Status Badge */}
+                <div className="bg-[#004a74]/10 p-3 flex justify-between items-center">
+                  <div className="text-sm font-medium text-[#004a74]">Study Set</div>
+                  {set.isPublic ? (
+                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
+                      Public
+                    </span>
+                  ) : (
+                    <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
+                      Private
+                    </span>
+                  )}
+                </div>
+                
+                {/* Card content */}
+                <div className="p-4 flex-grow flex flex-row">
+                  <div className="flex-grow flex flex-col justify-between h-full">
+                    <div>
+                      <h3 className="text-xl font-bold text-[#004a74] mb-2 line-clamp-2">
+                        {set.title}
+                      </h3>
+                      
+                      <div className="text-sm text-gray-700 font-medium">
+                        <span className="text-[#004a74]">Class:</span> {set.classCode}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-end mt-3">
+                      <div className="flex items-center">
+                        <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
+                        <span className="text-sm font-semibold text-[#004a74]">
+                          {set.numCards || set.flashcards?.length || 0} cards
+                        </span>
+                      </div>
+                      
+                      {set.createdAt && (
+                        <div className="text-xs text-gray-500">
+                          {formatDate(set.createdAt)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action buttons footer */}
+                <div className="bg-[#004a74] p-4 flex justify-between items-center mt-auto">
+                  <div className="text-white text-sm font-medium">Click to study</div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={(e) => handleEditSet(e, set)}
+                      className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
+                      aria-label="Edit set"
+                    >
+                      <Edit3Icon className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={(e) => confirmDelete(e, set.id)}
+                      className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
+                      aria-label="Delete set"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
             <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
@@ -380,18 +389,18 @@ const formatDate = (dateValue: any) => {
                 No Study Sets Yet
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                You haven't created any study sets yet. Get started by clicking the "Create Set" button in the top left corner.
+                You haven't created any study sets yet. Get started by creating your first study set.
               </p>
-              <div className="flex items-center justify-center gap-4 bg-[#e3f3ff] p-4 rounded-lg">
-                <div className="flex items-center text-[#004a74]">
-                  <PlusIcon className="w-6 h-6" />
-                  <span className="font-bold ml-2 text-lg">Create Set</span>
-                </div>
-                <span className="text-gray-500">→</span>
-                <span className="text-gray-600 text-lg">Top left corner</span>
-              </div>
+              <button 
+                onClick={handleCreateSet}
+                className="mx-auto flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
+              >
+                <PlusIcon className="w-6 h-6" />
+                <span>Create Set</span>
+              </button>
             </div>
           </div>
+
         )}
 
         {/* No Sets Helper */}

@@ -11,6 +11,7 @@ import SetCreator from "./pages/set_creation/SetCreator";
 import SetViewingPage from "./pages/set_using/SetViewing";
 import FlashcardViewMode from "./pages/set_using/FlashcardViewMode";
 import QuizViewMode from "./pages/set_using/QuizViewMode";
+import EditProfile from "./pages/dashboard/EditProfile";
 
 const App = () => {
   return (
@@ -23,6 +24,7 @@ const App = () => {
       <Route path="/profile" element={<ProfilePage/>} />
       <Route path="/search-sets" element={<SearchSetsPage/>} />
       <Route path="/saved-sets" element={<SavedSets/>} />
+      <Route path="/edit-profile" element={<EditProfile/>} />
       <Route path="/set-creator" element={<SetCreator/>} />
       <Route path="/study/:setId" element={<SetViewingPage/>} />
       <Route path="/study/:setId/flashcards" element={<FlashcardViewMode/>} />

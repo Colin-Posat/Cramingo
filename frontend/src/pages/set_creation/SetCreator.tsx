@@ -7,7 +7,7 @@ import {
   Sparkles as SparklesIcon,
   AlertCircle as AlertCircleIcon
 } from 'lucide-react';
-import NavBar from '../../components/NavBar'; // Adjust the import path as needed
+import NavBar from '../../components/NavBar';
 
 // Type definitions
 type Flashcard = {
@@ -24,6 +24,7 @@ type FlashcardSet = {
   isPublic: boolean;
   icon?: string;
   createdAt?: string;
+  userId?: string; // Added to track the owner of the set
 };
 
 const SetCreator: React.FC = () => {
@@ -59,17 +60,23 @@ const SetCreator: React.FC = () => {
     }
   };
 
-  // Check if we're editing an existing set
+  // Check if we're editing an existing set and if it belongs to the current user
   const checkForEditingMode = () => {
     const storedSet = localStorage.getItem("editingFlashcardSet");
     if (storedSet) {
       const parsedSet = JSON.parse(storedSet) as FlashcardSet;
-      setEditingSet(parsedSet);
-      setTitle(parsedSet.title || '');
-      setClassCode(parsedSet.classCode || '');
-      
-      if (Array.isArray(parsedSet.flashcards) && parsedSet.flashcards.length > 0) {
-        setFlashcards(parsedSet.flashcards);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      // Only load the stored set if it belongs to the current user.
+      if (user && (user.id === parsedSet.userId || user.uid === parsedSet.userId)) {
+        setEditingSet(parsedSet);
+        setTitle(parsedSet.title || '');
+        setClassCode(parsedSet.classCode || '');
+        if (Array.isArray(parsedSet.flashcards) && parsedSet.flashcards.length > 0) {
+          setFlashcards(parsedSet.flashcards);
+        }
+      } else {
+        // If it doesn't belong to the current user, clear it.
+        localStorage.removeItem("editingFlashcardSet");
       }
     }
   };
@@ -80,17 +87,14 @@ const SetCreator: React.FC = () => {
     checkForEditingMode();
     
     // Check authentication - but don't redirect immediately
-    // This allows time for the component to load properly
     const checkAuth = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      // Only redirect if we're sure there's no valid user
       if (!user || (!user.id && !user.uid)) {
         console.log('No authenticated user found, redirecting to landing page');
         navigate('/');
       }
     };
     
-    // Small delay to prevent immediate flashing redirect
     const timer = setTimeout(checkAuth, 300);
     return () => clearTimeout(timer);
   }, []);
@@ -120,11 +124,9 @@ const SetCreator: React.FC = () => {
     setClassCodeError('');
     
     if (value.length > 0) {
-      // Filter codes that START WITH the input value
       const filteredResults = classCodes
         .filter(code => code.toUpperCase().startsWith(value))
-        .slice(0, 5); // Limit to 5 results
-      
+        .slice(0, 5);
       setSuggestions(filteredResults);
     } else {
       setSuggestions([]);
@@ -144,16 +146,13 @@ const SetCreator: React.FC = () => {
     setClassCodeError('');
   }, []);
 
-  // Handle input blur - validate input
+  // Validate class code on blur
   const handleBlur = useCallback(() => {
-    // Small timeout to allow click on autocomplete item to register first
     setTimeout(() => {
       if (classCode.trim() !== '' && !classCodes.includes(classCode.trim().toUpperCase())) {
         setClassCodeError("Please select a valid class code from the list");
-        // Don't clear right away
         setTimeout(() => {
           setClassCode('');
-          // Clear error message after a delay
           setTimeout(() => {
             setClassCodeError('');
           }, 3000);
@@ -179,7 +178,6 @@ const SetCreator: React.FC = () => {
   // Delete a flashcard
   const deleteFlashcard = (index: number) => {
     if (flashcards.length <= 1) {
-      // Ensure at least one flashcard remains
       setFlashcards([{ question: '', answer: '' }]);
     } else {
       const updatedFlashcards = flashcards.filter((_, i) => i !== index);
@@ -189,16 +187,12 @@ const SetCreator: React.FC = () => {
 
   // Navigate with confirmation if needed
   const navigateWithConfirmation = (destination: string) => {
-    // Check if there are unsaved changes
     const hasContent = flashcards.some(card => card.question.trim() || card.answer.trim());
-    
     if (!hasContent && flashcards.length === 1) {
-      // No content to save, navigate directly
       navigate(destination);
       return;
     }
     
-    // Check if editing mode with no changes
     if (editingSet) {
       const noChanges = 
         editingSet.title === title &&
@@ -211,12 +205,11 @@ const SetCreator: React.FC = () => {
       }
     }
     
-    // Show confirmation modal
     setExitDestination(destination);
     setShowExitModal(true);
   };
 
-  // Compare flashcards arrays
+  // Compare flashcard arrays
   const areFlashcardsEqual = (arr1: Flashcard[], arr2: Flashcard[]) => {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((flashcard, index) => 
@@ -228,19 +221,15 @@ const SetCreator: React.FC = () => {
   // Validate form before saving
   const validateForm = () => {
     let isValid = true;
-    
-    // Clear all previous errors
     setTitleError('');
     setClassCodeError('');
     setFlashcardError('');
     
-    // Validate title
     if (!title.trim()) {
       setTitleError("Please provide a title for your flashcard set");
       isValid = false;
     }
     
-    // Validate class code
     if (!classCode.trim()) {
       setClassCodeError("Please select a valid class code");
       isValid = false;
@@ -249,7 +238,6 @@ const SetCreator: React.FC = () => {
       isValid = false;
     }
     
-    // Validate flashcards
     const validFlashcards = flashcards.filter(
       card => card.question.trim() || card.answer.trim()
     );
@@ -265,24 +253,17 @@ const SetCreator: React.FC = () => {
   // Save flashcard set
   const saveFlashcardSet = async (isPublic: boolean) => {
     try {
-      // Get the current user from localStorage
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      // Check for user ID
       if (!user.id && !user.uid) {
         setFlashcardError("You must be logged in to save a set");
         return;
       }
       
-      // Use whichever ID is available
       const userId = user.id || user.uid;
-      
-      // Validate form before proceeding
       if (!validateForm()) {
         return;
       }
       
-      // Filter out completely empty flashcards
       const validFlashcards = flashcards.filter(
         card => card.question.trim() || card.answer.trim()
       );
@@ -295,45 +276,38 @@ const SetCreator: React.FC = () => {
         classCode: classCode.trim(),
         flashcards: validFlashcards,
         isPublic: isPublic,
-        userId: userId // Include the userId in the request
+        userId: userId
       };
       
       setIsLoading(true);
-      
-      // Log the data being sent for debugging
       console.log('Sending data to backend:', JSON.stringify(newSet));
       
-      // API endpoint
       const endpoint = editingSet 
         ? `http://localhost:6500/api/sets/update/${setId}`
         : 'http://localhost:6500/api/sets/create';
         
       const method = editingSet ? 'PUT' : 'POST';
       
-      // Make the API request with credentials included
       const response = await fetch(endpoint, {
         method: method,
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include', // This is important to send cookies
+        credentials: 'include',
         body: JSON.stringify(newSet)
       });
       
       console.log('Response status:', response.status);
       
-      // Handle the response
       if (response.ok) {
         console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
         localStorage.removeItem("editingFlashcardSet");
         navigate('/created-sets');
       } else {
-        // Try to get the error message from the response
         try {
           const errorData = await response.json();
           setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. ${errorData.message || ''}`);
         } catch (parseError) {
-          // If we can't parse JSON, get the status text
           setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. Server returned ${response.status} ${response.statusText}.`);
         }
       }
@@ -345,7 +319,6 @@ const SetCreator: React.FC = () => {
     }
   };
 
-  // Exit modal handlers
   const handleSaveAndExit = () => {
     if (validateForm()) {
       saveFlashcardSet(false);
@@ -402,7 +375,7 @@ const SetCreator: React.FC = () => {
                 value={classCode}
                 onChange={handleClassCodeChange}
                 onBlur={handleBlur}
-                placeholder="Class Code"
+                placeholder="Class Code Eg. CSE101"
                 className={`w-full px-4 py-3 text-base rounded-lg border 
                   focus:outline-none focus:ring-2 transition-all 
                   ${classCodeError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
@@ -416,7 +389,6 @@ const SetCreator: React.FC = () => {
                 </div>
               )}
 
-              {/* Autocomplete List */}
               {suggestions.length > 0 && (
                 <ul 
                   ref={autocompleteRef}
@@ -462,7 +434,6 @@ const SetCreator: React.FC = () => {
             </button>
           </div>
 
-          {/* Global error for flashcards */}
           {flashcardError && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-center">
               <AlertCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
@@ -470,7 +441,6 @@ const SetCreator: React.FC = () => {
             </div>
           )}
 
-          {/* AI Generate Button */}
           <div className="mb-6">
             <button className="w-full flex items-center justify-center gap-2 
               bg-white border border-[#004a74] text-[#004a74] 
@@ -480,7 +450,6 @@ const SetCreator: React.FC = () => {
             </button>
           </div>
 
-          {/* Flashcards */}
           <div className="space-y-6">
             {flashcards.map((card, index) => (
               <div 
@@ -522,7 +491,6 @@ const SetCreator: React.FC = () => {
             ))}
           </div>
           
-          {/* Add Card Button */}
           <div className="mt-6 text-center">
             <button 
               onClick={addFlashcard}
@@ -536,7 +504,6 @@ const SetCreator: React.FC = () => {
         </div>
       </div>
 
-      {/* Exit Confirmation Modal */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full border border-gray-200">

@@ -94,22 +94,21 @@ const SavedSets: React.FC = () => {
         ) : (
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-            <div className="bg-blue-50 rounded-xl p-8 shadow-md max-w-md w-full text-center">
-              <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
-              <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
+              <BookmarkIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
+              <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                 No Saved Sets Yet
               </h2>
-              <p className="text-gray-600 mb-6">
-                You haven't saved any study sets yet. Click the "Search Sets" link in the navigation bar to find and save sets for your classes.
+              <p className="text-lg text-gray-600 mb-8">
+                You haven't saved any study sets yet. Click the button below to search for sets and save your favorites.
               </p>
-              <div className="flex items-center justify-center gap-3 bg-[#e3f3ff] p-3 rounded-lg">
-                <div className="flex items-center text-[#004a74]">
-                  <SearchIcon className="w-5 h-5" />
-                  <span className="font-bold ml-1">Search Sets</span>
-                </div>
-                <span className="text-gray-500">→</span>
-                <span className="text-gray-600">In the navigation bar</span>
-              </div>
+              <button
+                onClick={() => navigate('/search-sets')}
+                className="mx-auto flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
+              >
+                <SearchIcon className="w-6 h-6" />
+                <span>Search Sets</span>
+              </button>
             </div>
           </div>
         )}
@@ -117,22 +116,22 @@ const SavedSets: React.FC = () => {
         {/* No Sets Helper */}
         {showHelper && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="relative bg-white rounded-xl max-w-xl w-full shadow-2xl">
-              <div className="p-6 text-center">
-                <BookmarkIcon className="mx-auto w-16 h-16 text-[#004a74] mb-4" />
-                <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+            <div className="relative bg-white rounded-xl max-w-2xl w-full shadow-2xl">
+              <div className="p-8 text-center">
+                <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-8" />
+                <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                   Welcome to Your Saved Sets!
                 </h2>
-                <p className="text-gray-600 mb-6">
-                  This is where you'll find study sets you've saved from other students. Click the "Search Sets" tab in the navigation bar to find and save sets for your classes.
+                <p className="text-xl text-gray-600 mb-8">
+                  This is where you'll find study sets you've saved from other students. Click the "Search Sets" button below or use the navigation bar to find and save sets for your classes.
                 </p>
                 <button 
                   onClick={closeHelper}
-                  className="bg-[#004a74] text-white px-6 py-3 rounded-full 
+                  className="bg-[#004a74] text-white px-8 py-4 rounded-full 
                     hover:bg-[#00659f] transition-colors flex items-center 
-                    justify-center mx-auto gap-2"
+                    justify-center mx-auto gap-3 text-lg"
                 >
-                  <XIcon className="w-5 h-5" />
+                  <XIcon className="w-6 h-6" />
                   Close
                 </button>
               </div>
