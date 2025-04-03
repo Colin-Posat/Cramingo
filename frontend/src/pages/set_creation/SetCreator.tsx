@@ -25,12 +25,13 @@ type FlashcardSet = {
   id: string;
   title: string;
   classCode: string;
+  description?: string; // Added description field
   numCards?: number;
   flashcards: Flashcard[];
   isPublic: boolean;
   icon?: string;
   createdAt?: string;
-  userId?: string; // Added to track the owner of the set
+  userId?: string; // Track the owner of the set
 };
 
 const SetCreator: React.FC = () => {
@@ -38,6 +39,7 @@ const SetCreator: React.FC = () => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([{ question: '', answer: '' }]);
   const [title, setTitle] = useState('');
   const [classCode, setClassCode] = useState('');
+  const [description, setDescription] = useState(''); // New state for description
   const [classCodes, setClassCodes] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [editingSet, setEditingSet] = useState<FlashcardSet | null>(null);
@@ -53,6 +55,7 @@ const SetCreator: React.FC = () => {
   const [titleError, setTitleError] = useState('');
   const [classCodeError, setClassCodeError] = useState('');
   const [flashcardError, setFlashcardError] = useState('');
+  const [descriptionError, setDescriptionError] = useState(''); // New error state for description
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // New state for AI Generate Overlay
@@ -85,6 +88,7 @@ const SetCreator: React.FC = () => {
         setEditingSet(parsedSet);
         setTitle(parsedSet.title || '');
         setClassCode(parsedSet.classCode || '');
+        setDescription(parsedSet.description || ''); // Load description if available
         if (Array.isArray(parsedSet.flashcards) && parsedSet.flashcards.length > 0) {
           setFlashcards(parsedSet.flashcards);
         }
@@ -211,6 +215,7 @@ const SetCreator: React.FC = () => {
       const noChanges = 
         editingSet.title === title &&
         editingSet.classCode === classCode &&
+        editingSet.description === description && // Check if description is unchanged
         areFlashcardsEqual(editingSet.flashcards, flashcards);
       
       if (noChanges) {
@@ -238,6 +243,7 @@ const SetCreator: React.FC = () => {
     setTitleError('');
     setClassCodeError('');
     setFlashcardError('');
+    setDescriptionError('');
     
     if (!title.trim()) {
       setTitleError("Please provide a title for your flashcard set");
@@ -256,6 +262,12 @@ const SetCreator: React.FC = () => {
       if (isValid) {
         classCodeInputRef.current?.focus();
       }
+      isValid = false;
+    }
+    
+    // Optional description validation
+    if (description.trim().length > 500) {
+      setDescriptionError("Description must be 500 characters or less");
       isValid = false;
     }
     
@@ -291,10 +303,11 @@ const SetCreator: React.FC = () => {
       
       const setId = editingSet?.id || crypto.randomUUID();
       
-      const newSet = {
+      const newSet: FlashcardSet = {
         id: setId,
         title: title.trim(),
         classCode: classCode.trim(),
+        description: description.trim(), // Include description in the new set
         flashcards: validFlashcards,
         isPublic: isPublic,
         userId: userId
@@ -406,7 +419,9 @@ const SetCreator: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Progress indicator */}
           <div className="bg-[#004a74] px-6 py-4 text-white">
-            <h2 className="text-xl font-bold">{editingSet ? 'Editing: ' + editingSet.title : 'New Flashcard Set'}</h2>
+            <h2 className="text-xl font-bold">
+              {editingSet ? 'Editing: ' + editingSet.title : 'New Flashcard Set'}
+            </h2>
             <div className="flex items-center mt-2 text-sm">
               <div className="flex-1">
                 <div className="w-full bg-white/20 rounded-full h-2.5">
@@ -547,6 +562,31 @@ const SetCreator: React.FC = () => {
               </div>
             </div>
 
+            {/* Description Input */}
+            <div className="mt-6 mb-6">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                Description <span className="text-gray-500 text-xs">(Optional, max 500 characters)</span>
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  setDescriptionError('');
+                }}
+                placeholder="Add a brief description about your flashcard set (optional)"
+                className={`w-full px-4 py-3 text-base rounded-lg border focus:outline-none focus:ring-2 transition-all resize-none h-24
+                  ${descriptionError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
+                maxLength={500}
+              />
+              {descriptionError && (
+                <div className="text-red-500 text-sm mt-1 flex items-center">
+                  <AlertCircleIcon className="w-4 h-4 mr-1" />
+                  {descriptionError}
+                </div>
+              )}
+            </div>
+
             {flashcardError && (
               <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-center">
                 <AlertCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
@@ -560,10 +600,10 @@ const SetCreator: React.FC = () => {
                 onClick={() => setShowAIGenerateOverlay(true)}
                 className="w-full flex items-center justify-center gap-2 
                 bg-blue-100 border-2 border-[#004a74] text-[#004a74] font-bold
-                px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors shadow-md"
+                px-6 py-4 rounded-lg hover:bg-blue-200 transition-colors shadow-md"
               >
                 <SparklesIcon className="w-6 h-6" />
-                AI Generate Cards
+                AI Generate Cards from Notes or PDF
               </button>
             </div>
 
@@ -621,7 +661,7 @@ const SetCreator: React.FC = () => {
                 </div>
               ))}
             </div>
-            
+
             <div className="mt-6 text-center">
               <button 
                 onClick={addFlashcard}
@@ -632,39 +672,47 @@ const SetCreator: React.FC = () => {
                 Add a New Card
               </button>
             </div>
+          </div>
 
-            {/* Save Actions */}
-            <div className="mt-12 border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-bold text-gray-700 mb-4">Save Options</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <button 
-                  onClick={() => saveFlashcardSet(false)} 
-                  className="px-4 py-3 bg-white text-[#004a74] border border-[#004a74] rounded-lg 
-                    hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-                    flex items-center justify-center gap-2"
-                  disabled={isLoading}
-                >
-                  <LockIcon className="w-5 h-5" />
-                  <span>
-                    {isLoading ? 'Saving...' : 'Save as Private'}
-                    <span className="block text-xs text-gray-500">Only you can access</span>
-                  </span>
-                </button>
-                <button 
-                  onClick={() => saveFlashcardSet(true)}
-                  className="px-4 py-3 bg-[#004a74] text-white rounded-lg 
-                    hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
-                    flex items-center justify-center gap-2"
-                  disabled={isLoading}
-                >
-                  <GlobeIcon className="w-5 h-5" />
-                  <span>
-                    {isLoading ? 'Saving...' : 'Save & Publish'}
-                    <span className="block text-xs text-white/80">Everyone can view</span>
-                  </span>
-                </button>
+          {/* Spacer to ensure content can scroll behind the fixed save bar */}
+          <div className="pb-24"></div>
+        </div>
+      </div>
+
+      {/* Sticky Save Actions */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl py-4">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <button 
+              onClick={() => saveFlashcardSet(false)} 
+              className="px-4 py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
+                hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                flex items-center justify-center gap-3 group shadow-md"
+              disabled={isLoading}
+            >
+              <LockIcon className="w-6 h-6 text-[#004a74] group-hover:scale-110 transition-transform" />
+              <div className="text-left">
+                <span className="font-bold block">
+                  {isLoading ? 'Saving...' : 'Save as Private'}
+                </span>
+                <span className="text-xs text-gray-500 block">Only you can access</span>
               </div>
-            </div>
+            </button>
+            <button 
+              onClick={() => saveFlashcardSet(true)}
+              className="px-4 py-4 bg-[#004a74] text-white rounded-xl 
+                hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
+                flex items-center justify-center gap-3 group shadow-xl"
+              disabled={isLoading}
+            >
+              <GlobeIcon className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+              <div className="text-left">
+                <span className="font-bold block">
+                  {isLoading ? 'Saving...' : 'Save & Publish'}
+                </span>
+                <span className="text-xs text-white/80 block">Everyone can view</span>
+              </div>
+            </button>
           </div>
         </div>
       </div>

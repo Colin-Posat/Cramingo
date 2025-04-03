@@ -135,7 +135,7 @@ const SearchSetsPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-lg overflow-visible">
             {/* Header - Note: no rounded corners here, let parent handle it */}
             <div className="bg-[#004a74] text-white p-6 text-center rounded-t-xl">
-              <h1 className="text-3xl font-bold">Find Study Sets for Your Class!</h1>
+              <h1 className="text-3xl font-bold">Find Flashcard Sets for Your Class!</h1>
             </div>
             {/* Content */}
             <div className="p-6">

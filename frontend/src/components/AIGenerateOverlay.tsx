@@ -512,7 +512,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
           <div className="mb-6">
             <div className="flex justify-between items-center mb-1">
               <label htmlFor="aiNotes" className="block text-sm font-medium text-gray-700">
-                Your Study Notes <span className="text-red-500">*</span>
+                Your Notes or Lecture<span className="text-red-500">*</span>
               </label>
               <div className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center">
                 <InfoIcon className="w-3 h-3 mr-1 text-gray-500" />

@@ -315,7 +315,7 @@ const CreatedSets: React.FC = () => {
               >
                 {/* Card Header with Status Badge */}
                 <div className="bg-[#004a74]/10 p-3 flex justify-between items-center">
-                  <div className="text-sm font-medium text-[#004a74]">Study Set</div>
+                  <div className="text-sm font-medium text-[#004a74]">Flashcard Set</div>
                   {set.isPublic ? (
                     <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
                       Public
@@ -386,10 +386,10 @@ const CreatedSets: React.FC = () => {
             <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
               <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
               <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                No Study Sets Yet
+                No Flashcard Sets Yet
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                You haven't created any study sets yet. Get started by creating your first study set.
+                You haven't created any flashcard sets yet. Get started by creating your first flashcard set.
               </p>
               <button 
                 onClick={handleCreateSet}
@@ -410,10 +410,10 @@ const CreatedSets: React.FC = () => {
               <div className="p-8 text-center">
                 <BookIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
                 <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                  Welcome to Your Study Sets!
+                  Welcome to Your Flashcard Sets!
                 </h2>
                 <p className="text-xl text-gray-600 mb-8">
-                  It looks like you don't have any study sets yet. Click "Create Set" to get started and boost your learning!
+                  It looks like you don't have any flashcard sets yet. Click "Create Set" to get started and boost your learning!
                 </p>
                 <button 
                   onClick={closeHelper}
@@ -433,9 +433,9 @@ const CreatedSets: React.FC = () => {
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-lg w-full shadow-xl p-8">
-              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Delete Study Set?</h2>
+              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Delete Flashcard Set?</h2>
               <p className="text-lg text-gray-600 mb-8">
-                Are you sure you want to delete this study set? This action cannot be undone.
+                Are you sure you want to delete this flashcard set? This action cannot be undone.
               </p>
               <div className="flex justify-end gap-4">
                 <button 

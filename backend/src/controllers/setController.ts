@@ -7,7 +7,7 @@ const db = admin.firestore();
 export const createSet = async (req: Request, res: Response): Promise<void> => {
   try {
     // Extract data from request body
-    const { id, title, classCode, flashcards, isPublic, userId } = req.body;
+    const { id, title, classCode, flashcards, isPublic, userId, description = '' } = req.body;
     
     // Validate required fields
     if (!id || !title || !classCode || !Array.isArray(flashcards) || flashcards.length === 0 || !userId) {
@@ -28,6 +28,7 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       id,
       title,
       classCode,
+      description: description.trim(), // Add description here
       flashcards,
       isPublic: Boolean(isPublic),
       icon: isPublic 
@@ -59,7 +60,7 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
     const setId = req.params.id;
     
     // Extract data from request body
-    const { title, classCode, flashcards, isPublic, userId } = req.body;
+    const { title, classCode, flashcards, isPublic, userId, description = '' } = req.body;
     
     // Validate required fields
     if (!title || !classCode || !Array.isArray(flashcards) || flashcards.length === 0 || !userId) {
@@ -88,6 +89,7 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
     await db.collection("flashcardSets").doc(setId).update({
       title,
       classCode,
+      description: description.trim(), // Add description here
       flashcards,
       isPublic: Boolean(isPublic),
       icon: isPublic 

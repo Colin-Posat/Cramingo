@@ -26,6 +26,7 @@ type FlashcardSet = {
   isPublic?: boolean;
   icon?: string;
   createdAt?: string | object;
+  description?: string; 
 };
 
 const SetViewingPage: React.FC = () => {
@@ -208,7 +209,27 @@ const SetViewingPage: React.FC = () => {
               {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
             </p>
           </div>
-          
+
+          {/* Description Section */}
+          {(() => {
+            const hasDescription = 
+              flashcardSet.description !== undefined && 
+              flashcardSet.description !== null && 
+              flashcardSet.description.trim() !== '';
+
+            console.log('Description check:', {
+              description: flashcardSet.description,
+              hasDescription,
+              type: typeof flashcardSet.description
+            });
+
+            return hasDescription ? (
+              <div className="px-6 py-4 bg-blue-50 border-b border-[#004a74]/10">
+                <h3 className="text-sm font-semibold text-[#004a74] mb-2">Description</h3>
+                <p className="text-[#004a74]/80">{flashcardSet.description}</p>
+              </div>
+            ) : null;
+          })()}
           {/* Info Panel - collapsible */}
           {showInfo && (
             <div className="bg-[#e3f3ff] p-4 flex items-start gap-3 border-b border-[#004a74]/20">

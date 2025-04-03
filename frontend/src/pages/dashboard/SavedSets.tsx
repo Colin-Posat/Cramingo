@@ -100,7 +100,7 @@ const SavedSets: React.FC = () => {
                 No Saved Sets Yet
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                You haven't saved any study sets yet. Click the button below to search for sets and save your favorites.
+                You haven't saved any flashcard sets yet. Click the button below to search for sets and save your favorites.
               </p>
               <button
                 onClick={() => navigate('/search-sets')}
@@ -123,7 +123,7 @@ const SavedSets: React.FC = () => {
                   Welcome to Your Saved Sets!
                 </h2>
                 <p className="text-xl text-gray-600 mb-8">
-                  This is where you'll find study sets you've saved from other students. Click the "Search Sets" button below or use the navigation bar to find and save sets for your classes.
+                  This is where you'll find flashcard sets you've saved from other students. Click the "Search Sets" button below or use the navigation bar to find and save sets for your classes.
                 </p>
                 <button 
                   onClick={closeHelper}
