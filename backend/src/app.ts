@@ -7,6 +7,9 @@ import distractorRoutes from "./routes/distractorRoutes"; // Corrected import na
 import userRoutes from './routes/userRoutes';
 import genFlashcardsRoutes from './routes/genFlashcardsRoute';
 import fileRoutes from './routes/fileRoutes';
+import semanticRouter from './routes/semanticAnswerRoutes';
+
+
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -30,6 +33,7 @@ app.use("/api/quiz", distractorRoutes); // Using correct variable name
 app.use('/api/user', userRoutes);
 app.use('/api/ai', genFlashcardsRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/semantic-answer', semanticRouter);
 
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);

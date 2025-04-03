@@ -8,6 +8,11 @@ type Flashcard = {
   answer: string;
 };
 
+type AnswerFeedback = {
+  isClose?: boolean;
+  feedback?: string;
+};
+
 type QuizViewModeProps = {
   flashcards?: Flashcard[];
   quizType?: 'text-input' | 'multiple-choice';
@@ -21,6 +26,7 @@ type QuizState = {
   answeredFlags: boolean[]; // Track if a question has been attempted/answered
   quizCompleted: boolean;
   options: string[][]; // Array of options for each question
+  feedback: AnswerFeedback[];
 };
 
 const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
@@ -61,6 +67,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
     answeredFlags: Array(cards.length).fill(false), // Initialize answered flags
     quizCompleted: false,
     options: Array(cards.length).fill([]),
+    feedback: Array(cards.length).fill({}),
   });
 
   const [quizState, setQuizState] = useState<QuizState>(initializeQuizState(flashcards));
@@ -179,73 +186,113 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
 
   // --- Core Quiz Logic ---
 
-  const checkAnswer = (userAnswer: string) => {
-    if (!flashcards || flashcards.length === 0) return; // Guard against no flashcards
-    const currentCard = flashcards[quizState.currentIndex];
-    if (!currentCard) return; // Guard against invalid index
-
-    const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
+  const handleAnswerResult = (
+    userAnswer: string, 
+    isCorrect: boolean, 
+    feedbackInfo: AnswerFeedback = {}
+  ) => {
     const alreadyAnswered = quizState.answeredFlags[quizState.currentIndex];
     const previousResult = quizState.results[quizState.currentIndex];
-
+  
     setQuizState(prev => {
       const updatedUserAnswers = [...prev.userAnswers];
       updatedUserAnswers[prev.currentIndex] = userAnswer;
-
+  
       const updatedResults = [...prev.results];
       updatedResults[prev.currentIndex] = isCorrect ? 'correct' : 'incorrect';
-
+  
       const updatedAnsweredFlags = [...prev.answeredFlags];
       updatedAnsweredFlags[prev.currentIndex] = true; // Mark as answered
-
+  
+      const updatedFeedback = [...prev.feedback];
+      updatedFeedback[prev.currentIndex] = feedbackInfo;
+  
       return {
         ...prev,
         userAnswers: updatedUserAnswers,
         results: updatedResults,
         answeredFlags: updatedAnsweredFlags,
+        feedback: updatedFeedback,
         showAnswer: true, // Show feedback
       };
     });
-
+  
     // Update score only if it wasn't answered correctly before,
     // or if it was answered incorrectly before and now is correct.
     // Prevents double-counting correct answers or penalizing changing incorrect->incorrect.
     setScore(prev => {
-        let correctDelta = 0;
-        let incorrectDelta = 0;
-
-        if (!alreadyAnswered) {
-            // First time answering this question in this session
-            if (isCorrect) correctDelta = 1;
-            else incorrectDelta = 1;
-        } else {
-            // Re-answering
-            if (isCorrect && previousResult === 'incorrect') {
-                correctDelta = 1;
-                incorrectDelta = -1; // Was incorrect, now correct
-            } else if (!isCorrect && previousResult === 'correct') {
-                correctDelta = -1; // Was correct, now incorrect
-                incorrectDelta = 1;
-            }
-            // If incorrect -> incorrect, or correct -> correct, no change
+      let correctDelta = 0;
+      let incorrectDelta = 0;
+  
+      if (!alreadyAnswered) {
+        // First time answering this question in this session
+        if (isCorrect) correctDelta = 1;
+        else incorrectDelta = 1;
+      } else {
+        // Re-answering
+        if (isCorrect && previousResult === 'incorrect') {
+          correctDelta = 1;
+          incorrectDelta = -1; // Was incorrect, now correct
+        } else if (!isCorrect && previousResult === 'correct') {
+          correctDelta = -1; // Was correct, now incorrect
+          incorrectDelta = 1;
         }
-
-        return {
-            correct: prev.correct + correctDelta,
-            incorrect: prev.incorrect + incorrectDelta,
-        };
+        // If incorrect -> incorrect, or correct -> correct, no change
+      }
+  
+      return {
+        correct: prev.correct + correctDelta,
+        incorrect: prev.incorrect + incorrectDelta,
+      };
     });
-
-    // Clear text input only after checking text answer
-    if (quizType === 'text-input') {
-        // Keep userInput for display in the "Your Answer" section,
-        // It will be cleared/updated by the useEffect when navigating OR
-        // explicitly cleared when proceeding to the next *unanswered* question.
-    }
   };
 
-  const handleTextCheck = () => {
-    checkAnswer(userInput);
+  const checkAnswer = async (userAnswer: string) => {
+    if (!flashcards || flashcards.length === 0) return; // Guard against no flashcards
+    const currentCard = flashcards[quizState.currentIndex];
+    if (!currentCard) return; // Guard against invalid index
+  
+    // For multiple choice, continue using direct string comparison
+    if (quizType === 'multiple-choice') {
+      const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
+      handleAnswerResult(userAnswer, isCorrect);
+      return;
+    }
+  
+    // For text input, use the semantic answer checking API
+    try {
+      const response = await fetch('http://localhost:6500/api/semantic-answer/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAnswer: userAnswer.trim(),
+          correctAnswer: currentCard.answer.trim()
+        }),
+        credentials: 'include'
+      });
+  
+      if (!response.ok) {
+        console.error(`Server returned ${response.status}`);
+        // Fall back to exact matching if API fails
+        const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
+        handleAnswerResult(userAnswer, isCorrect);
+        return;
+      }
+  
+      const data = await response.json();
+      handleAnswerResult(userAnswer, data.isCorrect, {
+        isClose: data.isClose,
+        feedback: data.feedback
+      });
+    } catch (error) {
+      console.error('Error checking answer semantically:', error);
+      // Fall back to exact matching if API call fails
+      const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
+      handleAnswerResult(userAnswer, isCorrect);
+    }
+  };
+  const handleTextCheck = async () => {
+    await checkAnswer(userInput);
   }
 
   const handleMultipleChoiceSelect = (selectedOption: string) => {
@@ -463,6 +510,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
   };
 
   // Main quiz content rendering
+  // Main quiz content rendering
   const renderQuizContent = () => {
     const totalAnswered = quizState.answeredFlags.filter(Boolean).length;
 
@@ -501,41 +549,51 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
             {flashcards.map((card, index) => (
               <div key={index} className={`mb-4 border rounded-lg p-4 ${
                 quizState.results[index] === 'correct' ? 'border-green-200 bg-green-50' :
+                quizState.feedback[index]?.isClose ? 'border-yellow-200 bg-yellow-50' :
                 quizState.results[index] === 'incorrect' ? 'border-red-200 bg-red-50' :
                 'border-gray-200 bg-gray-50' // Not answered
-               }`}>
+              }`}>
                 <div className="flex items-start gap-2 mb-2">
-                   <div className="flex-shrink-0 w-6 h-6 mt-1">
-                     {quizState.results[index] === 'correct' ? (
+                  <div className="flex-shrink-0 w-6 h-6 mt-1">
+                    {quizState.results[index] === 'correct' ? (
                         <Check className="w-6 h-6 text-green-600" />
-                     ) : quizState.results[index] === 'incorrect' ? (
+                    ) : quizState.feedback[index]?.isClose ? (
+                        <AlertCircle className="w-6 h-6 text-yellow-600" />
+                    ) : quizState.results[index] === 'incorrect' ? (
                         <X className="w-6 h-6 text-red-600" />
-                     ) : (
+                    ) : (
                         <span className="w-6 h-6 inline-block text-gray-400">-</span> // Placeholder for unanswered
-                     )}
-                   </div>
-
+                    )}
+                  </div>
                   <p className="font-medium text-lg text-gray-800">Question {index + 1}: <span className="font-normal">{card.question}</span></p>
                 </div>
-                 {quizState.answeredFlags[index] ? ( // Only show answers if attempted
-                    <div className="pl-8">
+                {quizState.answeredFlags[index] ? ( // Only show answers if attempted
+                  <div className="pl-8">
                     <p className="text-sm text-gray-500">Your answer:</p>
                     <p className={`font-medium text-base mb-1 ${
-                        quizState.results[index] === 'correct' ? 'text-green-700' : 'text-red-700'
+                        quizState.results[index] === 'correct' ? 'text-green-700' : 
+                        quizState.feedback[index]?.isClose ? 'text-yellow-700' : 'text-red-700'
                     }`}>
                         {quizState.userAnswers[index] || '(No answer provided)'}
                     </p>
 
-                    {quizState.results[index] === 'incorrect' && (
-                        <>
-                        <p className="text-sm text-gray-500">Correct answer:</p>
-                        <p className="text-green-700 font-medium text-base">{card.answer}</p>
-                        </>
+                    {/* Display feedback if available and not correct */}
+                    {quizState.feedback[index]?.feedback && quizState.results[index] !== 'correct' && (
+                      <div className="mb-2 p-2 bg-white rounded border border-gray-200">
+                        <p className="text-gray-700 text-sm">
+                          <span className="font-medium">Feedback: </span>
+                          {quizState.feedback[index].feedback}
+                        </p>
+                      </div>
                     )}
-                    </div>
-                 ) : (
-                     <div className="pl-8 text-gray-500 italic">Not answered</div>
-                 )}
+
+                    {/* Always show correct answer, regardless of whether the user was correct */}
+                    <p className="text-sm text-gray-500 mt-2">Correct answer:</p>
+                    <p className="text-green-700 font-medium text-base">{card.answer}</p>
+                  </div>
+                ) : (
+                  <div className="pl-8 text-gray-500 italic">Not answered</div>
+                )}
               </div>
             ))}
           </div>
@@ -588,17 +646,27 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
               <div className={`rounded-lg p-4 border ${
                   quizState.results[quizState.currentIndex] === 'correct'
                     ? 'bg-green-50 border-green-200'
-                    : 'bg-red-50 border-red-200'
+                    : quizState.feedback[quizState.currentIndex]?.isClose
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-red-50 border-red-200'
               }`}>
                  <div className="flex justify-between items-center mb-2">
                     <h3 className={`font-bold text-lg ${
-                        quizState.results[quizState.currentIndex] === 'correct' ? 'text-green-700' : 'text-red-700'
+                        quizState.results[quizState.currentIndex] === 'correct' 
+                          ? 'text-green-700' 
+                          : quizState.feedback[quizState.currentIndex]?.isClose
+                            ? 'text-yellow-700'
+                            : 'text-red-700'
                     }`}>
                         Your Answer:
                     </h3>
                     {quizState.results[quizState.currentIndex] === 'correct' ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                             <Check className="w-4 h-4" /> Correct
+                        </span>
+                    ) : quizState.feedback[quizState.currentIndex]?.isClose ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                            <AlertCircle className="w-4 h-4" /> Close!
                         </span>
                     ) : (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
@@ -608,12 +676,19 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
                 </div>
                 <p className="text-lg text-gray-700 break-words">{quizState.userAnswers[quizState.currentIndex] || "(No answer provided)"}</p>
 
-                 {quizState.results[quizState.currentIndex] === 'incorrect' && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                        <h3 className="font-bold text-lg text-green-700">Correct Answer:</h3>
-                        <p className="text-lg text-gray-700 break-words">{currentCard.answer}</p>
-                    </div>
-                 )}
+                {/* Display feedback if available */}
+                {quizState.feedback[quizState.currentIndex]?.feedback && quizState.results[quizState.currentIndex] !== 'correct' && (
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-gray-700 mb-1">Feedback:</h4>
+                    <p className="text-gray-600">{quizState.feedback[quizState.currentIndex].feedback}</p>
+                  </div>
+                )}
+
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <h3 className="font-bold text-lg text-green-700">Correct Answer:</h3>
+                    <p className="text-lg text-gray-700 break-words">{currentCard.answer}</p>
+                  </div>
+
               </div>
             ) : (
               // Input Section
@@ -632,7 +707,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
                     <button
                     onClick={handleTextCheck}
                     disabled={!userInput.trim()} // Disable if input is empty
-                    className={`w-full bg-[#004a74] text-white py-3 px-fdfs6 rounded-lg hover:bg-[#00659f] transition-colors font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                    className={`w-full bg-[#004a74] text-white py-3 px-6 rounded-lg hover:bg-[#00659f] transition-colors font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed`}
                     >
                     Check Answer
                     </button>
@@ -667,8 +742,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
                  </button>
             ) : (
                 // Placeholder to maintain layout spacing when Check Answer/MC options are shown
-                // Or potentially show a "Skip" button here if desired.
-                 <div className="w-[130px]"></div> // Adjust width to roughly match button size
+                <div className="w-[130px]"></div> // Adjust width to roughly match button size
              )}
 
            {/* Next Button (Always available except on last card if answer not shown) */}

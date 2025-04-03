@@ -74,43 +74,66 @@ export const generateFlashcards = async (req: Request, res: Response) => {
           role: "system",
           content: `You are an expert educator helping to create high-quality, concise flashcards from study notes.
           
-          Guidelines for creating flashcards:
-          - Generate clear, concise, and educational flashcards
-          - Create test-like questions focusing on:
-            * Fill-in-the-blank prompts
-            * Direct recall questions
-            * Key concept identification
-          - Keep answers short and precise
-          - Aim for 5-10 flashcards
-          - ALWAYS provide proper context when mentioning mathematical rules or formulas
-            * For example, instead of simply saying "Apply the power rule," say "Apply the power rule (d/dx of x^n = nx^(n-1))"
-            * When referring to specific rules (like Chain Rule, Product Rule, etc.), always include a brief description or formula
-            * Provide specific context about which function the rule applies to (inner vs outer, numerator vs denominator)
-          
-          Output Format: 
-          Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
-          
-          Example:
-          [
-            {
-              "question": "The process of converting light energy to chemical energy in plants is called ___.",
-              "answer": "photosynthesis"
-            }
-          ]`
+    Guidelines for creating flashcards:
+    - Generate clear, highly concise, and educational flashcards
+    - Create test-like questions focusing on:
+      * Fill-in-the-blank prompts with single terms
+      * Brief, direct recall questions 
+      * Key concept identification
+    - Keep answers extremely concise (1-2 sentences maximum)
+    - Use bullet points for multi-part answers
+    - Remove unnecessary words and focus only on essential information
+    - Adapt the number of flashcards based on the length of the provided notes:
+      * Short notes (under 500 words): 5-8 flashcards
+      * Medium notes (500-1000 words): 8-12 flashcards
+      * Long notes (1000+ words): 12-20 flashcards
+    - ALWAYS provide proper context when mentioning specialized concepts, rules, or formulas
+      * For scientific concepts, include relevant equations or conditions
+      * For historical events, include approximate dates or time periods
+      * For processes or methods, include key steps or components
+      * For relationships between concepts, clearly specify how they connect
+    
+    Output Format: 
+    Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
+    
+    Example:
+    [
+      {
+        "question": "The process of converting light energy to chemical energy in plants is called ___.",
+        "answer": "photosynthesis"
+      }
+    ]`
         },
         {
           role: "user",
           content: `Generate flashcards from the following study notes:
-          ${notes}
-          
-          IMPORTANT: Whenever you reference a mathematical rule (like Power Rule, Chain Rule, Product Rule, etc.), 
-          ALWAYS include its formula and specify exactly which function or part of the expression it applies to.
-          
-          For example:
-          - Instead of just "Apply the Power Rule to differentiate", say "Apply the Power Rule (d/dx of x^n = nx^(n-1)) to the outer function"
-          - Instead of just "Use the Chain Rule", say "Use the Chain Rule (dy/dx = dy/du × du/dx) where u is the inner function"
-          
-          Respond ONLY with a JSON array of flashcard objects. Ensure each has a 'question' and 'answer' key.`
+    ${notes}
+    
+    IMPORTANT: Whenever you reference specialized concepts, rules, or terminology, 
+    ALWAYS include proper context and explanation.
+    
+    For example:
+    - Instead of just "Apply Boyle's Law", say "Apply Boyle's Law (P₁V₁ = P₂V₂ at constant temperature) to predict the new volume"
+    - Instead of just "This shows cognitive dissonance", say "This shows cognitive dissonance (psychological stress from holding contradictory beliefs)"
+    - Instead of just "This uses PCR technique", say "This uses PCR (Polymerase Chain Reaction) technique to amplify DNA sequences"
+    - Instead of just "During the Renaissance period", say "During the Renaissance period (14th-17th centuries in Europe)"
+    
+    Consider the length of the provided notes and create an appropriate number of flashcards:
+    - Aim for approximately 1 flashcard per 100 words of study material
+    - Prioritize the most important concepts if notes are lengthy
+    
+    FORMATTING REQUIREMENTS:
+    - Questions must be under 15 words whenever possible
+    - Answers must be under 20 words whenever possible
+    - Use concise terminology and remove filler words
+    - For multi-part answers, use brief bullet points
+    
+    Focus on concepts that would most likely appear on an exam, including:
+    - Essential definitions (single term preferred)
+    - Critical formulas (in their most compact form)
+    - Key relationships between concepts (expressed concisely)
+    
+    Respond ONLY with a JSON array of flashcard objects. Ensure each has a 'question' and 'answer' key.`
         }
       ]
     });
