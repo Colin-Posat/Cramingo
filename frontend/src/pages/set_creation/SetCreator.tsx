@@ -13,6 +13,7 @@ import {
   Info as InfoIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
+import AIGenerateOverlay from '../../components/AIGenerateOverlay';
 
 // Type definitions
 type Flashcard = {
@@ -53,6 +54,9 @@ const SetCreator: React.FC = () => {
   const [classCodeError, setClassCodeError] = useState('');
   const [flashcardError, setFlashcardError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // New state for AI Generate Overlay
+  const [showAIGenerateOverlay, setShowAIGenerateOverlay] = useState(false);
   
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const classCodeInputRef = useRef<HTMLInputElement>(null);
@@ -355,6 +359,17 @@ const SetCreator: React.FC = () => {
   // Check if there are any non-empty flashcards
   const hasValidContent = flashcards.some(card => card.question.trim() || card.answer.trim());
 
+  // Handler for AI Generated Flashcards
+  const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[]) => {
+    const currentFlashcards = flashcards.filter(card => card.question.trim() || card.answer.trim());
+    const finalFlashcards = currentFlashcards.length === 0 
+      ? generatedFlashcards 
+      : [...currentFlashcards, ...generatedFlashcards];
+
+    setFlashcards(finalFlashcards);
+    setShowAIGenerateOverlay(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -539,10 +554,14 @@ const SetCreator: React.FC = () => {
               </div>
             )}
 
+            {/* AI Generate Button - now opens overlay */}
             <div className="mb-6">
-              <button className="w-full flex items-center justify-center gap-2 
+              <button 
+                onClick={() => setShowAIGenerateOverlay(true)}
+                className="w-full flex items-center justify-center gap-2 
                 bg-blue-100 border-2 border-[#004a74] text-[#004a74] font-bold
-                px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors shadow-md">
+                px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors shadow-md"
+              >
                 <SparklesIcon className="w-6 h-6" />
                 AI Generate Cards
               </button>
@@ -649,6 +668,14 @@ const SetCreator: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Generate Overlay */}
+      {showAIGenerateOverlay && (
+        <AIGenerateOverlay 
+          onClose={() => setShowAIGenerateOverlay(false)}
+          onGenerate={handleAIGeneratedFlashcards}
+        />
+      )}
 
       {showExitModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

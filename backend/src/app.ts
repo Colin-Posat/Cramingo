@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes";
 import setsRoutes from "./routes/setRoutes";
 import distractorRoutes from "./routes/distractorRoutes"; // Import the new distractor routes
 import userRoutes from './routes/userRoutes';
+import genFlashcardsRoutes from './routes/genFlashcardsRoute';
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -29,6 +30,7 @@ app.use("/api/quiz", distractorRoutes); // Add the distractor routes
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);
 app.post("/api/auth/complete-signup", completeSignup);
+app.use('/api/ai', genFlashcardsRoutes);
 
 // app.ts
 

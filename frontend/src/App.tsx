@@ -8,6 +8,7 @@ import ProfilePage from "./pages/dashboard/Profile";
 import SearchSetsPage from "./pages/dashboard/SearchSets";
 import SavedSets from "./pages/dashboard/SavedSets";
 import SetCreator from "./pages/set_creation/SetCreator";
+import AIGeneratePage from "./pages/set_creation/AIGenerateCards"; // Import the new page
 import SetViewingPage from "./pages/set_using/SetViewing";
 import FlashcardViewMode from "./pages/set_using/FlashcardViewMode";
 import QuizViewMode from "./pages/set_using/QuizViewMode";
@@ -26,6 +27,7 @@ const App = () => {
       <Route path="/saved-sets" element={<SavedSets/>} />
       <Route path="/edit-profile" element={<EditProfile/>} />
       <Route path="/set-creator" element={<SetCreator/>} />
+      <Route path="/ai-generate" element={<AIGeneratePage/>} /> {/* New route */}
       <Route path="/study/:setId" element={<SetViewingPage/>} />
       <Route path="/study/:setId/flashcards" element={<FlashcardViewMode/>} />
       <Route path="/study/:setId/quiz" element={<QuizViewMode/>} />
