@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes";
 import setsRoutes from "./routes/setRoutes";
-import distractorRoutes from "./routes/distractorRoutes"; // Import the new distractor routes
+import distractorRoutes from "./routes/distractorRoutes"; // Corrected import name
 import userRoutes from './routes/userRoutes';
 import genFlashcardsRoutes from './routes/genFlashcardsRoute';
 
@@ -25,17 +25,12 @@ app.use(express.json());
 // Route registrations
 app.use("/api/auth", authRoutes);
 app.use("/api/sets", setsRoutes);
-app.use("/api/quiz", distractorRoutes); // Add the distractor routes
+app.use("/api/quiz", distractorRoutes); // Using correct variable name
+app.use('/api/user', userRoutes);
+app.use('/api/ai', genFlashcardsRoutes);
 
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);
 app.post("/api/auth/complete-signup", completeSignup);
-app.use('/api/ai', genFlashcardsRoutes);
-
-// app.ts
-
-
-// Add this line along with your other route definitions
-app.use('/api/user', userRoutes);
 
 export default app;

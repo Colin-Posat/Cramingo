@@ -18,20 +18,23 @@ router.post('/generate-distractors', async (req: Request, res: Response) => {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that generates plausible but incorrect multiple-choice answers."
+          content: "You are an expert in educational assessment who specializes in creating high-quality, unambiguously incorrect distractors for multiple-choice questions."
         },
         {
           role: "user",
           content: `Generate ${numberOfDistractors} distractors for a multiple-choice question.
-          
+                      
           Question: ${question}
           Correct Answer: ${correctAnswer}
-          
+                      
           Guidelines:
-          - Create plausible but incorrect answers
-          - Ensure distractors are related to the topic
-          - Make sure they're not obviously wrong
-          - Avoid repeating the correct answer
+          - Create distractors that are unambiguously incorrect but still plausible enough to tempt someone with incomplete knowledge
+          - Analyze the correct answer and question carefully to identify common misconceptions or partial understandings
+          - Ensure distractors target specific misunderstandings related to the core concept being tested
+          - Use the same level of vocabulary, technical terminology, and sentence structure as the correct answer
+          - Avoid distractors that could be argued as partially correct in any reasonable interpretation
+          - Make sure distractors represent mutually exclusive alternatives to the correct answer
+          - Each distractor should be believable to someone who doesn't fully understand the material
           
           Return the distractors as a JSON object with a 'distractors' key containing an array of strings.`
         }

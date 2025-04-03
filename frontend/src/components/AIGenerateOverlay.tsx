@@ -15,11 +15,17 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const [inputNotes, setInputNotes] = useState<string>('');
   const [notesError, setNotesError] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const MAX_CHARACTERS = 2000;
+  const MIN_CHARACTERS = 100;
+  const MAX_CHARACTERS = 10000;
 
   const generateFlashcardsWithAI = async () => {
     if (!inputNotes.trim()) {
       setNotesError("Please provide some notes to generate flashcards");
+      return;
+    }
+
+    if (inputNotes.trim().length < MIN_CHARACTERS) {
+      setNotesError(`Please provide at least ${MIN_CHARACTERS} characters of notes for better results`);
       return;
     }
 
@@ -120,10 +126,12 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
                 const newValue = e.target.value;
                 if (newValue.length <= MAX_CHARACTERS) {
                   setInputNotes(newValue);
-                  setNotesError('');
+                  if (newValue.trim().length >= MIN_CHARACTERS || newValue.trim().length === 0) {
+                    setNotesError('');
+                  }
                 }
               }}
-              placeholder="Paste or type your study notes here. The more detailed, the better the flashcards!"
+              placeholder="Paste or type your study notes here (minimum 100 characters). The more detailed, the better the flashcards!"
               className={`w-full min-h-[300px] p-4 text-base rounded-lg border 
                 focus:outline-none focus:ring-2 transition-all resize-none
                 ${notesError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
@@ -136,8 +144,13 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
                   {notesError}
                 </div>
               )}
-              <div className="ml-auto">
-                {inputNotes.length} / {MAX_CHARACTERS} characters
+              <div className="ml-auto flex items-center">
+                <span className={inputNotes.length > 0 && inputNotes.length < MIN_CHARACTERS ? "text-amber-600" : "text-gray-500"}>
+                  {inputNotes.length}
+                </span>
+                <span className="mx-1">/</span>
+                <span>{MAX_CHARACTERS}</span>
+                <span className="ml-1">characters</span>
               </div>
             </div>
           </div>
@@ -148,8 +161,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
             className={`w-full flex items-center justify-center gap-2 
               bg-[#004a74] text-white font-bold
               px-6 py-3 rounded-lg hover:bg-[#00659f] transition-colors shadow-md
-              ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={isGenerating}
+              ${(isGenerating || inputNotes.trim().length < MIN_CHARACTERS) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isGenerating || inputNotes.trim().length < MIN_CHARACTERS}
           >
             {isGenerating ? (
               <>
@@ -171,7 +184,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
               <div>
                 <h3 className="font-medium text-[#004a74]">How AI Generation Works</h3>
                 <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
-                  <li>Paste your study notes in the text area</li>
+                  <li>Paste your study notes in the text area ({MIN_CHARACTERS}-{MAX_CHARACTERS} characters)</li>
                   <li>Our AI will analyze the notes and generate potential flashcards</li>
                   <li>You can edit the generated flashcards before saving</li>
                 </ul>

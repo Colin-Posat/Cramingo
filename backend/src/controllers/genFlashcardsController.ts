@@ -1,8 +1,8 @@
-import OpenAI from 'openai'; 
+import OpenAI from 'openai';
 import { Request, Response } from 'express';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY 
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 export const generateFlashcards = async (req: Request, res: Response) => {
@@ -21,8 +21,52 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     if (!notes || notes.trim().length === 0) {
       return res.status(400).json({ message: 'No notes provided' });
     }
+
+    // First, check if the input is valid educational content that can be turned into flashcards
+    const validationCheck = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert educator evaluating if text can be used to create educational flashcards. 
+          Respond only with a JSON object with two fields:
+          - "valid": boolean (true if input can be turned into flashcards, false otherwise)
+          - "reason": string (explanation why the input is not valid, only if valid is false)
+          
+          Valid inputs are educational content, lecture notes, textbook excerpts, study materials, etc.
+          Invalid inputs include:
+          - Random gibberish or nonsense text
+          - Content with no educational value
+          - Extremely short or vague content with insufficient information
+          - Non-educational content like shopping lists, chat logs, etc.
+          
+          Note: For mathematical content, ensure it's complete enough to create contextual flashcards that explain rules with their formulas and applications.`
+        },
+        {
+          role: "user",
+          content: notes
+        }
+      ]
+    });
+
+    // Parse validation result
+    let validationResult;
+    try {
+      validationResult = JSON.parse(validationCheck.choices[0].message.content || '{"valid": false, "reason": "Could not validate input"}');
+    } catch (parseError) {
+      // If parsing fails, assume the input was invalid
+      validationResult = { valid: false, reason: "Could not validate input format" };
+    }
+
+    // If input is not valid educational content, return early with an error
+    if (!validationResult.valid) {
+      return res.status(400).json({ 
+        message: 'Cannot generate flashcards from this input',
+        reason: validationResult.reason
+      });
+    }
     
-    // Prompt for generating flashcards
+    // If input is valid, proceed with flashcard generation
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -38,6 +82,10 @@ export const generateFlashcards = async (req: Request, res: Response) => {
             * Key concept identification
           - Keep answers short and precise
           - Aim for 5-10 flashcards
+          - ALWAYS provide proper context when mentioning mathematical rules or formulas
+            * For example, instead of simply saying "Apply the power rule," say "Apply the power rule (d/dx of x^n = nx^(n-1))"
+            * When referring to specific rules (like Chain Rule, Product Rule, etc.), always include a brief description or formula
+            * Provide specific context about which function the rule applies to (inner vs outer, numerator vs denominator)
           
           Output Format: 
           Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
@@ -54,6 +102,13 @@ export const generateFlashcards = async (req: Request, res: Response) => {
           role: "user",
           content: `Generate flashcards from the following study notes:
           ${notes}
+          
+          IMPORTANT: Whenever you reference a mathematical rule (like Power Rule, Chain Rule, Product Rule, etc.), 
+          ALWAYS include its formula and specify exactly which function or part of the expression it applies to.
+          
+          For example:
+          - Instead of just "Apply the Power Rule to differentiate", say "Apply the Power Rule (d/dx of x^n = nx^(n-1)) to the outer function"
+          - Instead of just "Use the Chain Rule", say "Use the Chain Rule (dy/dx = dy/du × du/dx) where u is the inner function"
           
           Respond ONLY with a JSON array of flashcard objects. Ensure each has a 'question' and 'answer' key.`
         }
@@ -100,7 +155,7 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     
     if (validFlashcards.length === 0) {
       return res.status(400).json({
-        message: 'No valid flashcards could be generated'
+        message: 'No valid flashcards could be generated. Please provide more structured educational content.'
       });
     }
     
