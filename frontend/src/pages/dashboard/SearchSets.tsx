@@ -130,7 +130,7 @@ const SearchSetsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <div className="container mx-auto px-4 pt-24 pb-12">
-        <div className="max-w-3xl mx-auto overflow-visible">
+        <div className="max-w-5xl mx-auto overflow-visible">
           {/* Main container with shadow and rounded corners */}
           <div className="bg-white rounded-xl shadow-lg overflow-visible">
             {/* Header - Note: no rounded corners here, let parent handle it */}
