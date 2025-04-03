@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
+import {
   ChevronLeft as ChevronLeftIcon,
   Edit3 as Edit3Icon,
   AlertCircle as AlertCircleIcon,
   ChevronDown as ChevronDownIcon,
   Book as BookIcon,
-  ClipboardList as ClipboardListIcon
+  ClipboardList as ClipboardListIcon,
+  Info as InfoIcon
 } from 'lucide-react';
-import NavBar from '../../components/NavBar'; // Adjust the import path as needed
+import NavBar from '../../components/NavBar';
 
 // Type definitions
 type Flashcard = {
@@ -35,6 +36,10 @@ const SetViewingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'flashcards' | 'quiz'>('flashcards');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [showInfo, setShowInfo] = useState(() => {
+    // Check localStorage for user preference
+    return localStorage.getItem('hideViewerInfoTips') !== 'true';
+  });
 
   useEffect(() => {
     const fetchFlashcardSet = async () => {
@@ -46,13 +51,13 @@ const SetViewingPage: React.FC = () => {
         const userId = user.id || user.uid;
         
         if (!userId) {
-          setError("User not authenticated");
+          setError("User not authenticated. Please log in to view flashcard sets.");
           setLoading(false);
           return;
         }
         
         if (!setId) {
-          setError("No flashcard set ID provided");
+          setError("No flashcard set ID provided. Please select a valid set.");
           setLoading(false);
           return;
         }
@@ -74,11 +79,11 @@ const SetViewingPage: React.FC = () => {
             setFlashcardSet(data);
           } catch (parseError) {
             console.error('Error parsing response:', parseError);
-            setError("Invalid data format received from server");
+            setError("Invalid data format received from server. Please try again later.");
           }
         } catch (fetchError) {
           console.error('Fetch error:', fetchError);
-          setError("Failed to load flashcard set. Please check your connection.");
+          setError("Failed to load flashcard set. Please check your connection and try again.");
         }
       } catch (error) {
         console.error('Error in fetchFlashcardSet:', error);
@@ -171,144 +176,202 @@ const SetViewingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-
+      
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="flex justify-between items-center mb-6">
           <button 
             onClick={() => navigate('/created-sets')}
-            className="flex items-center text-sm text-[#004a74] hover:underline"
+            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
           >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets 
+            <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets
           </button>
           
           <button 
             onClick={handleEditSet}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white border border-[#004a74] hover:bg-blue-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white shadow-sm border border-[#004a74]/50 hover:bg-blue-50 transition-colors"
           >
             <Edit3Icon className="w-5 h-5" /> Edit Set
           </button>
         </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-[#004a74]">
-              {flashcardSet.title}
-            </h1>
-            <span className="bg-[#e3f3ff] text-[#004a74] px-4 py-2 rounded-lg border border-[#004a74] font-medium">
-              {flashcardSet.classCode}
-            </span>
+        
+        {/* Set Info Card */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+          {/* Header */}
+          <div className="bg-[#004a74] text-white p-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold">{flashcardSet.title}</h1>
+              <span className="bg-white text-[#004a74] px-4 py-2 rounded-lg font-medium">
+                {flashcardSet.classCode}
+              </span>
+            </div>
+            <p className="mt-2 opacity-80">
+              {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
+            </p>
           </div>
-
-          {/* View Mode Buttons */}
-          <div className="flex justify-center mb-6 gap-4">
-            <button
-              onClick={navigateToFlashcardView}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all 
-              ${viewMode === 'flashcards'
-                  ? 'bg-[#004a74] text-white shadow-lg'
-                  : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
-              } group flex items-center justify-center gap-2`}
-            >
-              <BookIcon className={`w-5 h-5 transition-transform 
-                ${viewMode === 'flashcards' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
-              View Flashcards
-            </button>
-            
-            <button 
-              onClick={navigateToQuizView}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all 
-                ${viewMode === 'quiz' 
-                  ? 'bg-[#004a74] text-white shadow-lg' 
-                  : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
-                } group flex items-center justify-center gap-2`}
-            >
-              <ClipboardListIcon className={`w-5 h-5 transition-transform 
-                ${viewMode === 'quiz' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
-              Take Quiz
-            </button>
-          </div>
-
-          {/* Flashcards */}
-          <div className="space-y-6">
-            {flashcardSet.flashcards.length === 0 ? (
-              <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
-                <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
-                <button 
-                  onClick={handleEditSet}
-                  className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
-                >
-                  Add Flashcards
-                </button>
+          
+          {/* Info Panel - collapsible */}
+          {showInfo && (
+            <div className="bg-[#e3f3ff] p-4 flex items-start gap-3 border-b border-[#004a74]/20">
+              <InfoIcon className="w-5 h-5 text-[#004a74] mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-[#004a74] font-medium">
+                  What would you like to do with this set?
+                </p>
+                <p className="text-sm text-[#004a74]/80 mt-1">
+                  • View all flashcards in the default view below<br />
+                  • Start a flashcard study session with the "Study Flashcards" button<br />
+                  • Test your knowledge with the "Take Quiz" button
+                </p>
+                <div className="mt-3 flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="dontShowAgainViewer" 
+                    className="h-4 w-4 text-[#004a74] rounded border-gray-300"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        localStorage.setItem('hideViewerInfoTips', 'true');
+                      } else {
+                        localStorage.removeItem('hideViewerInfoTips');
+                      }
+                    }}
+                  />
+                  <label htmlFor="dontShowAgainViewer" className="ml-2 text-xs text-[#004a74]/80">
+                    Don't show this tip again
+                  </label>
+                </div>
               </div>
-            ) : (
-              flashcardSet.flashcards.map((card, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
-                >
-                  <div className="bg-[#004a74] text-white px-6 py-4 flex items-center justify-between">
-                    <span className="text-xl font-bold">Card {index + 1}</span>
+              <button 
+                onClick={() => setShowInfo(false)}
+                className="text-[#004a74] hover:bg-[#004a74]/10 p-1 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          
+          {/* View Mode Buttons */}
+          <div className="p-6">
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={navigateToFlashcardView}
+                className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all
+                  ${viewMode === 'flashcards'
+                    ? 'bg-[#004a74] text-white shadow-lg'
+                    : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
+                  } group flex items-center justify-center gap-2`}
+              >
+                <BookIcon className={`w-5 h-5 transition-transform 
+                  ${viewMode === 'flashcards' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
+                <span>Study Flashcards</span>
+              </button>
+              
+              <button 
+                onClick={navigateToQuizView}
+                className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all
+                  ${viewMode === 'quiz'
+                    ? 'bg-[#004a74] text-white shadow-lg'
+                    : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
+                  } group flex items-center justify-center gap-2`}
+              >
+                <ClipboardListIcon className={`w-5 h-5 transition-transform
+                  ${viewMode === 'quiz' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
+                <span>Take Quiz</span>
+              </button>
+            </div>
+          </div>
+        </div>
+            
+        {/* Section Title */}
+        <h2 className="text-2xl font-bold text-[#004a74] mb-4 ml-1">
+          All Flashcards ({flashcardSet.flashcards.length})
+        </h2>
+
+        {/* Flashcards */}
+        <div className="space-y-6">
+          {flashcardSet.flashcards.length === 0 ? (
+            <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
+              <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
+              <button 
+                onClick={handleEditSet}
+                className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
+              >
+                Add Flashcards
+              </button>
+            </div>
+          ) : (
+            flashcardSet.flashcards.map((card, index) => (
+              <div 
+                key={index}
+                className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="bg-[#004a74] text-white px-6 py-3 flex items-center justify-between">
+                  <span className="font-bold">Card {index + 1}</span>
+                </div>
+                <div className="p-6 grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
+                      <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
+                      Question
+                    </h3>
+                    <div
+                      className={`
+                        bg-gray-50 p-4 rounded-lg border border-gray-200
+                        ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
+                      `}
+                    >
+                      <p className="text-gray-800">{card.question || "No question provided"}</p>
+                      {!expandedCards.has(index) && card.question.length > 200 && (
+                        <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
+                      )}
+                    </div>
+                    {card.question.length > 200 && (
+                      <button 
+                        onClick={() => toggleCardExpansion(index)}
+                        className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
+                      >
+                        <ChevronDownIcon 
+                          className={`w-5 h-5 transition-transform ${
+                            expandedCards.has(index) ? 'rotate-180' : ''
+                          }`}
+                        />
+                        {expandedCards.has(index) ? 'Collapse' : 'Show More'}
+                      </button>
+                    )}
                   </div>
-                  <div className="p-6 grid md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#004a74] mb-3">Question</h3>
-                      <div 
-                        className={`
-                          bg-gray-50 p-4 rounded-lg border border-gray-200 
-                          ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
-                        `}
-                      >
-                        <p className="text-gray-800">{card.question || "No question provided"}</p>
-                        {!expandedCards.has(index) && card.question.length > 200 && (
-                          <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
-                        )}
-                      </div>
-                      {card.question.length > 200 && (
-                        <button 
-                          onClick={() => toggleCardExpansion(index)}
-                          className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
-                        >
-                          <ChevronDownIcon 
-                            className={`w-5 h-5 transition-transform ${
-                              expandedCards.has(index) ? 'rotate-180' : ''
-                            }`} 
-                          />
-                          {expandedCards.has(index) ? 'Collapse' : 'Expand'}
-                        </button>
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
+                      <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
+                      Answer
+                    </h3>
+                    <div
+                      className={`
+                        bg-gray-50 p-4 rounded-lg border border-gray-200
+                        ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
+                      `}
+                    >
+                      <p className="text-gray-800">{card.answer || "No answer provided"}</p>
+                      {!expandedCards.has(index) && card.answer.length > 200 && (
+                        <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
                       )}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#004a74] mb-3">Answer</h3>
-                      <div 
-                        className={`
-                          bg-gray-50 p-4 rounded-lg border border-gray-200 
-                          ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
-                        `}
+                    {card.answer.length > 200 && (
+                      <button 
+                        onClick={() => toggleCardExpansion(index)}
+                        className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
                       >
-                        <p className="text-gray-800">{card.answer || "No answer provided"}</p>
-                        {!expandedCards.has(index) && card.answer.length > 200 && (
-                          <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
-                        )}
-                      </div>
-                      {card.answer.length > 200 && (
-                        <button 
-                          onClick={() => toggleCardExpansion(index)}
-                          className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
-                        >
-                          <ChevronDownIcon 
-                            className={`w-5 h-5 transition-transform ${
-                              expandedCards.has(index) ? 'rotate-180' : ''
-                            }`} 
-                          />
-                          {expandedCards.has(index) ? 'Collapse' : 'Expand'}
-                        </button>
-                      )}
-                    </div>
+                        <ChevronDownIcon 
+                          className={`w-5 h-5 transition-transform ${
+                            expandedCards.has(index) ? 'rotate-180' : ''
+                          }`}
+                        />
+                        {expandedCards.has(index) ? 'Collapse' : 'Show More'}
+                      </button>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

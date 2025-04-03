@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  User as UserIcon, 
+  BookOpen as BookOpenIcon,
+  School as SchoolIcon,
+  Mail as MailIcon,
+  Heart as HeartIcon,
+  Edit as EditIcon,
+  LogOut as LogOutIcon,
+  AlertCircle as AlertCircleIcon
+} from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
 interface UserProfile {
@@ -13,29 +23,32 @@ interface UserProfile {
 
 const ProfilePage: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    username: 'Loading...',
+    username: '',
     likes: 0,
-    university: 'Loading...',
-    fieldOfStudy: 'Loading...'
+    university: '',
+    fieldOfStudy: ''
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileDataSource, setProfileDataSource] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        // Get the user data from localStorage first for the user ID
+        setIsLoading(true);
+        setError(null);
+        
+        // Get user data from localStorage first
         const storedUser = localStorage.getItem('user');
         if (!storedUser) {
-          setError('Not authenticated. Please log in.');
+          setError('Not authenticated. Please log in to view your profile.');
           setIsLoading(false);
           return;
         }
 
         // Parse stored user data
         const userData = JSON.parse(storedUser);
-        console.log('Using stored user data:', userData);
         if (!userData) {
           setError('Invalid user data. Please log in again.');
           setIsLoading(false);
@@ -43,165 +56,41 @@ const ProfilePage: React.FC = () => {
         }
 
         // Set initial profile data from localStorage as a fallback
-        const localStorageUsername = userData.username && userData.username.trim() !== '' 
-          ? userData.username.trim() 
-          : 'No username';
-          
+        const localStorageUsername = userData.username?.trim() || 'Anonymous User';
+        
+        // Set initial profile from localStorage
         setUserProfile({
           username: localStorageUsername,
           likes: userData.likes ?? 0,
-          university: userData.university || 'No university',
-          fieldOfStudy: userData.fieldOfStudy || 'No field of study',
+          university: userData.university || 'Not specified',
+          fieldOfStudy: userData.fieldOfStudy || 'Not specified',
           email: userData.email,
           uid: userData.uid
         });
-
-        // First try to get data directly from Firestore through your API
+        
+        setProfileDataSource('localStorage');
+        
+        // Try to fetch the latest profile data from Firestore
         try {
-          // This endpoint should fetch the user document directly from Firestore
           const response = await fetch('http://localhost:6500/api/user/firestore-profile', {
             method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
           });
 
           if (response.ok) {
             const data = await response.json();
-            console.log('Firestore profile data:', data);
-            
-            // Update profile with Firestore data
-            setUserProfile(prev => ({
-              ...prev,
-              username: data.username || prev.username,
-              likes: data.likes ?? prev.likes,
-              university: data.university || prev.university,
-              fieldOfStudy: data.fieldOfStudy || prev.fieldOfStudy,
-              email: data.email || prev.email,
-              uid: data.uid || prev.uid
-            }));
-            
-            // Also update localStorage with the Firestore data
-            const updatedUserData = {
-              ...userData,
-              username: data.username || userData.username,
-              likes: data.likes ?? userData.likes,
-              university: data.university || userData.university,
-              fieldOfStudy: data.fieldOfStudy || userData.fieldOfStudy,
-              email: data.email || userData.email,
-              uid: data.uid || userData.uid
-            };
-            
-            console.log('Updating localStorage with Firestore data:', updatedUserData);
-            localStorage.setItem('user', JSON.stringify(updatedUserData));
+            updateProfileData(data, 'Firestore', userData);
           } else {
-            console.warn('Could not fetch Firestore profile data, falling back to API');
-            
-            // Fall back to the regular profile API if Firestore endpoint fails
-            const fallbackResponse = await fetch('http://localhost:6500/api/user/profile', {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              credentials: 'include'
-            });
-
-            if (fallbackResponse.ok) {
-              const fallbackData = await fallbackResponse.json();
-              console.log('Fallback profile data from API:', fallbackData);
-              
-              // Get username from Firestore via your user ID if available
-              const firebaseUserId = userData.uid || fallbackData.uid;
-              if (firebaseUserId) {
-                try {
-                  // Try to get specific user document by ID
-                  const userDocResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}`, {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
-                  });
-                  
-                  if (userDocResponse.ok) {
-                    const userDocData = await userDocResponse.json();
-                    console.log('User document data:', userDocData);
-                    
-                    // Use Firestore username if available
-                    const firestoreUsername = userDocData.username && userDocData.username.trim() !== ''
-                      ? userDocData.username
-                      : fallbackData.username && fallbackData.username.trim() !== ''
-                        ? fallbackData.username
-                        : localStorageUsername;
-                        
-                    setUserProfile(prev => ({
-                      ...prev,
-                      username: firestoreUsername,
-                      likes: userDocData.likes ?? fallbackData.likes ?? prev.likes,
-                      university: userDocData.university || fallbackData.university || prev.university,
-                      fieldOfStudy: userDocData.fieldOfStudy || fallbackData.fieldOfStudy || prev.fieldOfStudy,
-                      email: userDocData.email || fallbackData.email || prev.email
-                    }));
-                    
-                    // Update localStorage
-                    const updatedUserData = {
-                      ...userData,
-                      username: firestoreUsername,
-                      likes: userDocData.likes ?? fallbackData.likes ?? userData.likes,
-                      university: userDocData.university || fallbackData.university || userData.university,
-                      fieldOfStudy: userDocData.fieldOfStudy || fallbackData.fieldOfStudy || userData.fieldOfStudy,
-                      email: userDocData.email || fallbackData.email || userData.email
-                    };
-                    
-                    console.log('Updating localStorage with user document data:', updatedUserData);
-                    localStorage.setItem('user', JSON.stringify(updatedUserData));
-                  } else {
-                    // If we can't get the Firestore document, use the fallback data
-                    const updatedUsername = fallbackData.username && fallbackData.username.trim() !== ''
-                      ? fallbackData.username
-                      : localStorageUsername;
-                      
-                    setUserProfile(prev => ({
-                      ...prev,
-                      username: updatedUsername,
-                      likes: fallbackData.likes ?? prev.likes,
-                      university: fallbackData.university || prev.university,
-                      fieldOfStudy: fallbackData.fieldOfStudy || prev.fieldOfStudy,
-                      email: fallbackData.email || prev.email
-                    }));
-                    
-                    // Update localStorage
-                    const updatedUserData = {
-                      ...userData,
-                      username: updatedUsername,
-                      likes: fallbackData.likes ?? userData.likes,
-                      university: fallbackData.university || userData.university,
-                      fieldOfStudy: fallbackData.fieldOfStudy || userData.fieldOfStudy,
-                      email: fallbackData.email || userData.email
-                    };
-                    
-                    localStorage.setItem('user', JSON.stringify(updatedUserData));
-                  }
-                } catch (userDocError) {
-                  console.error('Error fetching user document:', userDocError);
-                  // Continue with fallback data
-                  handleFallbackData(fallbackData, localStorageUsername, userData);
-                }
-              } else {
-                // No user ID available, use fallback data
-                handleFallbackData(fallbackData, localStorageUsername, userData);
-              }
-            } else {
-              console.warn('Could not fetch profile from any API');
-              // Keep using localStorage data
-            }
+            // Try fallback API
+            await fetchFromFallbackAPI(userData, localStorageUsername);
           }
         } catch (apiError) {
           console.error('API fetch error:', apiError);
-          // Continue with stored data
+          // Continue using localStorage data
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       } catch (error) {
         console.error('Error processing user profile:', error);
         setError('Failed to load profile. Please try again later.');
@@ -209,33 +98,85 @@ const ProfilePage: React.FC = () => {
       }
     };
 
-    // Helper function to handle fallback data
-    const handleFallbackData = (
-      fallbackData: any, 
-      localStorageUsername: string, 
-      userData: any
+    // Fetch data from fallback API
+    const fetchFromFallbackAPI = async (userData: any, localStorageUsername: string) => {
+      try {
+        const fallbackResponse = await fetch('http://localhost:6500/api/user/profile', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          
+          // Try to get user document by ID if available
+          const firebaseUserId = userData.uid || fallbackData.uid;
+          if (firebaseUserId) {
+            try {
+              const userDocResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+              
+              if (userDocResponse.ok) {
+                const userDocData = await userDocResponse.json();
+                updateProfileData(userDocData, 'User document', userData, fallbackData);
+              } else {
+                // Use fallback API data
+                updateProfileData(fallbackData, 'Fallback API', userData);
+              }
+            } catch (userDocError) {
+              console.error('Error fetching user document:', userDocError);
+              // Use fallback API data
+              updateProfileData(fallbackData, 'Fallback API', userData);
+            }
+          } else {
+            // No user ID available, use fallback data
+            updateProfileData(fallbackData, 'Fallback API', userData);
+          }
+        }
+      } catch (error) {
+        console.error('Error in fallback API:', error);
+      }
+    };
+
+    // Helper function to update profile data
+    const updateProfileData = (
+      newData: any, 
+      source: string, 
+      userData: any, 
+      fallbackData?: any
     ) => {
-      const updatedUsername = fallbackData.username && fallbackData.username.trim() !== ''
-        ? fallbackData.username
-        : localStorageUsername;
-        
+      // Determine the best username from available sources
+      const updatedUsername = newData.username?.trim() || 
+                             fallbackData?.username?.trim() || 
+                             userData.username?.trim() || 
+                             'Anonymous User';
+      
+      // Update profile with the new data
       setUserProfile(prev => ({
         ...prev,
         username: updatedUsername,
-        likes: fallbackData.likes ?? prev.likes,
-        university: fallbackData.university || prev.university,
-        fieldOfStudy: fallbackData.fieldOfStudy || prev.fieldOfStudy,
-        email: fallbackData.email || prev.email
+        likes: newData.likes ?? fallbackData?.likes ?? prev.likes,
+        university: newData.university || fallbackData?.university || prev.university,
+        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || prev.fieldOfStudy,
+        email: newData.email || fallbackData?.email || prev.email,
+        uid: newData.uid || fallbackData?.uid || prev.uid
       }));
       
-      // Update localStorage
+      setProfileDataSource(source);
+      
+      // Update localStorage with the latest data
       const updatedUserData = {
         ...userData,
         username: updatedUsername,
-        likes: fallbackData.likes ?? userData.likes,
-        university: fallbackData.university || userData.university,
-        fieldOfStudy: fallbackData.fieldOfStudy || userData.fieldOfStudy,
-        email: fallbackData.email || userData.email
+        likes: newData.likes ?? fallbackData?.likes ?? userData.likes,
+        university: newData.university || fallbackData?.university || userData.university,
+        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || userData.fieldOfStudy,
+        email: newData.email || fallbackData?.email || userData.email,
+        uid: newData.uid || fallbackData?.uid || userData.uid
       };
       
       localStorage.setItem('user', JSON.stringify(updatedUserData));
@@ -253,36 +194,57 @@ const ProfilePage: React.FC = () => {
     navigate('/login');
   };
 
-  if (isLoading && userProfile.username === 'Loading...') {
+  const handleRefresh = () => {
+    setIsLoading(true);
+    window.location.reload();
+  };
+
+  // Loading state
+  if (isLoading && !userProfile.username) {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-12 text-center">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74] mb-4"></div>
+              <p className="text-lg text-[#004a74]">Loading your profile...</p>
+              <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
             </div>
-            <p className="text-xl mt-4 text-[#004a74]">Loading profile...</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-12 text-center">
-            <div className="text-red-500 text-5xl mb-4">⚠️</div>
-            <p className="text-xl text-red-500 mb-6">{error}</p>
-            <button 
-              onClick={() => navigate('/login')} 
-              className="px-6 py-3 bg-[#004a74] text-white font-medium rounded-xl hover:bg-[#00659f] transition-all"
-            >
-              Go to Login
-            </button>
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <AlertCircleIcon className="h-8 w-8 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Profile</h2>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button 
+                  onClick={handleRefresh} 
+                  className="px-6 py-3 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition-all"
+                >
+                  Try Again
+                </button>
+                <button 
+                  onClick={() => navigate('/login')} 
+                  className="px-6 py-3 bg-[#004a74] text-white font-medium rounded-xl hover:bg-[#00659f] transition-all"
+                >
+                  Go to Login
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -295,39 +257,98 @@ const ProfilePage: React.FC = () => {
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Header Section */}
-          <div className="bg-[#004a74] text-white p-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">{userProfile.username}</h1>
-            <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-              <span className="text-xl">❤️</span>
-              <span className="font-bold">{userProfile.likes}</span>
+          <div className="bg-[#004a74] text-white p-8 relative">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-white/30 mb-4">
+                <UserIcon className="h-10 w-10" />
+              </div>
+              <h1 className="text-3xl font-bold mb-2">{userProfile.username}</h1>
+              <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
+                <HeartIcon className="h-5 w-5 text-pink-200" />
+                <span className="font-bold">{userProfile.likes}</span>
+                <span className="text-sm opacity-80">likes</span>
+              </div>
+              
+              {/* Data source indicator - only show for server sources */}
+              {profileDataSource && profileDataSource !== 'localStorage' && (
+                <div className="absolute bottom-2 right-2 text-xs opacity-60">
+                  Data source: {profileDataSource}
+                </div>
+              )}
             </div>
           </div>
           
           {/* Content Section */}
           <div className="p-8">
             <div className="space-y-4 mb-8">
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">University</h3>
-                <p className="text-lg font-semibold text-[#004a74]">{userProfile.university}</p>
+              {/* University */}
+              <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <SchoolIcon className="h-5 w-5 text-[#004a74]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">University</h3>
+                    <p className="text-lg font-semibold text-[#004a74]">{userProfile.university}</p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Field of Study</h3>
-                <p className="text-lg font-semibold text-[#004a74]">{userProfile.fieldOfStudy}</p>
+              
+              {/* Field of Study */}
+              <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <BookOpenIcon className="h-5 w-5 text-[#004a74]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Field of Study</h3>
+                    <p className="text-lg font-semibold text-[#004a74]">{userProfile.fieldOfStudy}</p>
+                  </div>
+                </div>
               </div>
+              
+              {/* Email (if available) */}
+              {userProfile.email && (
+                <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-start">
+                    <div className="mr-3 mt-1">
+                      <MailIcon className="h-5 w-5 text-[#004a74]" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
+                      <p className="text-lg font-semibold text-[#004a74]">{userProfile.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+            
             {/* Action Buttons */}
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleEditProfile}
                 className="w-full bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] transition-all flex items-center justify-center gap-2"
               >
+                <EditIcon className="h-5 w-5" />
                 Edit Profile
               </button>
               <button
                 onClick={handleSignOut}
-                className="w-full bg-white border border-[#004a74] text-[#004a74] font-bold py-3 px-6 rounded-xl hover:bg-gray-50 transition-all"
+                className="w-full bg-white border border-[#004a74] text-[#004a74] font-bold py-3 px-6 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
               >
+                <LogOutIcon className="h-5 w-5" />
                 Sign Out
+              </button>
+            </div>
+            
+            {/* Last refresh time indicator */}
+            <div className="mt-6 text-center text-xs text-gray-500">
+              Last updated: {new Date().toLocaleTimeString()}
+              <button 
+                onClick={handleRefresh}
+                className="ml-2 text-[#004a74] hover:underline"
+              >
+                Refresh
               </button>
             </div>
           </div>

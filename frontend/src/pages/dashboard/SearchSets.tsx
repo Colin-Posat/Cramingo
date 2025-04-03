@@ -143,7 +143,7 @@ const SearchSetsPage: React.FC = () => {
                   } rounded-lg focus:outline-none focus:ring-2 transition-all ${
                     errorMessage ? 'focus:ring-[#e53935]/20' : 'focus:ring-[#004a74]/20'
                   }`}
-                  placeholder={isLoadingCodes ? "Loading class codes..." : "Enter Class Code"}
+                  placeholder={isLoadingCodes ? "Loading class codes..." : "Enter Class Code eg. CSE101"}
                   value={searchTerm}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}

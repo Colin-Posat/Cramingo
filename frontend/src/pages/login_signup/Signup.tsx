@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
+import { AlertCircle as AlertCircleIcon } from "lucide-react";
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -40,9 +41,16 @@ const Signup: React.FC = () => {
       setError("Password must be at least 6 characters");
       return;
     }
+
+    if (!username.trim()) {
+      setError("Username cannot be empty");
+      return;
+    }
   
     try {
       setLoading(true);
+      
+      // Proceed with signup without username check
       const response = await fetch("http://localhost:6500/api/auth/signup-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,7 +67,6 @@ const Signup: React.FC = () => {
           username: username.trim(), // Make sure to trim whitespace
           email: email,
           likes: 0,
-          university: '',
           fieldOfStudy: '',
           uid: data.uid || '' // If your API returns a user ID
         };
@@ -91,7 +98,8 @@ const Signup: React.FC = () => {
         </h1>
         
         {error && (
-          <p className="text-[#e53935] text-sm my-2 p-2 bg-[rgba(229,57,53,0.1)] rounded-md w-full">
+          <p className="text-[#e53935] text-sm my-2 p-2 bg-[rgba(229,57,53,0.1)] rounded-md w-full flex items-center">
+            <AlertCircleIcon className="w-4 h-4 mr-2 flex-shrink-0" />
             {error}
           </p>
         )}

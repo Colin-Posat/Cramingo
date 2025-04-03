@@ -5,7 +5,12 @@ import {
   Plus as PlusIcon,
   ChevronLeft as ChevronLeftIcon,
   Sparkles as SparklesIcon,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  Save as SaveIcon,
+  Globe as GlobeIcon,
+  Lock as LockIcon,
+  Check as CheckIcon,
+  Info as InfoIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -38,11 +43,16 @@ const SetCreator: React.FC = () => {
   const [showExitModal, setShowExitModal] = useState(false);
   const [exitDestination, setExitDestination] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showInfoTips, setShowInfoTips] = useState(() => {
+    // Check localStorage for user preference
+    return localStorage.getItem('hideCreatorInfoTips') !== 'true';
+  });
   
-  // New state for error messages
+  // State for error messages
   const [titleError, setTitleError] = useState('');
   const [classCodeError, setClassCodeError] = useState('');
   const [flashcardError, setFlashcardError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
   
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const classCodeInputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +107,7 @@ const SetCreator: React.FC = () => {
     
     const timer = setTimeout(checkAuth, 300);
     return () => clearTimeout(timer);
-  }, []);
+  }, [navigate]);
 
   // Close autocomplete when clicking outside
   useEffect(() => {
@@ -227,14 +237,21 @@ const SetCreator: React.FC = () => {
     
     if (!title.trim()) {
       setTitleError("Please provide a title for your flashcard set");
+      titleInputRef.current?.focus();
       isValid = false;
     }
     
     if (!classCode.trim()) {
       setClassCodeError("Please select a valid class code");
+      if (isValid) {
+        classCodeInputRef.current?.focus();
+      }
       isValid = false;
     } else if (!classCodes.includes(classCode.trim().toUpperCase())) {
       setClassCodeError("Invalid class code! Please select from the list");
+      if (isValid) {
+        classCodeInputRef.current?.focus();
+      }
       isValid = false;
     }
     
@@ -302,7 +319,10 @@ const SetCreator: React.FC = () => {
       if (response.ok) {
         console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
         localStorage.removeItem("editingFlashcardSet");
-        navigate('/created-sets');
+        setSaveSuccess(true);
+        setTimeout(() => {
+          navigate('/created-sets');
+        }, 1500);
       } else {
         try {
           const errorData = await response.json();
@@ -332,176 +352,300 @@ const SetCreator: React.FC = () => {
     setShowExitModal(false);
   };
 
+  // Check if there are any non-empty flashcards
+  const hasValidContent = flashcards.some(card => card.question.trim() || card.answer.trim());
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
 
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full border border-green-200">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <CheckIcon className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="text-xl font-semibold text-gray-900">Saved Successfully!</p>
+              <p className="text-gray-500 mt-2">Redirecting to your flashcard sets...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 pt-24 pb-12">
+        {/* Header with back button and page title */}
         <div className="flex justify-between items-center mb-6">
           <button 
             onClick={() => navigateWithConfirmation('/created-sets')}
-            className="flex items-center text-sm text-[#004a74] hover:underline"
+            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
           >
             <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets
           </button>
+          <h1 className="text-xl font-bold text-[#004a74]">
+            {editingSet ? 'Edit Flashcard Set' : 'Create New Flashcard Set'}
+          </h1>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          {/* Save Buttons - Moved to top */}
-          <div className="flex justify-end gap-4 mb-6">
-            <button 
-              onClick={() => saveFlashcardSet(false)} 
-              className="px-4 py-2 bg-white text-[#004a74] border border-[#004a74] rounded-lg 
-                hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              <span className="flex items-center">
-                {isLoading ? 'Saving...' : 'Save as Private'}
-              </span>
-            </button>
-            <button 
-              onClick={() => saveFlashcardSet(true)}
-              className="px-4 py-2 bg-[#004a74] text-white rounded-lg 
-                hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save & Publish (Public)'}
-            </button>
-          </div>
-
-          {/* Title and Class Code Row */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex-1 mr-4">
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={title}
-                onChange={handleTitleChange}
-                placeholder="Set Title Eg. BIO 101 Midterm"
-                className={`w-full px-4 py-3 text-base rounded-lg border 
-                  focus:outline-none focus:ring-2 transition-all 
-                  ${titleError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
-              />
-              {titleError && (
-                <div className="text-red-500 text-sm mt-1 flex items-center">
-                  <AlertCircleIcon className="w-4 h-4 mr-1" />
-                  {titleError}
-                </div>
-              )}
-            </div>
-
-            <div className="relative w-64">
-              <input
-                ref={classCodeInputRef}
-                type="text"
-                value={classCode}
-                onChange={handleClassCodeChange}
-                onBlur={handleBlur}
-                placeholder="Class Code Eg. CSE101"
-                className={`w-full px-4 py-3 text-base rounded-lg border 
-                  focus:outline-none focus:ring-2 transition-all 
-                  ${classCodeError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
-                autoComplete="off"
-              />
-              
-              {classCodeError && (
-                <div className="text-red-500 text-sm mt-1 flex items-center">
-                  <AlertCircleIcon className="w-4 h-4 mr-1" />
-                  {classCodeError}
-                </div>
-              )}
-
-              {suggestions.length > 0 && (
-                <ul 
-                  ref={autocompleteRef}
-                  className="absolute left-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-full"
-                  style={{
-                    maxHeight: '240px',
-                    overflowY: 'auto',
-                    overscrollBehavior: 'contain',
-                    zIndex: 1000
-                  }}
-                >
-                  {suggestions.map((code, index) => (
-                    <li 
-                      key={index}
-                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-center font-medium"
-                      onMouseDown={() => handleAutocompleteSelect(code)}
-                    >
-                      {code}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {flashcardError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-center">
-              <AlertCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
-              {flashcardError}
-            </div>
-          )}
-
-          <div className="mb-6">
-            <button className="w-full flex items-center justify-center gap-2 
-              bg-blue-100 border-2 border-[#004a74] text-[#004a74] font-bold
-              px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors shadow-md">
-              <SparklesIcon className="w-6 h-6" />
-              AI Generate Cards
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {flashcards.map((card, index) => (
-              <div 
-                key={index} 
-                className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
-              >
-                <div className="bg-[#004a74] text-white px-6 py-4 flex items-center justify-between">
-                  <span className="text-xl font-bold">Card {index + 1}</span>
-                  <button 
-                    onClick={() => deleteFlashcard(index)}
-                    className="text-white hover:text-red-300 transition-colors"
-                  >
-                    <XIcon className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="p-6 grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#004a74] mb-3">Question</h3>
-                    <textarea 
-                      value={card.question}
-                      onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
-                      placeholder="Enter Your Question"
-                      className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
-                        focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#004a74] mb-3">Answer</h3>
-                    <textarea 
-                      value={card.answer}
-                      onChange={(e) => updateFlashcard(index, 'answer', e.target.value)}
-                      placeholder="Enter Your Answer"
-                      className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
-                        focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
-                    />
-                  </div>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Progress indicator */}
+          <div className="bg-[#004a74] px-6 py-4 text-white">
+            <h2 className="text-xl font-bold">{editingSet ? 'Editing: ' + editingSet.title : 'New Flashcard Set'}</h2>
+            <div className="flex items-center mt-2 text-sm">
+              <div className="flex-1">
+                <div className="w-full bg-white/20 rounded-full h-2.5">
+                  <div className="bg-white h-2.5 rounded-full" style={{ 
+                    width: `${Math.min(100, 
+                      (title ? 33 : 0) + 
+                      (classCode ? 33 : 0) + 
+                      (hasValidContent ? 34 : 0)
+                    )}%` 
+                  }}></div>
                 </div>
               </div>
-            ))}
+              <span className="ml-3 font-medium">
+                {title && classCode && hasValidContent 
+                  ? 'Ready to save!' 
+                  : 'Complete all fields'}
+              </span>
+            </div>
           </div>
-          
-          <div className="mt-6 text-center">
-            <button 
-              onClick={addFlashcard}
-              className="px-4 py-2 bg-white border border-[#004a74] text-[#004a74] 
-                rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mx-auto"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Add a New Card
-            </button>
+
+          <div className="p-6">
+            {/* Info panel */}
+            {showInfoTips && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex">
+                  <InfoIcon className="w-5 h-5 text-[#004a74] mr-3 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-[#004a74]">
+                      {editingSet ? 'Editing Mode' : 'Creating a New Flashcard Set'}
+                    </h3>
+                    <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
+                      <li>• Fill in the set title and select a class code</li>
+                      <li>• Add at least one flashcard with a question and answer</li>
+                      <li>• Save as private (only you can see) or publish publicly (everyone can see)</li>
+                    </ul>
+                    <div className="mt-3 flex items-center">
+                      <input 
+                        type="checkbox" 
+                        id="dontShowAgainCreator" 
+                        className="h-4 w-4 text-[#004a74] rounded border-gray-300"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            localStorage.setItem('hideCreatorInfoTips', 'true');
+                          } else {
+                            localStorage.removeItem('hideCreatorInfoTips');
+                          }
+                        }}
+                      />
+                      <label htmlFor="dontShowAgainCreator" className="ml-2 text-xs text-[#004a74]/80">
+                        Don't show this tip again
+                      </label>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowInfoTips(false)}
+                    className="text-[#004a74] hover:bg-blue-100 p-1 rounded-full h-6 w-6 flex items-center justify-center"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Title and Class Code Row */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Set Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="title"
+                  ref={titleInputRef}
+                  type="text"
+                  value={title}
+                  onChange={handleTitleChange}
+                  placeholder="E.g., BIO 101 Midterm"
+                  className={`w-full px-4 py-3 text-base rounded-lg border 
+                    focus:outline-none focus:ring-2 transition-all 
+                    ${titleError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
+                />
+                {titleError && (
+                  <div className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircleIcon className="w-4 h-4 mr-1" />
+                    {titleError}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="classCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Class Code <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="classCode"
+                    ref={classCodeInputRef}
+                    type="text"
+                    value={classCode}
+                    onChange={handleClassCodeChange}
+                    onBlur={handleBlur}
+                    placeholder="E.g., CSE101"
+                    className={`w-full px-4 py-3 text-base rounded-lg border 
+                      focus:outline-none focus:ring-2 transition-all 
+                      ${classCodeError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
+                    autoComplete="off"
+                  />
+                  
+                  {classCodeError && (
+                    <div className="text-red-500 text-sm mt-1 flex items-center">
+                      <AlertCircleIcon className="w-4 h-4 mr-1" />
+                      {classCodeError}
+                    </div>
+                  )}
+
+                  {suggestions.length > 0 && (
+                    <ul 
+                      ref={autocompleteRef}
+                      className="absolute left-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-full"
+                      style={{
+                        maxHeight: '240px',
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                        zIndex: 1000
+                      }}
+                    >
+                      {suggestions.map((code, index) => (
+                        <li 
+                          key={index}
+                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-center font-medium"
+                          onMouseDown={() => handleAutocompleteSelect(code)}
+                        >
+                          {code}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {flashcardError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-center">
+                <AlertCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                {flashcardError}
+              </div>
+            )}
+
+            <div className="mb-6">
+              <button className="w-full flex items-center justify-center gap-2 
+                bg-blue-100 border-2 border-[#004a74] text-[#004a74] font-bold
+                px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors shadow-md">
+                <SparklesIcon className="w-6 h-6" />
+                AI Generate Cards
+              </button>
+            </div>
+
+            <h3 className="text-lg font-bold text-[#004a74] mb-4 flex items-center">
+              Flashcards ({flashcards.length})
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                {hasValidContent ? '✓ Valid content' : '- Add at least one card'}
+              </span>
+            </h3>
+
+            <div className="space-y-6">
+              {flashcards.map((card, index) => (
+                <div 
+                  key={index} 
+                  className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="bg-[#004a74] text-white px-6 py-3 flex items-center justify-between">
+                    <span className="font-bold">Card {index + 1}</span>
+                    <button 
+                      onClick={() => deleteFlashcard(index)}
+                      className="text-white hover:text-red-300 transition-colors"
+                      aria-label="Delete card"
+                    >
+                      <XIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-6 grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
+                        <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
+                        Question
+                      </h3>
+                      <textarea 
+                        value={card.question}
+                        onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
+                        placeholder="Enter your question here"
+                        className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
+                          focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
+                        <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
+                        Answer
+                      </h3>
+                      <textarea 
+                        value={card.answer}
+                        onChange={(e) => updateFlashcard(index, 'answer', e.target.value)}
+                        placeholder="Enter your answer here"
+                        className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
+                          focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 text-center">
+              <button 
+                onClick={addFlashcard}
+                className="px-4 py-2 bg-white border border-[#004a74] text-[#004a74] 
+                  rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mx-auto"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Add a New Card
+              </button>
+            </div>
+
+            {/* Save Actions */}
+            <div className="mt-12 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-bold text-gray-700 mb-4">Save Options</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button 
+                  onClick={() => saveFlashcardSet(false)} 
+                  className="px-4 py-3 bg-white text-[#004a74] border border-[#004a74] rounded-lg 
+                    hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                    flex items-center justify-center gap-2"
+                  disabled={isLoading}
+                >
+                  <LockIcon className="w-5 h-5" />
+                  <span>
+                    {isLoading ? 'Saving...' : 'Save as Private'}
+                    <span className="block text-xs text-gray-500">Only you can access</span>
+                  </span>
+                </button>
+                <button 
+                  onClick={() => saveFlashcardSet(true)}
+                  className="px-4 py-3 bg-[#004a74] text-white rounded-lg 
+                    hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
+                    flex items-center justify-center gap-2"
+                  disabled={isLoading}
+                >
+                  <GlobeIcon className="w-5 h-5" />
+                  <span>
+                    {isLoading ? 'Saving...' : 'Save & Publish'}
+                    <span className="block text-xs text-white/80">Everyone can view</span>
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -509,25 +653,27 @@ const SetCreator: React.FC = () => {
       {showExitModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full border border-gray-200">
-            <p className="text-lg mb-4 text-center text-[#004a74]">Do you want to save before leaving?</p>
-            <div className="flex flex-wrap justify-center gap-3">
+            <h3 className="text-xl font-bold text-[#004a74] mb-3">Unsaved Changes</h3>
+            <p className="text-gray-600 mb-6">You have unsaved changes. What would you like to do?</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button 
                 onClick={handleSaveAndExit}
-                className="px-4 py-2 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors"
+                className="px-4 py-2 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors flex items-center justify-center gap-2"
               >
+                <SaveIcon className="w-4 h-4" />
                 Save and Exit
               </button>
               <button 
                 onClick={handleExitWithoutSaving}
-                className="px-4 py-2 bg-white text-[#004a74] border border-[#004a74] rounded-lg hover:bg-blue-50 transition-colors"
+                className="px-4 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
               >
                 Exit Without Saving
               </button>
               <button 
                 onClick={() => setShowExitModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors sm:col-span-2"
               >
-                Cancel
+                Continue Editing
               </button>
             </div>
           </div>

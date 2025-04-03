@@ -726,29 +726,44 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
           </div>
 
 
-          {/* Quiz Type Selector (Consider moving or simplifying if navigation is primary) */}
-          <div className="mb-6 flex justify-center">
-            <div className="inline-flex rounded-md shadow-sm" role="group">
-              <button
-                onClick={() => navigate(`/quiz/${setId}/text`)} // Use navigate for SPA behavior
-                className={`px-4 py-2 text-sm font-medium rounded-l-lg transition-colors duration-150 ${
-                  quizType === 'text-input'
-                    ? 'bg-[#004a74] text-white z-10 ring-2 ring-[#004a74]'
-                    : 'bg-white text-[#004a74] border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Text Input
-              </button>
-              <button
-                onClick={() => navigate(`/quiz/${setId}/multiple-choice`)} // Use navigate
-                className={`px-4 py-2 text-sm font-medium rounded-r-lg transition-colors duration-150 ${
-                  quizType === 'multiple-choice'
-                    ? 'bg-[#004a74] text-white z-10 ring-2 ring-[#004a74]'
-                    : 'bg-white text-[#004a74] border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Multiple Choice
-              </button>
+         {/* Quiz Type Selector - Enhanced Design with Fixed Alignment and Animation */}
+         <div className="mb-8 flex justify-center">
+            <div className="bg-white p-2 rounded-xl shadow-lg border border-gray-100">
+              <div className="relative grid grid-cols-2 w-[300px]">
+                {/* Animated Background Slider */}
+                <div 
+                  className={`absolute top-0 bottom-0 w-1/2 bg-[#004a74] rounded-lg transition-all duration-300 ease-out ${
+                    quizType === 'multiple-choice' ? 'translate-x-full' : 'translate-x-0'
+                  }`} 
+                  aria-hidden="true"
+                />
+                
+                {/* Text Input Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => navigate(`/quiz/${setId}/text`)}
+                    className="w-full py-3 text-base font-medium text-center"
+                    type="button"
+                  >
+                    <span className={`relative z-10 transition-colors duration-200 ${quizType === 'text-input' ? 'text-white' : 'text-gray-700 hover:text-[#004a74]'}`}>
+                      Text Input
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Multiple Choice Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => navigate(`/quiz/${setId}/multiple-choice`)}
+                    className="w-full py-3 text-base font-medium text-center"
+                    type="button"
+                  >
+                    <span className={`relative z-10 transition-colors duration-200 ${quizType === 'multiple-choice' ? 'text-white' : 'text-gray-700 hover:text-[#004a74]'}`}>
+                      Multiple Choice
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -3,89 +3,84 @@ import admin from "firebase-admin";
 
 const db = admin.firestore();
 
-export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
+// Update a user profile
+export const updateUserProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get auth token from request headers
-    const authHeader = req.headers.authorization;
+    // Extract data from request body
+    const { username, university, fieldOfStudy, email, uid } = req.body;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ message: "Unauthorized" });
+    // Validate required fields
+    if (!uid) {
+      res.status(400).json({ message: "User ID is required" });
       return;
     }
     
-    const idToken = authHeader.split('Bearer ')[1];
-    
-    // Verify the ID token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-    
-    // Get user document from Firestore
+    // Check if the user document exists
     const userDoc = await db.collection("users").doc(uid).get();
     
     if (!userDoc.exists) {
-      res.status(404).json({ message: "User profile not found" });
-      return;
+      // If user document doesn't exist yet, create it
+      await db.collection("users").doc(uid).set({
+        username: username || '',
+        university: university || '',
+        fieldOfStudy: fieldOfStudy || '',
+        email: email || '',
+        uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      // Update existing user document
+      await db.collection("users").doc(uid).update({
+        username: username || userDoc.data()?.username || '',
+        university: university || userDoc.data()?.university || '',
+        fieldOfStudy: fieldOfStudy || userDoc.data()?.fieldOfStudy || '',
+        email: email || userDoc.data()?.email || '',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     }
     
-    const userData = userDoc.data();
-
-    // Return user profile data
-    res.status(200).json({
-      username: userData?.username || null,
-      email: userData?.email || null,
-      university: userData?.university || null,
-      fieldOfStudy: userData?.fieldOfStudy || null,
-      likes: userData?.likes || 0,
-      createdAt: userData?.createdAt || null
+    console.log('Successfully updated user profile for UID:', uid);
+    res.status(200).json({ 
+      message: "User profile updated successfully",
+      uid
     });
-
   } catch (error) {
-    console.error("Get user profile error:", error);
+    console.error("Error updating user profile:", error);
     res.status(500).json({ 
-      message: "Failed to retrieve user profile", 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      message: "Failed to update user profile",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 };
 
-export const updateUserProfile = async (req: Request, res: Response): Promise<void> => {
+// Get a user profile by ID
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get auth token from request headers
-    const authHeader = req.headers.authorization;
+    // Get the user ID from the URL parameter
+    const userId = req.params.userId;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ message: "Unauthorized" });
+    if (!userId) {
+      res.status(400).json({ message: "User ID is required" });
       return;
     }
     
-    const idToken = authHeader.split('Bearer ')[1];
+    // Get the user document
+    const userDoc = await db.collection("users").doc(userId).get();
     
-    // Verify the ID token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
-    const { username, university, fieldOfStudy } = req.body;
-    
-    // Basic validation
-    if (!username || !university) {
-      res.status(400).json({ message: "Username and university are required" });
+    if (!userDoc.exists) {
+      res.status(404).json({ message: "User not found" });
       return;
     }
-
-    // Update user profile in Firestore
-    await db.collection("users").doc(uid).update({
-      username,
-      university,
-      fieldOfStudy: fieldOfStudy || null,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    
+    // Return the user data
+    res.status(200).json({
+      ...userDoc.data()
     });
-
-    res.status(200).json({ message: "Profile updated successfully" });
   } catch (error) {
-    console.error("Update user profile error:", error);
+    console.error("Error getting user profile:", error);
     res.status(500).json({ 
-      message: "Failed to update user profile", 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      message: "Failed to get user profile",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 };
