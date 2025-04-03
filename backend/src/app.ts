@@ -7,7 +7,8 @@ import distractorRoutes from "./routes/distractorRoutes"; // Corrected import na
 import userRoutes from './routes/userRoutes';
 import genFlashcardsRoutes from './routes/genFlashcardsRoute';
 import fileRoutes from './routes/fileRoutes';
-import semanticRouter from './routes/semanticAnswerRoutes';
+import semanticRouter from './routes/semanticAnswerRoutes'
+
 
 
 

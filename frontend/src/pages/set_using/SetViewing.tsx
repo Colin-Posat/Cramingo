@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft as ChevronLeftIcon,
   Edit3 as Edit3Icon,
+  Save as SaveIcon,
   AlertCircle as AlertCircleIcon,
   ChevronDown as ChevronDownIcon,
   Book as BookIcon,
@@ -26,7 +27,8 @@ type FlashcardSet = {
   isPublic?: boolean;
   icon?: string;
   createdAt?: string | object;
-  description?: string; 
+  description?: string;
+  userId?: string; // Add this to track the creator of the set
 };
 
 const SetViewingPage: React.FC = () => {
@@ -37,10 +39,17 @@ const SetViewingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'flashcards' | 'quiz'>('flashcards');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(() => {
     // Check localStorage for user preference
     return localStorage.getItem('hideViewerInfoTips') !== 'true';
   });
+
+  useEffect(() => {
+    // Get current user ID from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUserId(user.id || user.uid);
+  }, []);
 
   useEffect(() => {
     const fetchFlashcardSet = async () => {
@@ -102,6 +111,40 @@ const SetViewingPage: React.FC = () => {
     if (flashcardSet) {
       localStorage.setItem("editingFlashcardSet", JSON.stringify(flashcardSet));
       navigate('/set-creator');
+    }
+  };
+
+  // Handle save button click
+  const handleSaveSet = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user.uid;
+
+      // Perform save operation - this could be copying the set to user's sets
+      const response = await fetch('http://localhost:6500/api/sets/save', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          originalSetId: flashcardSet?.id,
+          userId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save set');
+      }
+
+      const savedSet = await response.json();
+      
+      // Navigate to the newly saved set or show a success message
+      navigate(`/study/${savedSet.id}`);
+    } catch (error) {
+      console.error('Error saving set:', error);
+      // Optionally show an error message to the user
+      alert('Failed to save the set. Please try again.');
     }
   };
 
@@ -187,12 +230,22 @@ const SetViewingPage: React.FC = () => {
             <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets
           </button>
           
-          <button 
-            onClick={handleEditSet}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white shadow-sm border border-[#004a74]/50 hover:bg-blue-50 transition-colors"
-          >
-            <Edit3Icon className="w-5 h-5" /> Edit Set
-          </button>
+          {/* Conditionally render Edit or Save button */}
+          {currentUserId === flashcardSet.userId ? (
+            <button 
+              onClick={handleEditSet}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white shadow-sm border border-[#004a74]/50 hover:bg-blue-50 transition-colors"
+            >
+              <Edit3Icon className="w-5 h-5" /> Edit Set
+            </button>
+          ) : (
+            <button 
+              onClick={handleSaveSet}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#004a74] shadow-sm hover:bg-[#00659f] transition-colors"
+            >
+              <SaveIcon className="w-5 h-5" /> Save Set
+            </button>
+          )}
         </div>
         
         {/* Set Info Card */}
@@ -217,12 +270,6 @@ const SetViewingPage: React.FC = () => {
               flashcardSet.description !== null && 
               flashcardSet.description.trim() !== '';
 
-            console.log('Description check:', {
-              description: flashcardSet.description,
-              hasDescription,
-              type: typeof flashcardSet.description
-            });
-
             return hasDescription ? (
               <div className="px-6 py-4 bg-blue-50 border-b border-[#004a74]/10">
                 <h3 className="text-sm font-semibold text-[#004a74] mb-2">Description</h3>
@@ -230,6 +277,7 @@ const SetViewingPage: React.FC = () => {
               </div>
             ) : null;
           })()}
+          
           {/* Info Panel - collapsible */}
           {showInfo && (
             <div className="bg-[#e3f3ff] p-4 flex items-start gap-3 border-b border-[#004a74]/20">
@@ -309,15 +357,17 @@ const SetViewingPage: React.FC = () => {
 
         {/* Flashcards */}
         <div className="space-y-6">
-          {flashcardSet.flashcards.length === 0 ? (
+          {flashcardSet.flashcards.length=== 0 ? (
             <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
               <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
-              <button 
-                onClick={handleEditSet}
-                className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
-              >
-                Add Flashcards
-              </button>
+              {currentUserId === flashcardSet.userId ? (
+                <button 
+                  onClick={handleEditSet}
+                  className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
+                >
+                  Add Flashcards
+                </button>
+              ) : null}
             </div>
           ) : (
             flashcardSet.flashcards.map((card, index) => (
