@@ -275,7 +275,7 @@ const SetViewingPage: React.FC = () => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={navigateToFlashcardView}
-                className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all
+                className={`flex-1 py-6 px-4 rounded-xl font-bold text-lg transition-all
                   ${viewMode === 'flashcards'
                     ? 'bg-[#004a74] text-white shadow-lg'
                     : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
