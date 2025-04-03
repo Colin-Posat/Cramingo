@@ -30,9 +30,9 @@ const SearchSetsPage: React.FC = () => {
           );
         console.log('✅ Loaded class codes:', classCodes);
         setAllClassCodes(classCodes);
-        setIsLoadingCodes(false);
       } catch (error) {
         console.error('❌ Error loading class codes:', error);
+      } finally {
         setIsLoadingCodes(false);
       }
     };
@@ -57,26 +57,30 @@ const SearchSetsPage: React.FC = () => {
 
   // Handle search button click
   const handleSearch = useCallback(() => {
-    if (searchTerm.trim()) {
-      if (!allClassCodes.includes(searchTerm.trim().toUpperCase())) {
-        setErrorMessage('Please select a valid class code from the list');
-        return;
-      }
-      setIsLoading(true);
-      console.log(`Searching for: ${searchTerm}`);
-      setTimeout(() => {
-        setIsLoading(false);
-        // Navigate to results page or perform search logic here
-        // For example: navigate(`/search-results?q=${encodeURIComponent(searchTerm)}`);
-      }, 500);
+    if (!searchTerm.trim()) return;
+    
+    if (!allClassCodes.includes(searchTerm.trim().toUpperCase())) {
+      setErrorMessage('Please select a valid class code from the list');
+      return;
     }
-  }, [searchTerm, allClassCodes]);
+    
+    setIsLoading(true);
+    console.log(`Searching for: ${searchTerm}`);
+    
+    // Navigate to results page with the search term
+    setTimeout(() => {
+      setIsLoading(false);
+      navigate(`/search-results?q=${encodeURIComponent(searchTerm)}`);
+    }, 500);
+  }, [searchTerm, allClassCodes, navigate]);
 
   // Handle autocomplete selection
   const handleAutocompleteSelect = useCallback((code: string) => {
     setSearchTerm(code);
     setAutocompleteResults([]);
     setErrorMessage('');
+    // Focus on input after selection for better UX
+    inputRef.current?.focus();
   }, []);
 
   // Close autocomplete when clicking outside
@@ -97,7 +101,7 @@ const SearchSetsPage: React.FC = () => {
   // Validate input on blur
   const handleBlur = useCallback(() => {
     setTimeout(() => {
-      if (searchTerm.trim() !== '' && !allClassCodes.includes(searchTerm.trim().toUpperCase())) {
+      if (searchTerm.trim() && !allClassCodes.includes(searchTerm.trim().toUpperCase())) {
         setErrorMessage('Please select a valid class code from the list');
         setTimeout(() => {
           setSearchTerm('');
@@ -115,6 +119,12 @@ const SearchSetsPage: React.FC = () => {
       handleSearch();
     }
   }, [searchTerm, handleSearch]);
+
+  // Navigate to set creator
+  const navigateToSetCreator = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate('/set-creator');
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -150,6 +160,7 @@ const SearchSetsPage: React.FC = () => {
                   onBlur={handleBlur}
                   disabled={isLoadingCodes}
                   autoComplete="off"
+                  aria-label="Class code search"
                 />
                 {autocompleteResults.length > 0 && (
                   <ul 
@@ -160,12 +171,15 @@ const SearchSetsPage: React.FC = () => {
                       overflowY: 'auto',
                       overscrollBehavior: 'contain'
                     }}
+                    role="listbox"
+                    aria-label="Suggested class codes"
                   >
                     {autocompleteResults.map((code, index) => (
                       <li 
                         key={index}
                         className="p-3 hover:bg-[#e3f3ff] cursor-pointer border-b border-gray-100 text-left font-medium"
                         onMouseDown={() => handleAutocompleteSelect(code)}
+                        role="option"
                       >
                         {code}
                       </li>
@@ -177,12 +191,13 @@ const SearchSetsPage: React.FC = () => {
                 onClick={handleSearch}
                 disabled={isLoading || isLoadingCodes || !searchTerm.trim()}
                 className="w-full bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Search for flashcards"
               >
                 {isLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" aria-hidden="true"></div>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <span>Find Flashcards</span>
@@ -192,12 +207,9 @@ const SearchSetsPage: React.FC = () => {
               <p className="mt-4 text-center text-gray-600">
                 Can't find your class?{' '}
                 <a 
-                  href="/si" 
+                  href="/set-creator" 
                   className="text-[#004a74] font-medium hover:text-[#00659f] hover:underline transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/created-sets');
-                  }}
+                  onClick={navigateToSetCreator}
                 >
                   Create your own set
                 </a>

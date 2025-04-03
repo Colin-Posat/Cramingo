@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, RotateCw, AlertCircle, Shuffle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Shuffle, AlertCircle, RefreshCcw } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 
 type Flashcard = {
@@ -158,7 +158,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   const currentCard = localFlashcards[currentIndex];
   if (!currentCard) { return <div>Error: Could not load the current card.</div>; }
 
-  // Fix the CSS classes for proper card flipping
+  // Modified FlashcardElement with click-to-flip and explicit flip button
   const FlashcardElement = () => (
     <div className="flex flex-col items-center w-full">
       {/* Top section */}
@@ -181,11 +181,12 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Flashcard with Flip Animation */}
+      {/* Flashcard with Flip Animation - Now clickable and with explicit flip button */}
       <div className="w-full max-w-7xl h-96 mb-6 mx-auto [perspective:1000px]">
         <div 
           key={currentCard.id} 
           className="relative w-full h-full [transform-style:preserve-3d]"
+          onClick={toggleCardSide}
         >
           {/* Front Face (Question) */}
           <div 
@@ -197,10 +198,12 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
               flex flex-col items-center justify-center 
               overflow-hidden 
               transition-transform duration-700 ease-in-out
+              cursor-pointer hover:shadow-xl
               ${showAnswer ? '[transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'}
             `}
           >
             <span className="absolute top-4 left-6 text-sm font-medium text-gray-500">Question</span>
+            <div className="absolute top-4 right-6 text-xs text-gray-400">Click to flip</div>
             <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
               {currentCard.question}
             </p>
@@ -216,10 +219,12 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
               flex flex-col items-center justify-center 
               overflow-hidden 
               transition-transform duration-700 ease-in-out
+              cursor-pointer hover:shadow-xl
               ${showAnswer ? '[transform:rotateY(0deg)]' : '[transform:rotateY(180deg)]'}
             `}
           >
             <span className="absolute top-4 left-6 text-sm font-medium text-gray-500">Answer</span>
+            <div className="absolute top-4 right-6 text-xs text-gray-400">Click to flip</div>
             <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
               {currentCard.answer}
             </p>
@@ -227,7 +232,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Navigation controls */}
+      {/* Navigation controls - Added explicit Flip button */}
       <div className="flex items-center justify-between w-full max-w-md mx-auto mt-2">
         <button 
           onClick={goToPrevCard} 
@@ -237,14 +242,17 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         >
           <ChevronLeft className="w-5 h-5" /> Prev 
         </button>
+        
+        {/* New Explicit Flip Button */}
         <button 
           onClick={toggleCardSide} 
           disabled={isShuffling} 
-          className="flex items-center gap-2 px-5 py-3 rounded-lg bg-[#004a74] text-white hover:bg-[#00659f] transition-colors font-semibold text-base shadow hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed" 
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white border border-[#004a74] hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
           aria-label="Flip card"
         >
-          <RotateCw className="w-5 h-5" /> Flip 
+          <RefreshCcw className="w-5 h-5" /> Flip
         </button>
+        
         <button 
           onClick={goToNextCard} 
           disabled={currentIndex === totalCards - 1 || isShuffling} 
@@ -265,7 +273,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         <div className="pt-24 pb-12 px-4 md:px-6 max-w-7xl mx-auto">
           <button 
             onClick={() => navigate(`/study/${setId}`)} 
-            className="mb-4 flex items-center text-sm text-[#004a74] hover:underline"
+            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors mb-4"
           >
             <ChevronLeft className="w-4 h-4 mr-1" /> Back to Set Page 
           </button>

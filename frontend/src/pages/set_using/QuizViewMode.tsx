@@ -707,13 +707,12 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
         <NavBar />
         <div className="pt-24 pb-12 px-4 md:px-6 max-w-7xl mx-auto">
            {/* Back Button */}
-            <button
-                onClick={() => navigate(`/study/${setId}`)} // Navigate back to the specific set study page
-                className="mb-4 flex items-center text-sm text-[#004a74] hover:underline"
-            >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Back to Set Page
-            </button>
+           <button
+              onClick={() => navigate(`/study/${setId}`)} 
+              className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors mb-4"
+          >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Back to Set Page 
+          </button>
 
           {/* Set Title and Quiz Type */}
           <div className="mb-6 text-center md:text-left">
