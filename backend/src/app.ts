@@ -6,6 +6,7 @@ import setsRoutes from "./routes/setRoutes";
 import distractorRoutes from "./routes/distractorRoutes"; // Corrected import name
 import userRoutes from './routes/userRoutes';
 import genFlashcardsRoutes from './routes/genFlashcardsRoute';
+import fileRoutes from './routes/fileRoutes';
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -28,6 +29,7 @@ app.use("/api/sets", setsRoutes);
 app.use("/api/quiz", distractorRoutes); // Using correct variable name
 app.use('/api/user', userRoutes);
 app.use('/api/ai', genFlashcardsRoutes);
+app.use('/api/files', fileRoutes);
 
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);
