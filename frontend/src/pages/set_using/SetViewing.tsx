@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft as ChevronLeftIcon,
   Edit3 as Edit3Icon,
@@ -37,6 +37,7 @@ type FlashcardSet = {
 const SetViewingPage: React.FC = () => {
   const { setId } = useParams<{ setId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,10 @@ const SetViewingPage: React.FC = () => {
   });
   const [isSavedByCurrentUser, setIsSavedByCurrentUser] = useState(false);
   const [isUnsaving, setIsUnsaving] = useState(false);
+  
+  // Extract navigation state to check if we came from search results
+  const fromSearch = location.state?.fromSearch || false;
+  const searchQuery = location.state?.searchQuery || '';
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -128,6 +133,22 @@ const SetViewingPage: React.FC = () => {
 
     fetchFlashcardSet();
   }, [setId]);
+
+  // Get back link text based on navigation state
+  const getBackLinkText = () => {
+    if (fromSearch) {
+      return `Back to Search Results`;
+    }
+    return flashcardSet?.isDerived ? "Back to Saved Sets" : "Back to Created Sets";
+  };
+  
+  // Get back link path based on navigation state
+  const getBackLinkPath = () => {
+    if (fromSearch) {
+      return `/search-results?q=${encodeURIComponent(searchQuery)}`;
+    }
+    return flashcardSet?.isDerived ? "/saved-sets" : "/created-sets";
+  };
 
   // Handle edit button click
   const handleEditSet = () => {
@@ -329,8 +350,6 @@ const SetViewingPage: React.FC = () => {
   }
 
   const isCreator = currentUserId === flashcardSet.userId && !flashcardSet.isDerived;
-  const backLinkText = flashcardSet.isDerived ? "Back to Saved Sets" : "Back to Created Sets";
-  const backLinkPath = flashcardSet.isDerived ? "/saved-sets" : "/created-sets";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -339,10 +358,10 @@ const SetViewingPage: React.FC = () => {
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="flex justify-between items-center mb-6">
           <button 
-            onClick={() => navigate(backLinkPath)}
+            onClick={() => navigate(getBackLinkPath())}
             className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
           >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> {backLinkText}
+            <ChevronLeftIcon className="w-4 h-4 mr-1" /> {getBackLinkText()}
           </button>
           
           {/* Conditionally render Edit, Save, or Unsave button */}

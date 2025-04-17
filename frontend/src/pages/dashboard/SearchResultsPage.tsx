@@ -168,7 +168,10 @@ const SearchResultsPage: React.FC = () => {
 
   // Navigate to set viewing page
   const viewSet = (setId: string) => {
-    navigate(`/study/${setId}`);
+    // Pass the search query as state parameter with the navigation
+    navigate(`/study/${setId}`, {
+      state: { fromSearch: true, searchQuery: query }
+    });
   };
 
   // Navigate back to search page

@@ -6,7 +6,8 @@ import {
   SearchIcon,
   AlertCircleIcon,
   BookIcon,
-  UsersIcon
+  UsersIcon,
+  TrashIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -40,6 +41,8 @@ const SavedSets: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showHelper, setShowHelper] = useState<boolean>(false);
+  const [showUnsaveModal, setShowUnsaveModal] = useState(false);
+  const [setToUnsave, setSetToUnsave] = useState<string | null>(null);
 
   // Get user data from localStorage
   const getUserData = () => {
@@ -150,6 +153,54 @@ const SavedSets: React.FC = () => {
   // Navigate to the search page
   const goToSearch = () => {
     navigate('/search-sets');
+  };
+
+  // Handler for confirming unsave action
+  const confirmUnsave = (e: React.MouseEvent, setId: string) => {
+    e.stopPropagation(); // Prevent navigation to set details
+    setSetToUnsave(setId);
+    setShowUnsaveModal(true);
+  };
+
+  // Handle actual unsave operation
+  const unsaveSet = async () => {
+    if (!setToUnsave) return;
+    
+    try {
+      const user = getUserData();
+      
+      if (!user) {
+        setError("User not authenticated");
+        return;
+      }
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6500/api';
+      
+      const response = await fetch(`${apiUrl}/sets/unsave`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          setId: setToUnsave,
+          userId: user.id
+        })
+      });
+      
+      if (response.ok) {
+        // Remove the unsaved set from the state
+        setSets(sets.filter(set => set.id !== setToUnsave));
+        setShowUnsaveModal(false);
+        setSetToUnsave(null);
+      } else {
+        console.error('Failed to unsave set:', await response.text());
+        alert('Failed to unsave the set. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error unsaving set:', error);
+      alert('Failed to unsave the set. Please check your connection.');
+    }
   };
 
   // Format date with Firestore Timestamp handling
@@ -354,9 +405,21 @@ const SavedSets: React.FC = () => {
                 {/* Action buttons footer */}
                 <div className="bg-[#004a74] p-4 flex justify-between items-center">
                   <div className="text-white text-sm font-medium">Click to study</div>
-                  <div className="flex items-center text-white text-xs">
-                    <UsersIcon className="w-3 h-3 mr-1" />
-                    {getCreatorName(set)}
+                  
+                  {/* Add the Unsave button here */}
+                  <div className="flex items-center gap-2">
+                    <div className="text-white text-xs flex items-center mr-3">
+                      <UsersIcon className="w-3 h-3 mr-1" />
+                      {getCreatorName(set)}
+                    </div>
+                    
+                    <button 
+                      onClick={(e) => confirmUnsave(e, set.id)}
+                      className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
+                      aria-label="Unsave set"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -404,6 +467,32 @@ const SavedSets: React.FC = () => {
                 >
                   <XIcon className="w-6 h-6" />
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unsave Confirmation Modal */}
+        {showUnsaveModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl p-8">
+              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Unsave Flashcard Set?</h2>
+              <p className="text-lg text-gray-600 mb-8">
+                Are you sure you want to unsave this flashcard set? You'll no longer have access to it in your saved sets.
+              </p>
+              <div className="flex justify-end gap-4">
+                <button 
+                  onClick={() => setShowUnsaveModal(false)}
+                  className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition text-lg"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={unsaveSet}
+                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-lg"
+                >
+                  Unsave
                 </button>
               </div>
             </div>
