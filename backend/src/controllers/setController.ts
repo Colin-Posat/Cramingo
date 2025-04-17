@@ -303,6 +303,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
     const setsSnapshot = await db.collection("flashcardSets")
       .where("classCode", "==", classCode.toUpperCase())
       .where("isPublic", "==", true)
+      .where("isDerived", "==", false)
       .orderBy("createdAt", "desc")
       .get();
     
