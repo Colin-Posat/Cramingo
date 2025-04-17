@@ -7,7 +7,8 @@ import {
   getSetsByClassCode,
   getSetById, 
   deleteSet,
-  saveSet
+  saveSet,
+  unsaveSet  
 } from "../controllers/setController";
 
 const router = express.Router();
@@ -33,5 +34,8 @@ router.delete("/delete/:id", deleteSet);
 
 // Save an existing flashcard set to user's collection
 router.post("/save", saveSet);
+
+// Unsave (remove) a saved flashcard set
+router.post("/unsave", unsaveSet);
 
 export default router;

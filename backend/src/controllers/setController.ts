@@ -478,3 +478,57 @@ export const saveSet = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
+// Unsave (remove) a saved flashcard set
+export const unsaveSet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { setId, userId } = req.body;
+
+    if (!setId || !userId) {
+      res.status(400).json({ message: "Set ID and user ID are required" });
+      return;
+    }
+
+    // Get the set document to verify it's a saved set (isDerived === true)
+    const setDoc = await db.collection("flashcardSets").doc(setId).get();
+
+    if (!setDoc.exists) {
+      res.status(404).json({ message: "Set not found" });
+      return;
+    }
+
+    const setData = setDoc.data();
+
+    if (!setData) {
+      res.status(500).json({ message: "Error retrieving set data" });
+      return;
+    }
+
+    // Check if this is indeed a saved set
+    if (!setData.isDerived) {
+      res.status(400).json({ message: "This operation is only valid for saved sets" });
+      return;
+    }
+
+    // Check if the current user is the one who saved this set
+    if (setData.userId !== userId) {
+      res.status(403).json({ message: "You do not have permission to unsave this set" });
+      return;
+    }
+
+    // Delete the saved set
+    await db.collection("flashcardSets").doc(setId).delete();
+
+    console.log(`User ${userId} successfully unsaved set ${setId}`);
+    res.status(200).json({
+      message: "Set unsaved successfully",
+      id: setId
+    });
+  } catch (error) {
+    console.error("Error unsaving set:", error);
+    res.status(500).json({
+      message: "Failed to unsave set",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};

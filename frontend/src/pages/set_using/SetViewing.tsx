@@ -8,7 +8,8 @@ import {
   ChevronDown as ChevronDownIcon,
   Book as BookIcon,
   ClipboardList as ClipboardListIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  X as XIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -28,7 +29,9 @@ type FlashcardSet = {
   icon?: string;
   createdAt?: string | object;
   description?: string;
-  userId?: string; // Add this to track the creator of the set
+  userId?: string;
+  isDerived?: boolean;
+  originalSetId?: string;
 };
 
 const SetViewingPage: React.FC = () => {
@@ -44,6 +47,8 @@ const SetViewingPage: React.FC = () => {
     // Check localStorage for user preference
     return localStorage.getItem('hideViewerInfoTips') !== 'true';
   });
+  const [isSavedByCurrentUser, setIsSavedByCurrentUser] = useState(false);
+  const [isUnsaving, setIsUnsaving] = useState(false);
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -87,6 +92,24 @@ const SetViewingPage: React.FC = () => {
             const data = JSON.parse(responseText);
             console.log('Flashcard set data:', data);
             setFlashcardSet(data);
+            
+            // Check if this set is already saved by the current user
+            if (data.isDerived && data.userId === userId) {
+              setIsSavedByCurrentUser(true);
+            } else if (data.originalSetId) {
+              // Check if this is a set the current user has saved
+              const savedSetsResponse = await fetch(`http://localhost:6500/api/sets/saved/${userId}`, {
+                credentials: 'include'
+              });
+              
+              if (savedSetsResponse.ok) {
+                const savedSets = await savedSetsResponse.json();
+                const isSaved = savedSets.some((set: FlashcardSet) => 
+                  set.originalSetId === data.id && set.userId === userId
+                );
+                setIsSavedByCurrentUser(isSaved);
+              }
+            }
           } catch (parseError) {
             console.error('Error parsing response:', parseError);
             setError("Invalid data format received from server. Please try again later.");
@@ -117,10 +140,11 @@ const SetViewingPage: React.FC = () => {
   // Handle save button click
   const handleSaveSet = async () => {
     try {
+      setLoading(true);
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.id || user.uid;
 
-      // Perform save operation - this could be copying the set to user's sets
+      // Perform save operation
       const response = await fetch('http://localhost:6500/api/sets/save', {
         method: 'POST',
         credentials: 'include',
@@ -134,17 +158,104 @@ const SetViewingPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save set');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save set');
       }
 
       const savedSet = await response.json();
       
-      // Navigate to the newly saved set or show a success message
-      navigate(`/study/${savedSet.id}`);
+      // Update state to reflect the set is now saved
+      setIsSavedByCurrentUser(true);
+      
+      // Optional: Navigate to the newly saved set
+      if (savedSet.id !== setId) {
+        navigate(`/study/${savedSet.id}`);
+      } else {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error saving set:', error);
-      // Optionally show an error message to the user
-      alert('Failed to save the set. Please try again.');
+      setLoading(false);
+      // Show error message to the user
+      alert(error instanceof Error ? error.message : 'Failed to save the set. Please try again.');
+    }
+  };
+
+  // Handle unsave button click
+  const handleUnsaveSet = async () => {
+    try {
+      setIsUnsaving(true);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || user.uid;
+
+      // If this is a saved set (we're viewing the saved copy)
+      if (flashcardSet?.isDerived) {
+        const response = await fetch('http://localhost:6500/api/sets/unsave', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            setId: flashcardSet.id,
+            userId
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to unsave set');
+        }
+
+        // Navigate back to saved sets page after unsaving
+        navigate('/saved-sets');
+      } else {
+        // If we're viewing the original set but want to unsave our saved copy
+        // First we need to find our saved copy
+        const savedSetsResponse = await fetch(`http://localhost:6500/api/sets/saved/${userId}`, {
+          credentials: 'include'
+        });
+        
+        if (!savedSetsResponse.ok) {
+          throw new Error('Failed to fetch saved sets');
+        }
+        
+        const savedSets = await savedSetsResponse.json();
+        const savedCopy = savedSets.find((set: FlashcardSet) => 
+          set.originalSetId === flashcardSet?.id && set.userId === userId
+        );
+        
+        if (!savedCopy) {
+          throw new Error('Could not find your saved copy of this set');
+        }
+        
+        // Unsave the found copy
+        const unsaveResponse = await fetch('http://localhost:6500/api/sets/unsave', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            setId: savedCopy.id,
+            userId
+          }),
+        });
+        
+        if (!unsaveResponse.ok) {
+          const errorData = await unsaveResponse.json();
+          throw new Error(errorData.message || 'Failed to unsave set');
+        }
+        
+        // Update state to reflect the set is no longer saved
+        setIsSavedByCurrentUser(false);
+      }
+    } catch (error) {
+      console.error('Error unsaving set:', error);
+      // Show error message to the user
+      alert(error instanceof Error ? error.message : 'Failed to unsave the set. Please try again.');
+    } finally {
+      setIsUnsaving(false);
     }
   };
 
@@ -217,6 +328,10 @@ const SetViewingPage: React.FC = () => {
     );
   }
 
+  const isCreator = currentUserId === flashcardSet.userId && !flashcardSet.isDerived;
+  const backLinkText = flashcardSet.isDerived ? "Back to Saved Sets" : "Back to Created Sets";
+  const backLinkPath = flashcardSet.isDerived ? "/saved-sets" : "/created-sets";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -224,19 +339,32 @@ const SetViewingPage: React.FC = () => {
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="flex justify-between items-center mb-6">
           <button 
-            onClick={() => navigate('/created-sets')}
+            onClick={() => navigate(backLinkPath)}
             className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
           >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets
+            <ChevronLeftIcon className="w-4 h-4 mr-1" /> {backLinkText}
           </button>
           
-          {/* Conditionally render Edit or Save button */}
-          {currentUserId === flashcardSet.userId ? (
+          {/* Conditionally render Edit, Save, or Unsave button */}
+          {isCreator ? (
             <button 
               onClick={handleEditSet}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white shadow-sm border border-[#004a74]/50 hover:bg-blue-50 transition-colors"
             >
               <Edit3Icon className="w-5 h-5" /> Edit Set
+            </button>
+          ) : isSavedByCurrentUser ? (
+            <button 
+              onClick={handleUnsaveSet}
+              disabled={isUnsaving}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-red-500 shadow-sm hover:bg-red-600 transition-colors"
+            >
+              {isUnsaving ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <XIcon className="w-5 h-5" />
+              )}
+              Unsave Set
             </button>
           ) : (
             <button 
@@ -261,6 +389,11 @@ const SetViewingPage: React.FC = () => {
             <p className="mt-2 opacity-80">
               {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
             </p>
+            {flashcardSet.isDerived && flashcardSet.originalSetId && (
+              <p className="mt-1 text-white/70 text-sm">
+                Saved from original set
+              </p>
+            )}
           </div>
 
           {/* Description Section */}
@@ -357,10 +490,10 @@ const SetViewingPage: React.FC = () => {
 
         {/* Flashcards */}
         <div className="space-y-6">
-          {flashcardSet.flashcards.length=== 0 ? (
+          {flashcardSet.flashcards.length === 0 ? (
             <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
               <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
-              {currentUserId === flashcardSet.userId ? (
+              {isCreator ? (
                 <button 
                   onClick={handleEditSet}
                   className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
@@ -391,11 +524,11 @@ const SetViewingPage: React.FC = () => {
                       `}
                     >
                       <p className="text-gray-800">{card.question || "No question provided"}</p>
-                      {!expandedCards.has(index) && card.question.length > 200 && (
+                      {!expandedCards.has(index) && card.question && card.question.length > 200 && (
                         <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
                       )}
                     </div>
-                    {card.question.length > 200 && (
+                    {card.question && card.question.length > 200 && (
                       <button 
                         onClick={() => toggleCardExpansion(index)}
                         className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
@@ -421,11 +554,11 @@ const SetViewingPage: React.FC = () => {
                       `}
                     >
                       <p className="text-gray-800">{card.answer || "No answer provided"}</p>
-                      {!expandedCards.has(index) && card.answer.length > 200 && (
+                      {!expandedCards.has(index) && card.answer && card.answer.length > 200 && (
                         <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
                       )}
                     </div>
-                    {card.answer.length > 200 && (
+                    {card.answer && card.answer.length > 200 && (
                       <button 
                         onClick={() => toggleCardExpansion(index)}
                         className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
