@@ -257,7 +257,7 @@ const CreatedSets: React.FC = () => {
         <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
-            <p className="mt-4 text-[#004a74] font-medium">Loading your study sets...</p>
+            <p className="mt-4 text-[#004a74] font-medium">Loading your sets...</p>
           </div>
         </div>
       </div>
@@ -350,7 +350,7 @@ const CreatedSets: React.FC = () => {
                       
                       {set.createdAt && (
                         <div className="text-xs text-gray-500">
-                          {formatDate(set.createdAt)}
+                          Created: {formatDate(set.createdAt)}
                         </div>
                       )}
                     </div>

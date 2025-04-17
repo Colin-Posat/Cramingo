@@ -25,13 +25,14 @@ type FlashcardSet = {
   id: string;
   title: string;
   classCode: string;
-  description?: string; // Added description field
+  description?: string;
   numCards?: number;
   flashcards: Flashcard[];
   isPublic: boolean;
   icon?: string;
   createdAt?: string;
   userId?: string; // Track the owner of the set
+  username?: string; // Add username of the creator
 };
 
 const SetCreator: React.FC = () => {
@@ -283,78 +284,83 @@ const SetCreator: React.FC = () => {
     return isValid;
   };
 
-  // Save flashcard set
-  const saveFlashcardSet = async (isPublic: boolean) => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.id && !user.uid) {
-        setFlashcardError("You must be logged in to save a set");
-        return;
-      }
-      
-      const userId = user.id || user.uid;
-      if (!validateForm()) {
-        return;
-      }
-      
-      const validFlashcards = flashcards.filter(
-        card => card.question.trim() || card.answer.trim()
-      );
-      
-      const setId = editingSet?.id || crypto.randomUUID();
-      
-      const newSet: FlashcardSet = {
-        id: setId,
-        title: title.trim(),
-        classCode: classCode.trim(),
-        description: description.trim(), // Include description in the new set
-        flashcards: validFlashcards,
-        isPublic: isPublic,
-        userId: userId
-      };
-      
-      setIsLoading(true);
-      console.log('Sending data to backend:', JSON.stringify(newSet));
-      
-      const endpoint = editingSet 
-        ? `http://localhost:6500/api/sets/update/${setId}`
-        : 'http://localhost:6500/api/sets/create';
-        
-      const method = editingSet ? 'PUT' : 'POST';
-      
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(newSet)
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (response.ok) {
-        console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
-        localStorage.removeItem("editingFlashcardSet");
-        setSaveSuccess(true);
-        setTimeout(() => {
-          navigate('/created-sets');
-        }, 1500);
-      } else {
-        try {
-          const errorData = await response.json();
-          setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. ${errorData.message || ''}`);
-        } catch (parseError) {
-          setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. Server returned ${response.status} ${response.statusText}.`);
-        }
-      }
-    } catch (error) {
-      console.error("Error saving flashcard set:", error);
-      setFlashcardError("Failed to save flashcard set. Please check your connection and try again.");
-    } finally {
-      setIsLoading(false);
+// Save flashcard set
+const saveFlashcardSet = async (isPublic: boolean) => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id && !user.uid) {
+      setFlashcardError("You must be logged in to save a set");
+      return;
     }
-  };
+    
+    const userId = user.id || user.uid;
+    // Get the username from localStorage. If not available, fallback to email or displayName
+    const username = user.username || user.displayName || user.email || "Anonymous User";
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    const validFlashcards = flashcards.filter(
+      card => card.question.trim() || card.answer.trim()
+    );
+    
+    const setId = editingSet?.id || crypto.randomUUID();
+    
+    const newSet: FlashcardSet = {
+      id: setId,
+      title: title.trim(),
+      classCode: classCode.trim(),
+      description: description.trim(),
+      flashcards: validFlashcards,
+      isPublic: isPublic,
+      userId: userId,
+      username: username, // Add the username to the set
+      createdAt: editingSet?.createdAt || new Date().toISOString() // Add creation timestamp if not already present
+    };
+    
+    setIsLoading(true);
+    console.log('Sending data to backend:', JSON.stringify(newSet));
+    
+    const endpoint = editingSet 
+      ? `http://localhost:6500/api/sets/update/${setId}`
+      : 'http://localhost:6500/api/sets/create';
+      
+    const method = editingSet ? 'PUT' : 'POST';
+    
+    const response = await fetch(endpoint, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(newSet)
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (response.ok) {
+      console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
+      localStorage.removeItem("editingFlashcardSet");
+      setSaveSuccess(true);
+      setTimeout(() => {
+        navigate('/created-sets');
+      }, 1500);
+    } else {
+      try {
+        const errorData = await response.json();
+        setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. ${errorData.message || ''}`);
+      } catch (parseError) {
+        setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. Server returned ${response.status} ${response.statusText}.`);
+      }
+    }
+  } catch (error) {
+    console.error("Error saving flashcard set:", error);
+    setFlashcardError("Failed to save flashcard set. Please check your connection and try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSaveAndExit = () => {
     if (validateForm()) {

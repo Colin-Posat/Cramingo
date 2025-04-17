@@ -148,8 +148,7 @@ export const getUserSets = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// --- Add NEW function to get ONLY saved sets ---
-// This function will power the "Saved Sets" view
+// Get ONLY saved sets with username information
 export const getSavedSets = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId;
@@ -171,15 +170,36 @@ export const getSavedSets = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Optional: Fetch original owner info if needed for display
-    // (Similar logic as in getSetsByClassCode, but might need optimization
-    // if you fetch many saved sets often)
-
-    const sets = setsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-      // Potentially add fields like 'originalOwnerUsername' here if needed
-    }));
+    // Create an array to store the sets with additional information
+    const sets = [];
+    
+    // Process each set
+    for (const doc of setsSnapshot.docs) {
+      const setData = doc.data();
+      
+      // If we already have savedByUsername from the save operation, use it
+      let username = setData.savedByUsername || null;
+      
+      // If username isn't already in the document, fetch it from users collection
+      if (!username && setData.userId) {
+        try {
+          const userDoc = await db.collection("users").doc(setData.userId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data() || {};
+            username = userData.username || userData.displayName || null;
+          }
+        } catch (userError) {
+          console.error(`Error fetching user info for ${setData.userId}:`, userError);
+        }
+      }
+      
+      // Add the set with username to our results
+      sets.push({
+        id: doc.id,
+        ...setData,
+        savedByUsername: username // Add or update username
+      });
+    }
 
     console.log(`Found ${sets.length} saved sets for user ${userId}`);
     res.status(200).json(sets);
@@ -395,7 +415,7 @@ export const saveSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user already saved this specific set (optional but good practice)
+    // Check if user already saved this specific set
     const existingSavedQuery = await db.collection("flashcardSets")
         .where("userId", "==", userId)
         .where("originalSetId", "==", originalSetId)
@@ -407,6 +427,28 @@ export const saveSet = async (req: Request, res: Response): Promise<void> => {
          return;
     }
 
+    // Fetch the current user's info (the one saving the set)
+    const userDoc = await db.collection("users").doc(userId).get();
+    let savedByUsername = null;
+    
+    if (userDoc.exists) {
+      const userData = userDoc.data() || {};
+      savedByUsername = userData.username || userData.displayName || null;
+    }
+
+    // Fetch the original creator's username
+    let originalCreatorUsername = null;
+    if (originalSetData.userId) {
+      try {
+        const originalCreatorDoc = await db.collection("users").doc(originalSetData.userId).get();
+        if (originalCreatorDoc.exists) {
+          const creatorData = originalCreatorDoc.data() || {};
+          originalCreatorUsername = creatorData.username || creatorData.displayName || null;
+        }
+      } catch (error) {
+        console.error(`Error fetching original creator info for ${originalSetData.userId}:`, error);
+      }
+    }
 
     const newSetId = db.collection("flashcardSets").doc().id;
 
@@ -418,13 +460,12 @@ export const saveSet = async (req: Request, res: Response): Promise<void> => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(), // New creation time for this copy
       updatedAt: admin.firestore.FieldValue.serverTimestamp(), // Set initial update time
       isDerived: true, // Mark as saved/derived
-      // Reset or adjust any fields specific to the original owner if needed
-      // e.g., you might want isPublic to default to false for saved copies
-      // isPublic: false, // Example: Default saved sets to private
-      // icon: "/FliplyPNGs/private_flashcard.png" // Example: Update icon if defaulting to private
+      savedByUsername: savedByUsername, // Who saved it
+      originalCreatorUsername: originalCreatorUsername, // Add the username of original creator
+      originalCreatorId: originalSetData.userId, // Add the ID of original creator
     });
 
-    console.log(`User ${userId} successfully saved set ${originalSetId} as new set ${newSetId}`);
+    console.log(`User ${userId} (${savedByUsername || 'unknown username'}) successfully saved set ${originalSetId} created by ${originalCreatorUsername || 'unknown creator'} as new set ${newSetId}`);
     res.status(201).json({
       message: "Set saved successfully",
       id: newSetId

@@ -1,37 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  BookmarkIcon,
+import { 
+  BookmarkIcon, 
   XIcon,
   SearchIcon,
-  Loader2,
-  AlertCircle
+  AlertCircleIcon,
+  BookIcon,
+  UsersIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
-// Type for user data stored in localStorage
-type UserData = {
-  id: string;
-  email: string;
-  username?: string;
-};
-
-// Type for Flashcard Set matching backend return
+// Type for Flashcard Set
 type FlashcardSet = {
   id: string;
   title: string;
   description?: string;
   classCode?: string;
   numCards: number;
+  isPublic?: boolean;
   icon?: string;
-  userId: string;
+  userId?: string;
+  username?: string;
   originalSetId?: string;
-  isDerived: boolean;
+  originalCreatorId?: string;
+  originalCreatorUsername?: string;
+  isDerived?: boolean;
+  savedByUsername?: string;
   createdAt: { 
     seconds: number, 
     nanoseconds: number 
   } | string;
   createdBy?: string;
+  flashcards?: Array<{question: string, answer: string}>;
 };
 
 const SavedSets: React.FC = () => {
@@ -41,35 +41,24 @@ const SavedSets: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showHelper, setShowHelper] = useState<boolean>(false);
 
-  // Comprehensive user data retrieval and validation
-  const getUserData = (): UserData | null => {
+  // Get user data from localStorage
+  const getUserData = () => {
     try {
-      // Log all localStorage contents for debugging
-      console.log('Full localStorage contents:', {
-        ...localStorage
-      });
-
-      // Retrieve user data from localStorage
       const userString = localStorage.getItem('user');
-      console.log('Raw user string:', userString);
-
+      
       if (!userString) {
         console.error('No user data found in localStorage');
         return null;
       }
 
-      // Parse user data
       const userData = JSON.parse(userString);
-      console.log('Parsed user data:', userData);
-
-      // Validate user data - check for uid or id
       const userId = userData.uid || userData.id;
+      
       if (!userId) {
         console.error('Invalid user data - no user ID found:', userData);
         return null;
       }
 
-      // Return a standardized user data object
       return {
         id: userId,
         email: userData.email,
@@ -83,10 +72,10 @@ const SavedSets: React.FC = () => {
 
   useEffect(() => {
     const fetchSavedSets = async () => {
-      setLoading(true);
-      setError(null);
-
       try {
+        setLoading(true);
+        setError(null);
+        
         // Get user data
         const user = getUserData();
 
@@ -101,43 +90,45 @@ const SavedSets: React.FC = () => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6500/api';
         
         console.log('Fetching saved sets for user:', user.id);
-        console.log('API URL:', `${apiUrl}/sets/saved/${user.id}`);
 
         const response = await fetch(`${apiUrl}/sets/saved/${user.id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            // Add authentication token if you're using one
-            // 'Authorization': `Bearer ${user.token}`
-          }
+          },
+          credentials: 'include' // Include cookies for authentication
         });
 
-        console.log('Fetch response status:', response.status);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ 
-            message: 'Failed to fetch saved sets' 
-          }));
+        console.log('Response status:', response.status);
+        
+        // First try to get the response as text to see what's happening
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        // Now try to parse as JSON if possible
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('Parsed data:', data);
           
-          console.error('Error response:', errorData);
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          // Update state with the parsed data
+          setSets(Array.isArray(data) ? data : []);
+          
+          // Show helper only if no sets and first visit
+          if (Array.isArray(data) && data.length === 0) {
+            const hasSeenHelper = localStorage.getItem('hasSeenSavedSetsHelper');
+            if (!hasSeenHelper) {
+              setShowHelper(true);
+              localStorage.setItem('hasSeenSavedSetsHelper', 'true');
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing response as JSON:', parseError);
+          setError(`Server returned invalid data. Please try again later.`);
         }
-
-        const data: FlashcardSet[] = await response.json();
-        console.log('Fetched saved sets:', data);
-
-        setSets(data);
-
-        // Helper logic
-        if (data.length === 0 && !localStorage.getItem('hasSeenSavedSetsHelper')) {
-          setShowHelper(true);
-          localStorage.setItem('hasSeenSavedSetsHelper', 'true');
-        }
-
-      } catch (err: any) {
-        console.error('Full error in fetchSavedSets:', err);
-        setError(err.message || 'An unexpected error occurred while fetching saved sets');
-        setSets([]);
+      } catch (error) {
+        console.error('Error in fetchSavedSets function:', error);
+        setError("An unexpected error occurred. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -153,12 +144,100 @@ const SavedSets: React.FC = () => {
 
   // Navigate to view/study a specific set
   const handleSetClick = (setId: string) => {
-    navigate(`/set/${setId}`);
+    navigate(`/study/${setId}`);
   };
 
   // Navigate to the search page
   const goToSearch = () => {
     navigate('/search-sets');
+  };
+
+  // Format date with Firestore Timestamp handling
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return '';
+    
+    try {
+      // For Firestore Timestamp objects - standard format
+      if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
+        console.log('Firestore Timestamp detected:', dateValue);
+        // Convert Firestore timestamp to milliseconds
+        const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
+        const date = new Date(milliseconds);
+        
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date);
+      }
+      
+      // For Firestore Timestamp objects with underscore prefix - serialized format
+      if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
+        console.log('Serialized Firestore Timestamp detected:', dateValue);
+        // Convert Firestore timestamp to milliseconds
+        const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
+        const date = new Date(milliseconds);
+        
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date);
+      }
+      
+      // Regular Date objects
+      if (dateValue instanceof Date) {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }).format(dateValue);
+      }
+      
+      // String or number handling for ISO dates or timestamps
+      if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }).format(date);
+        }
+      }
+      
+      console.log('Could not format date value:', dateValue);
+      return 'Recently saved'; // Fallback text
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Recently saved';
+    }
+  };
+
+  // Helper to get the most appropriate creator display name
+  const getCreatorName = (set: FlashcardSet) => {
+    // First prioritize the original creator username
+    if (set.originalCreatorUsername) {
+      return `Created by ${set.originalCreatorUsername}`;
+    }
+    // If original creator is not available but we have the createdBy field
+    if (set.createdBy) {
+      return `Created by ${set.createdBy}`;
+    }
+    // Fall back to other fields if needed
+    if (set.username) {
+      return `Created by ${set.username}`;
+    }
+    // If we have the original creator ID but not username
+    if (set.originalCreatorId) {
+      return `User ${set.originalCreatorId.substring(0, 6)}`;
+    }
+    // Last fallback to userId
+    if (set.userId) {
+      return `User ${set.userId.substring(0, 6)}`;
+    }
+    // Default if nothing else is available
+    return 'Public set';
   };
 
   // --- Render Logic ---
@@ -168,129 +247,165 @@ const SavedSets: React.FC = () => {
     return (
       <div className="min-h-screen bg-white">
         <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-6rem)]">
-          <Loader2 className="w-16 h-16 text-[#004a74] animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Error State
-  if (error) {
-    return (
-      <div className="min-h-screen bg-white">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-6rem)]">
-          <div className="bg-red-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center border border-red-200">
-             <AlertCircle className="mx-auto w-16 h-16 text-red-600 mb-6" />
-             <h2 className="text-2xl font-bold text-red-800 mb-4">Error Fetching Sets</h2>
-             <p className="text-lg text-red-700">{error}</p>
-             <button 
-               onClick={() => window.location.reload()}
-               className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-             >
-               Retry
-             </button>
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+            <p className="mt-4 text-[#004a74] font-medium">Loading your saved sets...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // 3. Main Content (Sets List or Empty State)
   return (
     <div className="min-h-screen bg-white">
+      {/* Navigation Bar */}
       <NavBar />
 
-      <div className="pt-24 px-6 pb-6">
+      {/* Search Button - Top Left */}
+      <button 
+        onClick={goToSearch}
+        className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
+          py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
+          transition-all flex items-center justify-center gap-3 
+          shadow-md z-10 text-xl"
+      >
+        <SearchIcon className="w-5 h-5" />
+        <span>Find Sets</span>
+      </button>
+
+      {/* Sets Container */}
+      <div className="pt-32 px-6 pb-6">
+        
+        {/* Error message */}
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
+            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold">Error</p>
+              <p>{error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Show grid of sets if there are any */}
         {sets.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-10">
             {sets.map((set) => (
               <div
                 key={set.id}
-                className="bg-blue-50 rounded-xl p-6 shadow-md hover:shadow-lg
-                           transition-all duration-300 transform hover:-translate-y-1
-                           cursor-pointer flex flex-col justify-between border border-blue-100"
+                className="bg-blue-50 rounded-2xl shadow-lg hover:shadow-2xl
+                  transition-all duration-300 relative overflow-hidden 
+                  cursor-pointer group border-2 border-transparent 
+                  hover:border-[#004a74]/20 flex flex-col w-full min-h-[250px]"
                 onClick={() => handleSetClick(set.id)}
-                title={`View set: ${set.title}`}
               >
-                <div>
-                  <h3 className="text-xl font-semibold text-[#004a74] mb-2 truncate">
-                    {set.title}
-                  </h3>
-                  {set.description && (
-                    <p className="text-gray-600 mb-4 text-sm line-clamp-2">
-                      {set.description}
-                    </p>
-                  )}
+                {/* Card Header */}
+                <div className="bg-[#004a74]/10 p-3">
+                  <div className="text-sm font-medium text-[#004a74]">Saved Set</div>
                 </div>
-                <div>
-                  <div className="border-t border-blue-200 pt-3 mt-3 flex justify-between items-center text-xs text-gray-500">
-                    <span>
-                      {set.numCards || 0} card{set.numCards !== 1 ? 's' : ''}
-                    </span>
-                    {set.classCode && (
-                       <span className="font-medium bg-blue-100 text-[#004a74] px-2 py-0.5 rounded">
-                         {set.classCode}
-                       </span>
-                    )}
+                
+                {/* Card content */}
+                <div className="p-4 flex-grow flex flex-row">
+                  <div className="flex-grow flex flex-col justify-between h-full">
+                    <div>
+                      <h3 className="text-xl font-bold text-[#004a74] mb-2 line-clamp-2">
+                        {set.title}
+                      </h3>
+                      
+                      <div className="text-sm text-gray-700 font-medium mb-2">
+                        {set.classCode && (
+                          <div className="mb-1">
+                            <span className="text-[#004a74]">Class:</span> {set.classCode}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {set.description && (
+                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                          {set.description}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-end mt-3">
+                      <div className="flex items-center">
+                        <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
+                        <span className="text-sm font-semibold text-[#004a74]">
+                          {set.numCards || 0} cards
+                        </span>
+                      </div>
+                      
+                      {set.createdAt && (
+                        <div className="text-xs text-gray-500">
+                          Saved: {formatDate(set.createdAt)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action buttons footer */}
+                <div className="bg-[#004a74] p-4 flex justify-between items-center">
+                  <div className="text-white text-sm font-medium">Click to study</div>
+                  <div className="flex items-center text-white text-xs">
+                    <UsersIcon className="w-3 h-3 mr-1" />
+                    {getCreatorName(set)}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          // Empty State - Shows when no sets are present (and no error)
+          // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center border border-blue-200">
-              <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
-              <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
+              <BookmarkIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
+              <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                 No Saved Sets Yet
               </h2>
-              <p className="text-base text-gray-600 mb-6">
-                You haven't saved any flashcard sets yet. Click the button below to search for public sets and save your favorites.
+              <p className="text-lg text-gray-600 mb-8">
+                You haven't saved any flashcard sets yet. Click the button below to search for sets and save your favorites.
               </p>
-              <button
+              <button 
                 onClick={goToSearch}
-                className="mx-auto flex items-center justify-center gap-2 bg-[#004a74] text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-[#005b8f] active:scale-[0.98] transition-all shadow-md text-lg"
+                className="mx-auto flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
               >
-                <SearchIcon className="w-5 h-5" />
-                <span>Search Sets</span>
+                <SearchIcon className="w-6 h-6" />
+                <span>Find Sets</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* No Sets Helper Popup */}
+        {/* No Sets Helper */}
         {showHelper && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="relative bg-white rounded-xl max-w-md w-full shadow-2xl mx-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="relative bg-white rounded-xl max-w-2xl w-full shadow-2xl">
               <div className="p-8 text-center">
-                <BookmarkIcon className="mx-auto w-16 h-16 text-[#004a74] mb-6" />
-                <h2 className="text-2xl font-bold text-[#004a74] mb-4">
+                <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
+                <h2 className="text-3xl font-bold text-[#004a74] mb-6">
                   Welcome to Your Saved Sets!
                 </h2>
-                <p className="text-base text-gray-600 mb-6">
-                  This is where you'll find flashcard sets you've saved from others. Use the 'Search Sets' button or the search bar in the navigation to find and save sets for your classes.
+                <p className="text-xl text-gray-600 mb-8">
+                  This is where you'll find flashcard sets you've saved from other users. Search for public sets and save them to study later!
                 </p>
-                <button
+                <button 
                   onClick={closeHelper}
-                  className="bg-[#004a74] text-white px-6 py-2.5 rounded-lg
-                    hover:bg-[#005b8f] transition-colors flex items-center
-                    justify-center mx-auto gap-2 text-base font-semibold"
+                  className="bg-[#004a74] text-white px-8 py-4 rounded-full 
+                    hover:bg-[#00659f] transition-colors flex items-center 
+                    justify-center mx-auto gap-3 text-lg"
                 >
-                  <XIcon className="w-5 h-5" />
-                  Got it!
+                  <XIcon className="w-6 h-6" />
+                  Close
                 </button>
               </div>
-              <button
-                onClick={closeHelper}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Close helper popup"
-              >
-                <XIcon className="w-6 h-6" />
-              </button>
             </div>
           </div>
         )}

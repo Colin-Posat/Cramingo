@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import { Brain, Share2, Search, ChevronRight } from "lucide-react";
+import { Brain, Share2, Search, ArrowRight } from "lucide-react";
 import ModernParticleBackground from "../../components/ParticlesBackground";
 
 const FeatureCard: React.FC<{
@@ -9,17 +9,20 @@ const FeatureCard: React.FC<{
   description: string;
 }> = ({ icon, title, description }) => {
   const processedIcon = React.isValidElement(icon)
-  ? React.cloneElement(icon as React.ReactElement<any>, {
-      size: 40,
-      className: "mx-auto text-[#004a74] mb-4"
-    })
-  : icon;
+    ? React.cloneElement(icon as React.ReactElement<any>, {
+        size: 32,
+        className: "text-white"
+      })
+    : icon;
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 text-center">
-      {processedIcon}
-      <h3 className="text-xl font-bold mb-3 text-gray-800">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+    <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-white/20 
+                   hover:border-blue-400/40 transition-all duration-300 transform hover:-translate-y-1">
+      <div className="flex flex-col items-center">
+        <div className="mb-4">{processedIcon}</div>
+        <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
+        <p className="text-white/70">{description}</p>
+      </div>
     </div>
   );
 };
@@ -28,7 +31,7 @@ const Landing: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#004a74]">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#004a74] to-[#001f3f]">
       {/* Particle Background */}
       <ModernParticleBackground 
         particleCount={150}
@@ -41,27 +44,28 @@ const Landing: React.FC = () => {
       
       {/* Main Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Fixed Navigation Header with Shadow */}
+        {/* Fixed Navigation Header */}
         <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
-                           bg-black/20 backdrop-blur-sm border-b border-white/10 shadow-md">
+                         bg-black/5 backdrop-blur-md border-b border-white/5">
           <Link to="/" className="flex items-center space-x-3">
             <img 
               src="/images/fliply_logo.png" 
               alt="Fliply Logo" 
-              className="h-10 w-auto" 
+              className="h-8 w-auto" 
             />
-            <span className="text-white text-2xl font-bold tracking-wider">Fliply</span>
+            <span className="text-white text-xl font-medium tracking-wide">Fliply</span>
           </Link>
-          <nav className="flex items-center space-x-6">
+          <nav className="flex items-center space-x-8">
             <Link 
               to="/contact" 
-              className="text-white hover:text-blue-200 transition-colors"
+              className="text-white/80 hover:text-white transition-colors text-sm font-medium"
             >
               Contact
             </Link>
             <Link 
               to="/login" 
-              className="text-white hover:text-blue-200 transition-colors"
+              className="text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full 
+                       transition-colors text-sm font-medium border border-white/10"
             >
               Sign In
             </Link>
@@ -69,44 +73,43 @@ const Landing: React.FC = () => {
         </header>
         
         {/* Content Container */}
-        <div className="container mx-auto px-4 flex-grow flex flex-col pt-24 pb-12">
+        <div className="container mx-auto px-4 flex-grow flex flex-col pt-28 pb-12">
           {/* Flexible Spacer and Content */}
           <div className="flex-1 flex flex-col justify-center">
             {/* Hero Section */}
             <main className="text-center">
-              <section className="max-w-4xl mx-auto mb-16">
-                <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-                  Create, Share, and Study Smarter with Fliply
+              <section className="max-w-4xl mx-auto mb-20">
+                <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                  Create, Share, and Study <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">Smarter</span>
                 </h1>
-                <p className="text-xl md:text-2xl text-white/80 mb-10 max-w-3xl mx-auto">
+                <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed">
                   Revolutionize your learning with AI-powered study tools that make knowledge creation and sharing effortless.
                 </p>
                 <button 
                   onClick={() => navigate("/signup")} 
-                  className="group bg-white text-[#004a74] font-bold py-4 px-10 rounded-full text-2xl 
-                              transition-all duration-300 
-                             flex items-center justify-center mx-auto space-x-2 hover:scale-105"
+                  className="text-white bg-white/10 hover:bg-white/20 px-8 py-4 rounded-full 
+                           transition-colors text-xl font-medium border border-white/10"
                 >
-                  <span className="text-dark-blue" >Get Started</span>
+                  Get Started
                 </button>
               </section>
               
-              {/* Features Section - 3 Column Layout like in reference */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-12 w-full max-w-20xl mx-auto px-0">
+              {/* Features Section - 3 Column Layout */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4">
                 <FeatureCard 
                   icon={<Brain />}
                   title="AI-Powered Creation"
-                  description="Simply upload your notes and let our AI transform them into comprehensive study sets that you can view as flashcards or as a quiz"
+                  description="Upload your notes and let our AI transform them into comprehensive study sets as flashcards or quizzes."
                 />
                 <FeatureCard 
                   icon={<Share2 />}
                   title="Share with Peers"
-                  description="Post your study sets and help others learn. Collaborate with classmates"
+                  description="Post your study sets and help others learn. Collaborate with classmates and track progress together."
                 />
                 <FeatureCard 
                   icon={<Search />}
                   title="Discover Class Sets"
-                  description="Browse study sets created by students to find content similar to past homework, quizzes, and exams from your class"
+                  description="Browse study sets created by other students to find content similar to your coursework."
                 />
               </section>
             </main>
@@ -114,24 +117,26 @@ const Landing: React.FC = () => {
         </div>
         
         {/* Footer */}
-        <footer className="container mx-auto px-4 py-8 text-center">
-          <p className="text-white/70 mb-4">
-            © {new Date().getFullYear()} Fliply. All rights reserved.
-          </p>
-          <nav className="flex justify-center space-x-6">
-            <Link 
-              to="/terms" 
-              className="text-white hover:text-blue-200 transition-colors"
-            >
-              Terms of Service
-            </Link>
-            <Link 
-              to="/privacy" 
-              className="text-white hover:text-blue-200 transition-colors"
-            >
-              Privacy Policy
-            </Link>
-          </nav>
+        <footer className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center">
+            <p className="text-white/50 text-sm mb-4">
+              © {new Date().getFullYear()} Fliply. All rights reserved.
+            </p>
+            <div className="flex justify-center space-x-6">
+              <Link 
+                to="/terms" 
+                className="text-white/50 hover:text-white transition-colors text-sm"
+              >
+                Terms of Service
+              </Link>
+              <Link 
+                to="/privacy" 
+                className="text-white/50 hover:text-white transition-colors text-sm"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+          </div>
         </footer>
       </div>
     </div>
