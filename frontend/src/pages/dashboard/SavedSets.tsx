@@ -7,7 +7,8 @@ import {
   AlertCircleIcon,
   BookIcon,
   UsersIcon,
-  TrashIcon
+  TrashIcon,
+  HeartIcon  // Added HeartIcon import
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -27,6 +28,7 @@ type FlashcardSet = {
   originalCreatorUsername?: string;
   isDerived?: boolean;
   savedByUsername?: string;
+  likes?: number;  // Added likes property to type
   createdAt: { 
     seconds: number, 
     nanoseconds: number 
@@ -386,11 +388,22 @@ const SavedSets: React.FC = () => {
                     </div>
                     
                     <div className="flex justify-between items-end mt-3">
-                      <div className="flex items-center">
-                        <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
-                        <span className="text-sm font-semibold text-[#004a74]">
-                          {set.numCards || 0} cards
-                        </span>
+                      <div className="flex items-center space-x-4">
+                        {/* Cards count with singular/plural handling */}
+                        <div className="flex items-center">
+                          <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
+                          <span className="text-sm font-semibold text-[#004a74]">
+                            {set.numCards || 0} {set.numCards === 1 ? 'card' : 'cards'}
+                          </span>
+                        </div>
+                        
+                        {/* Likes count with singular/plural handling */}
+                        <div className="flex items-center">
+                          <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
+                          <span className="text-sm font-semibold text-rose-500">
+                            {set.likes || 0} {(set.likes === 1) ? 'like' : 'likes'}
+                          </span>
+                        </div>
                       </div>
                       
                       {set.createdAt && (

@@ -8,7 +8,8 @@ import {
   Users as UsersIcon,
   SortAsc as SortAscIcon,
   Clock as ClockIcon,
-  Star as StarIcon
+  Star as StarIcon,
+  Heart as HeartIcon  // Added HeartIcon import
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -31,7 +32,8 @@ type FlashcardSet = {
   userId?: string;
   username?: string;
   createdBy?: string;
-  popularity?: number; // Added for filtering by popularity
+  likes?: number;  // Added likes property (will replace popularity)
+  popularity?: number; // Keeping for backward compatibility
 };
 
 // Sort options
@@ -72,14 +74,15 @@ const SearchResultsPage: React.FC = () => {
         const data = await response.json();
         console.log('Search results:', data);
         
-        // Add mock popularity data for sorting capability if it doesn't exist
-        const resultsWithPopularity = data.map((set: FlashcardSet) => ({
+        // Use likes property if it exists, or fallback to popularity or mock data
+        const resultsWithLikes = data.map((set: FlashcardSet) => ({
           ...set,
-          popularity: set.popularity || Math.floor(Math.random() * 100) // Mock data
+          // If likes is defined, use it. Otherwise, use popularity or a random number
+          likes: set.likes !== undefined ? set.likes : (set.popularity || Math.floor(Math.random() * 100))
         }));
         
-        setSearchResults(resultsWithPopularity);
-        setFilteredResults(resultsWithPopularity);
+        setSearchResults(resultsWithLikes);
+        setFilteredResults(resultsWithLikes);
       } catch (error) {
         console.error('Error fetching search results:', error);
         setError("Failed to load search results. Please try again later.");
@@ -103,7 +106,8 @@ const SearchResultsPage: React.FC = () => {
     // Filter by title if search term exists
     if (titleSearch.trim()) {
       filtered = filtered.filter(set => 
-        set.title.toLowerCase().includes(titleSearch.toLowerCase())
+        set.title.toLowerCase().includes(titleSearch.toLowerCase()) ||
+        (set.description && set.description.toLowerCase().includes(titleSearch.toLowerCase()))
       );
     }
     
@@ -118,7 +122,8 @@ const SearchResultsPage: React.FC = () => {
         });
         break;
       case 'popular':
-        filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        // Now sorting by likes count instead of generic popularity
+        filtered.sort((a, b) => (b.likes || 0) - (a.likes || 0));
         break;
       default:
         // Keep default order
@@ -356,7 +361,7 @@ const SearchResultsPage: React.FC = () => {
                       type="text"
                       value={titleSearch}
                       onChange={handleTitleSearchChange}
-                      placeholder="Search by title..."
+                      placeholder="Search by title or description..."
                       className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#004a74]/20 focus:outline-none focus:ring-2 focus:ring-[#004a74]/50"
                     />
                     <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -365,17 +370,6 @@ const SearchResultsPage: React.FC = () => {
                 
                 {/* Filter options */}
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleSortChange('default')}
-                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
-                      sortOption === 'default' 
-                        ? 'bg-[#004a74] text-white border-[#004a74]' 
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <SortAscIcon className="w-4 h-4 mr-1" />
-                    Default
-                  </button>
                   
                   <button 
                     onClick={() => handleSortChange('recent')}
@@ -397,8 +391,8 @@ const SearchResultsPage: React.FC = () => {
                         : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <StarIcon className="w-4 h-4 mr-1" />
-                    Most Popular
+                    <HeartIcon className="w-4 h-4 mr-1" />
+                    Most Liked
                   </button>
                 </div>
               </div>
@@ -413,7 +407,7 @@ const SearchResultsPage: React.FC = () => {
                   <span>Showing all {filteredResults.length} set{filteredResults.length !== 1 ? 's' : ''}</span>
                 )}
                 {sortOption !== 'default' && (
-                  <span> · Sorted by {sortOption === 'recent' ? 'most recent' : 'most popular'}</span>
+                  <span> · Sorted by {sortOption === 'recent' ? 'most recent' : 'most liked'}</span>
                 )}
               </div>
             </div>
@@ -474,14 +468,12 @@ const SearchResultsPage: React.FC = () => {
                             {set.classCode}
                           </span>
                           <span className="text-xs text-gray-500 ml-2">
-                            {set.numCards || set.flashcards.length} card{(set.numCards || set.flashcards.length) !== 1 ? 's' : ''}
+                            {set.numCards || set.flashcards.length} {(set.numCards === 1 || (!set.numCards && set.flashcards.length === 1)) ? 'card' : 'cards'}
                           </span>
-                          {sortOption === 'popular' && (
-                            <span className="text-xs text-gray-500 ml-2 flex items-center">
-                              <StarIcon className="w-3 h-3 mr-1 text-yellow-500" />
-                              {set.popularity}
-                            </span>
-                          )}
+                          <span className="text-xs text-rose-500 ml-2 flex items-center">
+                            <HeartIcon className="w-3 h-3 mr-1 fill-rose-500" />
+                            {set.likes || 0} {set.likes === 1 ? 'like' : 'likes'}
+                          </span>
                         </div>
                       </div>
                     </div>
