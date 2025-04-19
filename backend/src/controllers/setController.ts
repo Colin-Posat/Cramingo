@@ -6,7 +6,6 @@ const db = admin.firestore();
 // Create a new flashcard set
 export const createSet = async (req: Request, res: Response): Promise<void> => {
   try {
-    // ... (existing code for extraction and validation) ...
     const { id, title, classCode, flashcards, isPublic, userId, description = '' } = req.body;
 
     if (!id || !title || !classCode || !Array.isArray(flashcards) || flashcards.length === 0 || !userId) {
@@ -33,7 +32,8 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       userId,
       numCards: flashcards.length,
-      isDerived: false // Explicitly mark as NOT derived/saved
+      isDerived: false, // Explicitly mark as NOT derived/saved
+      likes: 0 // Initialize likes count to 0
     });
 
     console.log('Successfully created set with ID:', id);
@@ -82,18 +82,22 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     
+    // Preserve the current likes count
+    const currentLikes = setData?.likes || 0;
+    
     // Update the document
     await db.collection("flashcardSets").doc(setId).update({
       title,
       classCode,
-      description: description.trim(), // Add description here
+      description: description.trim(), 
       flashcards,
       isPublic: Boolean(isPublic),
       icon: isPublic 
         ? "/FliplyPNGs/public_flashcard_icon.png" 
         : "/FliplyPNGs/private_flashcard.png",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      numCards: flashcards.length
+      numCards: flashcards.length,
+      likes: currentLikes // Preserve the likes count
     });
     
     console.log('Successfully updated set with ID:', setId);
@@ -274,6 +278,20 @@ export const deleteSet = async (req: Request, res: Response): Promise<void> => {
     // Delete the document
     await db.collection("flashcardSets").doc(setId).delete();
     
+    // Also delete any associated likes
+    const likesQuery = await db.collection("setLikes")
+      .where("setId", "==", setId)
+      .get();
+    
+    // Delete each like document in a batch
+    if (!likesQuery.empty) {
+      const batch = db.batch();
+      likesQuery.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    }
+    
     console.log('Successfully deleted set with ID:', setId);
     res.status(200).json({ 
       message: "Flashcard set deleted successfully",
@@ -325,6 +343,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       createdAt: any; // Firestore timestamp
       userId: string;
       numCards: number;
+      likes?: number; // Add likes field to type
       [key: string]: any; // Allow for additional fields
     }
     
@@ -464,6 +483,7 @@ export const saveSet = async (req: Request, res: Response): Promise<void> => {
       savedByUsername: savedByUsername, // Who saved it
       originalCreatorUsername: originalCreatorUsername, // Add the username of original creator
       originalCreatorId: originalSetData.userId, // Add the ID of original creator
+      likes: 0 // Reset likes count for the saved copy
     });
 
     console.log(`User ${userId} (${savedByUsername || 'unknown username'}) successfully saved set ${originalSetId} created by ${originalCreatorUsername || 'unknown creator'} as new set ${newSetId}`);
@@ -529,6 +549,159 @@ export const unsaveSet = async (req: Request, res: Response): Promise<void> => {
     console.error("Error unsaving set:", error);
     res.status(500).json({
       message: "Failed to unsave set",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};
+
+// Like a flashcard set
+export const likeSet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { setId, userId } = req.body;
+
+    if (!setId || !userId) {
+      res.status(400).json({ message: "Set ID and user ID are required" });
+      return;
+    }
+
+    // Get the set document
+    const setDoc = await db.collection("flashcardSets").doc(setId).get();
+
+    if (!setDoc.exists) {
+      res.status(404).json({ message: "Set not found" });
+      return;
+    }
+
+    // Check if user has already liked this set
+    const likeQuery = await db.collection("setLikes")
+      .where("setId", "==", setId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
+
+    if (!likeQuery.empty) {
+      res.status(409).json({ message: "You have already liked this set" });
+      return;
+    }
+
+    // Create a new like document
+    const newLikeId = db.collection("setLikes").doc().id;
+    await db.collection("setLikes").doc(newLikeId).set({
+      id: newLikeId,
+      setId,
+      userId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Update the set document with likes count
+    const setData = setDoc.data() || {};
+    const currentLikes = setData.likes || 0;
+    
+    await db.collection("flashcardSets").doc(setId).update({
+      likes: currentLikes + 1
+    });
+
+    console.log(`User ${userId} liked set ${setId}`);
+    res.status(200).json({ 
+      message: "Set liked successfully",
+      setId,
+      likesCount: currentLikes + 1
+    });
+  } catch (error) {
+    console.error("Error liking set:", error);
+    res.status(500).json({
+      message: "Failed to like set",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};
+
+// Unlike a flashcard set
+export const unlikeSet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { setId, userId } = req.body;
+
+    if (!setId || !userId) {
+      res.status(400).json({ message: "Set ID and user ID are required" });
+      return;
+    }
+
+    // Get the set document
+    const setDoc = await db.collection("flashcardSets").doc(setId).get();
+
+    if (!setDoc.exists) {
+      res.status(404).json({ message: "Set not found" });
+      return;
+    }
+
+    // Find the user's like document
+    const likeQuery = await db.collection("setLikes")
+      .where("setId", "==", setId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
+
+    if (likeQuery.empty) {
+      res.status(404).json({ message: "You have not liked this set" });
+      return;
+    }
+
+    // Delete the like document
+    const likeDoc = likeQuery.docs[0];
+    await db.collection("setLikes").doc(likeDoc.id).delete();
+
+    // Update the set document with likes count
+    const setData = setDoc.data() || {};
+    const currentLikes = setData.likes || 0;
+    
+    if (currentLikes > 0) {
+      await db.collection("flashcardSets").doc(setId).update({
+        likes: currentLikes - 1
+      });
+    }
+
+    console.log(`User ${userId} unliked set ${setId}`);
+    res.status(200).json({ 
+      message: "Set unliked successfully",
+      setId,
+      likesCount: Math.max(0, currentLikes - 1)
+    });
+  } catch (error) {
+    console.error("Error unliking set:", error);
+    res.status(500).json({
+      message: "Failed to unlike set",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};
+
+// Check if a user has liked a set
+export const checkLikeStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const setId = req.query.setId as string;
+    const userId = req.query.userId as string;
+
+    if (!setId || !userId) {
+      res.status(400).json({ message: "Set ID and user ID are required" });
+      return;
+    }
+
+    // Find the user's like document
+    const likeQuery = await db.collection("setLikes")
+      .where("setId", "==", setId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
+
+    const hasLiked = !likeQuery.empty;
+
+    res.status(200).json({ 
+      hasLiked
+    });
+  } catch (error) {
+    console.error("Error checking like status:", error);
+    res.status(500).json({
+      message: "Failed to check like status",
       error: error instanceof Error ? error.message : "Unknown error"
     });
   }

@@ -1,14 +1,18 @@
 import express from "express";
-import { 
-  createSet, 
-  updateSet, 
+import {
+  createSet,
+  updateSet,
   getUserSets,
-  getSavedSets,  
+  getSavedSets,
   getSetsByClassCode,
-  getSetById, 
+  getSetById,
   deleteSet,
   saveSet,
-  unsaveSet  
+  unsaveSet,
+  // New imports for likes functionality
+  likeSet,
+  unlikeSet,
+  checkLikeStatus
 } from "../controllers/setController";
 
 const router = express.Router();
@@ -22,8 +26,10 @@ router.put("/update/:id", updateSet);
 // Get flashcard sets for a specific user
 router.get("/user/:userId", getUserSets);
 
+// Get saved sets for a specific user
 router.get("/saved/:userId", getSavedSets);
 
+// Search for public sets by class code
 router.get('/search', getSetsByClassCode);
 
 // Get a specific flashcard set by ID
@@ -37,5 +43,15 @@ router.post("/save", saveSet);
 
 // Unsave (remove) a saved flashcard set
 router.post("/unsave", unsaveSet);
+
+// New routes for likes functionality
+// Like a flashcard set
+router.post("/like", likeSet);
+
+// Unlike a flashcard set
+router.post("/unlike", unlikeSet);
+
+// Check if a user has liked a set
+router.get("/like-status", checkLikeStatus);
 
 export default router;

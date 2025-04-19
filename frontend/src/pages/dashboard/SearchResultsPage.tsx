@@ -5,7 +5,10 @@ import {
   AlertCircle as AlertCircleIcon,
   BookOpen as BookOpenIcon,
   Search as SearchIcon,
-  Users as UsersIcon
+  Users as UsersIcon,
+  SortAsc as SortAscIcon,
+  Clock as ClockIcon,
+  Star as StarIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -28,14 +31,21 @@ type FlashcardSet = {
   userId?: string;
   username?: string;
   createdBy?: string;
+  popularity?: number; // Added for filtering by popularity
 };
+
+// Sort options
+type SortOption = 'recent' | 'popular' | 'default';
 
 const SearchResultsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchResults, setSearchResults] = useState<FlashcardSet[]>([]);
+  const [filteredResults, setFilteredResults] = useState<FlashcardSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [titleSearch, setTitleSearch] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('default');
   
   // Get the search query from URL
   const query = new URLSearchParams(location.search).get('q') || '';
@@ -61,7 +71,15 @@ const SearchResultsPage: React.FC = () => {
         
         const data = await response.json();
         console.log('Search results:', data);
-        setSearchResults(data);
+        
+        // Add mock popularity data for sorting capability if it doesn't exist
+        const resultsWithPopularity = data.map((set: FlashcardSet) => ({
+          ...set,
+          popularity: set.popularity || Math.floor(Math.random() * 100) // Mock data
+        }));
+        
+        setSearchResults(resultsWithPopularity);
+        setFilteredResults(resultsWithPopularity);
       } catch (error) {
         console.error('Error fetching search results:', error);
         setError("Failed to load search results. Please try again later.");
@@ -72,6 +90,83 @@ const SearchResultsPage: React.FC = () => {
     
     fetchResults();
   }, [query]);
+
+  // Apply filters whenever title search or sort option changes
+  useEffect(() => {
+    filterAndSortResults();
+  }, [titleSearch, sortOption, searchResults]);
+
+  // Filter and sort the search results
+  const filterAndSortResults = () => {
+    let filtered = [...searchResults];
+    
+    // Filter by title if search term exists
+    if (titleSearch.trim()) {
+      filtered = filtered.filter(set => 
+        set.title.toLowerCase().includes(titleSearch.toLowerCase())
+      );
+    }
+    
+    // Sort based on selected option
+    switch (sortOption) {
+      case 'recent':
+        filtered.sort((a, b) => {
+          // Convert both dates to comparable format
+          const dateA = getDateValue(a.createdAt);
+          const dateB = getDateValue(b.createdAt);
+          return dateB - dateA; // Sort descending (newest first)
+        });
+        break;
+      case 'popular':
+        filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        break;
+      default:
+        // Keep default order
+        break;
+    }
+    
+    setFilteredResults(filtered);
+  };
+  
+  // Helper to convert various date formats to timestamp for sorting
+  const getDateValue = (dateValue: any): number => {
+    if (!dateValue) return 0;
+    
+    try {
+      // For Firestore Timestamp objects
+      if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+        return dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000;
+      }
+      
+      // For serialized Firestore objects
+      if (typeof dateValue === 'object' && '_seconds' in dateValue) {
+        return dateValue._seconds * 1000 + (dateValue._nanoseconds || 0) / 1000000;
+      }
+      
+      // For Date objects
+      if (dateValue instanceof Date) {
+        return dateValue.getTime();
+      }
+      
+      // For string or number
+      if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return date.getTime();
+        }
+        
+        // For numeric strings
+        if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
+          return parseInt(dateValue);
+        }
+      }
+      
+      return 0;
+    } catch (e) {
+      console.error('Error parsing date for sorting:', e);
+      return 0;
+    }
+  };
 
   // Format date with Firestore Timestamp handling
   const formatDate = (dateValue: any) => {
@@ -179,6 +274,16 @@ const SearchResultsPage: React.FC = () => {
     navigate('/search-sets');
   };
 
+  // Handle title search input change
+  const handleTitleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitleSearch(e.target.value);
+  };
+  
+  // Handle sort option change
+  const handleSortChange = (option: SortOption) => {
+    setSortOption(option);
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -240,6 +345,80 @@ const SearchResultsPage: React.FC = () => {
             </p>
           </div>
           
+          {/* New search and filter bar */}
+          {searchResults.length > 0 && (
+            <div className="bg-[#e3f3ff]/50 p-4 border-b border-[#004a74]/10">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Title search */}
+                <div className="flex-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={titleSearch}
+                      onChange={handleTitleSearchChange}
+                      placeholder="Search by title..."
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#004a74]/20 focus:outline-none focus:ring-2 focus:ring-[#004a74]/50"
+                    />
+                    <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  </div>
+                </div>
+                
+                {/* Filter options */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleSortChange('default')}
+                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
+                      sortOption === 'default' 
+                        ? 'bg-[#004a74] text-white border-[#004a74]' 
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <SortAscIcon className="w-4 h-4 mr-1" />
+                    Default
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleSortChange('recent')}
+                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
+                      sortOption === 'recent' 
+                        ? 'bg-[#004a74] text-white border-[#004a74]' 
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ClockIcon className="w-4 h-4 mr-1" />
+                    Most Recent
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleSortChange('popular')}
+                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
+                      sortOption === 'popular' 
+                        ? 'bg-[#004a74] text-white border-[#004a74]' 
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <StarIcon className="w-4 h-4 mr-1" />
+                    Most Popular
+                  </button>
+                </div>
+              </div>
+              
+              {/* Showing results info */}
+              <div className="mt-3 text-sm text-gray-500">
+                {filteredResults.length === 0 ? (
+                  <span>No sets match your search criteria</span>
+                ) : titleSearch ? (
+                  <span>Showing {filteredResults.length} set{filteredResults.length !== 1 ? 's' : ''} matching "{titleSearch}"</span>
+                ) : (
+                  <span>Showing all {filteredResults.length} set{filteredResults.length !== 1 ? 's' : ''}</span>
+                )}
+                {sortOption !== 'default' && (
+                  <span> · Sorted by {sortOption === 'recent' ? 'most recent' : 'most popular'}</span>
+                )}
+              </div>
+            </div>
+          )}
+          
           <div className="p-6">
             {searchResults.length === 0 ? (
               <div className="text-center py-10">
@@ -257,9 +436,28 @@ const SearchResultsPage: React.FC = () => {
                   Create a Set for {query}
                 </button>
               </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+                  <SearchIcon className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">No matching flashcard sets</h3>
+                <p className="text-gray-500 mb-6">
+                  No flashcard sets match your search criteria. Try adjusting your filters.
+                </p>
+                <button
+                  onClick={() => {
+                    setTitleSearch('');
+                    setSortOption('default');
+                  }}
+                  className="bg-[#004a74] text-white px-6 py-3 rounded-lg hover:bg-[#00659f] transition-all"
+                >
+                  Clear Filters
+                </button>
+              </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
-                {searchResults.map((set) => (
+                {filteredResults.map((set) => (
                   <div 
                     key={set.id}
                     className="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -278,6 +476,12 @@ const SearchResultsPage: React.FC = () => {
                           <span className="text-xs text-gray-500 ml-2">
                             {set.numCards || set.flashcards.length} card{(set.numCards || set.flashcards.length) !== 1 ? 's' : ''}
                           </span>
+                          {sortOption === 'popular' && (
+                            <span className="text-xs text-gray-500 ml-2 flex items-center">
+                              <StarIcon className="w-3 h-3 mr-1 text-yellow-500" />
+                              {set.popularity}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

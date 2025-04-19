@@ -9,7 +9,8 @@ import {
   Book as BookIcon,
   ClipboardList as ClipboardListIcon,
   Info as InfoIcon,
-  X as XIcon
+  X as XIcon,
+  Heart as HeartIcon // Add Heart icon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 
@@ -32,6 +33,7 @@ type FlashcardSet = {
   userId?: string;
   isDerived?: boolean;
   originalSetId?: string;
+  likes?: number; // Add likes field
 };
 
 const SetViewingPage: React.FC = () => {
@@ -51,6 +53,11 @@ const SetViewingPage: React.FC = () => {
   const [isSavedByCurrentUser, setIsSavedByCurrentUser] = useState(false);
   const [isUnsaving, setIsUnsaving] = useState(false);
   
+  // New state variables for likes
+  const [hasLiked, setHasLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [isLiking, setIsLiking] = useState(false);
+  
   // Extract navigation state to check if we came from search results
   const fromSearch = location.state?.fromSearch || false;
   const searchQuery = location.state?.searchQuery || '';
@@ -60,6 +67,39 @@ const SetViewingPage: React.FC = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUserId(user.id || user.uid);
   }, []);
+
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (!setId || !currentUserId) return;
+      
+      try {
+        // Add a timestamp parameter and no-cache headers to prevent caching issues
+        const timestamp = new Date().getTime();
+        const response = await fetch(`http://localhost:6500/api/sets/like-status?setId=${setId}&userId=${currentUserId}&_t=${timestamp}`, {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setHasLiked(data.hasLiked);
+          console.log('Like status retrieved:', data.hasLiked);
+        } else {
+          console.error('Failed to get like status:', response.status);
+        }
+      } catch (error) {
+        console.error('Error checking like status:', error);
+      }
+    };
+    
+    if (currentUserId && setId) {
+      checkLikeStatus();
+    }
+  }, [currentUserId, setId]);
 
   useEffect(() => {
     const fetchFlashcardSet = async () => {
@@ -97,6 +137,9 @@ const SetViewingPage: React.FC = () => {
             const data = JSON.parse(responseText);
             console.log('Flashcard set data:', data);
             setFlashcardSet(data);
+            
+            // Set the likes count
+            setLikesCount(data.likes || 0);
             
             // Check if this set is already saved by the current user
             if (data.isDerived && data.userId === userId) {
@@ -157,6 +200,83 @@ const SetViewingPage: React.FC = () => {
       navigate('/set-creator');
     }
   };
+
+  // New function to handle liking/unliking
+  const handleLikeToggle = async () => {
+    if (!currentUserId || !setId || isLiking) return;
+    
+    try {
+      setIsLiking(true);
+      
+      const endpoint = hasLiked 
+        ? 'http://localhost:6500/api/sets/unlike'
+        : 'http://localhost:6500/api/sets/like';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        body: JSON.stringify({
+          setId,
+          userId: currentUserId
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Update both local state and flashcardSet state to ensure consistency
+      setHasLiked(!hasLiked);
+      setLikesCount(data.likesCount);
+      
+      // Update the flashcardSet object to include the updated likes count
+      setFlashcardSet(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          likes: data.likesCount
+        };
+      });
+      
+      // Store the like status in localStorage as a backup strategy
+      localStorage.setItem(`set_${setId}_liked`, !hasLiked ? 'true' : 'false');
+      
+      console.log('Like status updated:', !hasLiked, 'Likes count:', data.likesCount);
+      
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Show error message to the user
+      alert(error instanceof Error ? error.message : 'Failed to like/unlike the set. Please try again.');
+    } finally {
+      setIsLiking(false);
+    }
+  };
+  
+  // Finally, add a localStorage check in the initial useEffect to ensure we have a fallback
+  // if the API call fails or is delayed:
+  
+  useEffect(() => {
+    // Get current user ID from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUserId(user.id || user.uid);
+    
+    // Check if we have a stored like state for this set
+    if (setId) {
+      const storedLikeStatus = localStorage.getItem(`set_${setId}_liked`);
+      if (storedLikeStatus === 'true') {
+        setHasLiked(true);
+      }
+    }
+  }, [setId]);
+  
 
   // Handle save button click
   const handleSaveSet = async () => {
@@ -405,9 +525,34 @@ const SetViewingPage: React.FC = () => {
                 {flashcardSet.classCode}
               </span>
             </div>
-            <p className="mt-2 opacity-80">
-              {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
-            </p>
+            
+            {/* Added Likes Display and Card Count in a Flex Row */}
+            <div className="mt-2 flex items-center justify-between">
+              <p className="opacity-80">
+                {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
+              </p>
+              
+              {/* Like Button and Count */}
+              <button 
+                onClick={handleLikeToggle}
+                disabled={isLiking}
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg transition-all ${
+                  hasLiked 
+                    ? 'bg-red-100 text-red-600' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                {isLiking ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                ) : (
+                  <HeartIcon 
+                    className={`w-4 h-4 ${hasLiked ? 'fill-red-600' : ''}`} 
+                  />
+                )}
+                <span className="font-medium">{likesCount}</span>
+              </button>
+            </div>
+            
             {flashcardSet.isDerived && flashcardSet.originalSetId && (
               <p className="mt-1 text-white/70 text-sm">
                 Saved from original set
@@ -441,7 +586,8 @@ const SetViewingPage: React.FC = () => {
                 <p className="text-sm text-[#004a74]/80 mt-1">
                   • View all flashcards in the default view below<br />
                   • Start a flashcard study session with the "Study Flashcards" button<br />
-                  • Test your knowledge with the "Take Quiz" button
+                  • Test your knowledge with the "Take Quiz" button<br />
+                  • Like the set to show your appreciation
                 </p>
                 <div className="mt-3 flex items-center">
                   <input 
