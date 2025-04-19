@@ -1,15 +1,26 @@
 import express from 'express';
-import { updateUserProfile, getUserById } from '../controllers/userController';
+import { 
+  updateUserProfile, 
+  getUserById, 
+  getUserTotalLikes,
+  syncUserTotalLikes
+} from '../controllers/userController';
 
 const router = express.Router();
 
 // Get user by ID
 router.get('/:userId', getUserById);
 
-// Update user profile - matches the endpoint you tried to use in frontend
+// Get user's total likes
+router.get('/:userId/total-likes', getUserTotalLikes);
+
+// Update user profile
 router.post('/update-profile', updateUserProfile);
 
-// Update user by ID
+// Update user by ID (alternative endpoint)
 router.put('/:userId', updateUserProfile);
+
+// Sync a user's total likes (admin/maintenance route)
+router.post('/:userId/sync-likes', syncUserTotalLikes);
 
 export default router;

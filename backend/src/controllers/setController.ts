@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import admin from "firebase-admin";
+import { updateUserTotalLikes } from "./userController";
 
 const db = admin.firestore();
 
@@ -267,10 +268,11 @@ export const deleteSet = async (req: Request, res: Response): Promise<void> => {
     }
     
     // Get the set data
-    const setData = docSnapshot.data();
+    const setData = docSnapshot.data() || {};
+    const currentLikes = setData.likes || 0;
     
     // Check if the user is the owner of the set
-    if (setData && setData.userId !== userId) {
+    if (setData.userId !== userId) {
       res.status(403).json({ message: "You do not have permission to delete this set" });
       return;
     }
@@ -290,6 +292,11 @@ export const deleteSet = async (req: Request, res: Response): Promise<void> => {
         batch.delete(doc.ref);
       });
       await batch.commit();
+    }
+    
+    // Update the user's total likes count if this set had likes
+    if (currentLikes > 0) {
+      await updateUserTotalLikes(userId, -currentLikes);
     }
     
     console.log('Successfully deleted set with ID:', setId);
@@ -572,6 +579,11 @@ export const likeSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const setData = setDoc.data() || {};
+    
+    // Get the creator's user ID to update their total likes
+    const creatorId = setData.userId;
+
     // Check if user has already liked this set
     const likeQuery = await db.collection("setLikes")
       .where("setId", "==", setId)
@@ -584,24 +596,36 @@ export const likeSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Start a Firestore batch to ensure all operations succeed or fail together
+    const batch = db.batch();
+
     // Create a new like document
     const newLikeId = db.collection("setLikes").doc().id;
-    await db.collection("setLikes").doc(newLikeId).set({
+    const likeRef = db.collection("setLikes").doc(newLikeId);
+    batch.set(likeRef, {
       id: newLikeId,
       setId,
       userId,
+      creatorId, // Store the creator's ID for easy reference
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     // Update the set document with likes count
-    const setData = setDoc.data() || {};
     const currentLikes = setData.likes || 0;
-    
-    await db.collection("flashcardSets").doc(setId).update({
+    const setRef = db.collection("flashcardSets").doc(setId);
+    batch.update(setRef, {
       likes: currentLikes + 1
     });
 
-    console.log(`User ${userId} liked set ${setId}`);
+    // Commit the batch operation
+    await batch.commit();
+
+    // After successful commit, update the creator's total likes
+    if (creatorId) {
+      await updateUserTotalLikes(creatorId, 1);
+    }
+
+    console.log(`User ${userId} liked set ${setId} created by ${creatorId}`);
     res.status(200).json({ 
       message: "Set liked successfully",
       setId,
@@ -674,7 +698,6 @@ export const unlikeSet = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
-
 // Check if a user has liked a set
 export const checkLikeStatus = async (req: Request, res: Response): Promise<void> => {
   try {

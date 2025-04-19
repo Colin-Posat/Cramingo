@@ -14,7 +14,7 @@ import NavBar from '../../components/NavBar';
 
 interface UserProfile {
   username: string;
-  likes: number;
+  totalLikes: number; // Changed from 'likes' to 'totalLikes' to match backend
   university: string;
   fieldOfStudy: string;
   email?: string;
@@ -24,7 +24,7 @@ interface UserProfile {
 const ProfilePage: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile>({
     username: '',
-    likes: 0,
+    totalLikes: 0, // Changed from 'likes' to 'totalLikes'
     university: '',
     fieldOfStudy: ''
   });
@@ -61,7 +61,7 @@ const ProfilePage: React.FC = () => {
         // Set initial profile from localStorage
         setUserProfile({
           username: localStorageUsername,
-          likes: userData.likes ?? 0,
+          totalLikes: userData.totalLikes ?? 0, // Changed from 'likes' to 'totalLikes'
           university: userData.university || 'Not specified',
           fieldOfStudy: userData.fieldOfStudy || 'Not specified',
           email: userData.email,
@@ -72,17 +72,37 @@ const ProfilePage: React.FC = () => {
         
         // Try to fetch the latest profile data from Firestore
         try {
-          const response = await fetch('http://localhost:6500/api/user/firestore-profile', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            updateProfileData(data, 'Firestore', userData);
+          // Fetch the user document by ID if available
+          if (userData.uid) {
+            const userDocResponse = await fetch(`http://localhost:6500/api/user/${userData.uid}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include'
+            });
+            
+            if (userDocResponse.ok) {
+              const userDocData = await userDocResponse.json();
+              
+              // Also fetch the total likes count from the dedicated endpoint
+              const totalLikesResponse = await fetch(`http://localhost:6500/api/user/${userData.uid}/total-likes`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+              
+              if (totalLikesResponse.ok) {
+                const likesData = await totalLikesResponse.json();
+                // Update user doc data with the dedicated likes count
+                userDocData.totalLikes = likesData.totalLikes;
+              }
+              
+              updateProfileData(userDocData, 'User document', userData);
+            } else {
+              // Try fallback API if user document fetch fails
+              await fetchFromFallbackAPI(userData, localStorageUsername);
+            }
           } else {
-            // Try fallback API
+            // No user ID available, try fallback API
             await fetchFromFallbackAPI(userData, localStorageUsername);
           }
         } catch (apiError) {
@@ -122,6 +142,23 @@ const ProfilePage: React.FC = () => {
               
               if (userDocResponse.ok) {
                 const userDocData = await userDocResponse.json();
+                
+                // Also try to fetch total likes from dedicated endpoint
+                try {
+                  const totalLikesResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}/total-likes`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                  });
+                  
+                  if (totalLikesResponse.ok) {
+                    const likesData = await totalLikesResponse.json();
+                    userDocData.totalLikes = likesData.totalLikes;
+                  }
+                } catch (likesError) {
+                  console.error('Error fetching total likes:', likesError);
+                }
+                
                 updateProfileData(userDocData, 'User document', userData, fallbackData);
               } else {
                 // Use fallback API data
@@ -159,7 +196,7 @@ const ProfilePage: React.FC = () => {
       setUserProfile(prev => ({
         ...prev,
         username: updatedUsername,
-        likes: newData.likes ?? fallbackData?.likes ?? prev.likes,
+        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? prev.totalLikes, // Changed to totalLikes
         university: newData.university || fallbackData?.university || prev.university,
         fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || prev.fieldOfStudy,
         email: newData.email || fallbackData?.email || prev.email,
@@ -172,7 +209,7 @@ const ProfilePage: React.FC = () => {
       const updatedUserData = {
         ...userData,
         username: updatedUsername,
-        likes: newData.likes ?? fallbackData?.likes ?? userData.likes,
+        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? userData.totalLikes, // Changed to totalLikes
         university: newData.university || fallbackData?.university || userData.university,
         fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || userData.fieldOfStudy,
         email: newData.email || fallbackData?.email || userData.email,
@@ -265,16 +302,9 @@ const ProfilePage: React.FC = () => {
               <h1 className="text-3xl font-bold mb-2">{userProfile.username}</h1>
               <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
                 <HeartIcon className="h-5 w-5 text-pink-200" />
-                <span className="font-bold">{userProfile.likes}</span>
-                <span className="text-sm opacity-80">likes</span>
+                <span className="font-bold">{userProfile.totalLikes}</span>
+                <span className="text-sm opacity-80">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</span>
               </div>
-              
-              {/* Data source indicator - only show for server sources */}
-              {profileDataSource && profileDataSource !== 'localStorage' && (
-                <div className="absolute bottom-2 right-2 text-xs opacity-60">
-                  Data source: {profileDataSource}
-                </div>
-              )}
             </div>
           </div>
           
