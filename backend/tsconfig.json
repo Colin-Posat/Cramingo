@@ -3,7 +3,9 @@
     "esModuleInterop": true, // ✅ Allows default imports from CommonJS modules like Firebase
     "strict": true, // ✅ Ensures better type safety
     "forceConsistentCasingInFileNames": true, // ✅ Prevents casing mismatches in imports
-    "skipLibCheck": true // ✅ Avoids checking .d.ts files in node_modules for performance
+    "skipLibCheck": true, // ✅ Avoids checking .d.ts files in node_modules for performance
+    "outDir": "dist",        // ← emit compiled .js into “dist/”
+    "rootDir": "src"         // ← treat “src/” as your source root
   }
 ,
   "include": ["src"],       // ✅ Ensures TypeScript only compiles 'src/'
