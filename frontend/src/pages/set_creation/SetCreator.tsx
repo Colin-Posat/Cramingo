@@ -258,7 +258,7 @@ const SetCreator: React.FC = () => {
       formData.append('image', file);
       
       // Send the file to the server
-      const response = await fetch('http://localhost:6500/api/uploads/image', {
+      const response = await fetch('https://fliply-backend.onrender.com/api/uploads/image', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -477,8 +477,8 @@ const SetCreator: React.FC = () => {
       console.log('Sending data to backend:', JSON.stringify(newSet));
       
       const endpoint = editingSet 
-        ? `http://localhost:6500/api/sets/update/${setId}`
-        : 'http://localhost:6500/api/sets/create';
+        ? `https://fliply-backend.onrender.com/api/sets/update/${setId}`
+        : 'https://fliply-backend.onrender.com/api/sets/create';
         
       const method = editingSet ? 'PUT' : 'POST';
       

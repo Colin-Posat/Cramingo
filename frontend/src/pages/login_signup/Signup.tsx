@@ -51,7 +51,7 @@ const Signup: React.FC = () => {
       setLoading(true);
       
       // Proceed with signup without username check
-      const response = await fetch("http://localhost:6500/api/auth/signup-init", {
+      const response = await fetch("https://fliply-backend.onrender.com/api/auth/signup-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),

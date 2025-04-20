@@ -187,7 +187,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       // Encode user info for authorization
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
-      const response = await fetch('http://localhost:6500/api/files/parse-pdf', {
+      const response = await fetch('https://fliply-backend.onrender.com/api/files/parse-pdf', {
         method: 'POST',
         headers: {
           'Authorization': authHeader
@@ -276,7 +276,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       // Encode user info for authorization
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
-      const response = await fetch('http://localhost:6500/api/ai/generate-flashcards', {
+      const response = await fetch('https://fliply-backend.onrender.com/api/ai/generate-flashcards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

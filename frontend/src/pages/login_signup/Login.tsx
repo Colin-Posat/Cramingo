@@ -41,7 +41,7 @@ const Login: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:6500/api/auth/login", {
+      const response = await fetch("https://fliply-backend.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

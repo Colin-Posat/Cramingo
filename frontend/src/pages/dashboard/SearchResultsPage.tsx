@@ -63,7 +63,7 @@ const SearchResultsPage: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`http://localhost:6500/api/sets/search?classCode=${encodeURIComponent(query)}`, {
+        const response = await fetch(`https://fliply-backend.onrender.com/api/sets/search?classCode=${encodeURIComponent(query)}`, {
           credentials: 'include'
         });
         

@@ -74,7 +74,7 @@ const ProfilePage: React.FC = () => {
         try {
           // Fetch the user document by ID if available
           if (userData.uid) {
-            const userDocResponse = await fetch(`http://localhost:6500/api/user/${userData.uid}`, {
+            const userDocResponse = await fetch(`https://fliply-backend.onrender.com/api/user/${userData.uid}`, {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include'
@@ -84,7 +84,7 @@ const ProfilePage: React.FC = () => {
               const userDocData = await userDocResponse.json();
               
               // Also fetch the total likes count from the dedicated endpoint
-              const totalLikesResponse = await fetch(`http://localhost:6500/api/user/${userData.uid}/total-likes`, {
+              const totalLikesResponse = await fetch(`https://fliply-backend.onrender.com/api/user/${userData.uid}/total-likes`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include'
@@ -121,7 +121,7 @@ const ProfilePage: React.FC = () => {
     // Fetch data from fallback API
     const fetchFromFallbackAPI = async (userData: any, localStorageUsername: string) => {
       try {
-        const fallbackResponse = await fetch('http://localhost:6500/api/user/profile', {
+        const fallbackResponse = await fetch('https://fliply-backend.onrender.com/api/user/profile', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include'
@@ -134,7 +134,7 @@ const ProfilePage: React.FC = () => {
           const firebaseUserId = userData.uid || fallbackData.uid;
           if (firebaseUserId) {
             try {
-              const userDocResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}`, {
+              const userDocResponse = await fetch(`https://fliply-backend.onrender.com/api/user/${firebaseUserId}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include'
@@ -145,7 +145,7 @@ const ProfilePage: React.FC = () => {
                 
                 // Also try to fetch total likes from dedicated endpoint
                 try {
-                  const totalLikesResponse = await fetch(`http://localhost:6500/api/user/${firebaseUserId}/total-likes`, {
+                  const totalLikesResponse = await fetch(`https://fliply-backend.onrender.com/api/user/${firebaseUserId}/total-likes`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'

@@ -92,7 +92,7 @@ const SavedSets: React.FC = () => {
         }
 
         // Use environment variable or fallback
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6500/api';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://fliply-backend.onrender.com/api';
         
         console.log('Fetching saved sets for user:', user.id);
 
@@ -176,7 +176,7 @@ const SavedSets: React.FC = () => {
         return;
       }
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6500/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://fliply-backend.onrender.com/api';
       
       const response = await fetch(`${apiUrl}/sets/unsave`, {
         method: 'POST',

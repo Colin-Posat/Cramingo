@@ -163,7 +163,7 @@ const Details: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:6500/api/auth/complete-signup", {
+      const response = await fetch("https://fliply-backend.onrender.com/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

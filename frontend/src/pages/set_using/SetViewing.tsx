@@ -75,7 +75,7 @@ const SetViewingPage: React.FC = () => {
       try {
         // Add a timestamp parameter and no-cache headers to prevent caching issues
         const timestamp = new Date().getTime();
-        const response = await fetch(`http://localhost:6500/api/sets/like-status?setId=${setId}&userId=${currentUserId}&_t=${timestamp}`, {
+        const response = await fetch(`https://fliply-backend.onrender.com/api/sets/like-status?setId=${setId}&userId=${currentUserId}&_t=${timestamp}`, {
           credentials: 'include',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -123,7 +123,7 @@ const SetViewingPage: React.FC = () => {
         }
         
         try {
-          const response = await fetch(`http://localhost:6500/api/sets/${setId}`, {
+          const response = await fetch(`https://fliply-backend.onrender.com/api/sets/${setId}`, {
             credentials: 'include'
           });
           
@@ -146,7 +146,7 @@ const SetViewingPage: React.FC = () => {
               setIsSavedByCurrentUser(true);
             } else if (data.originalSetId) {
               // Check if this is a set the current user has saved
-              const savedSetsResponse = await fetch(`http://localhost:6500/api/sets/saved/${userId}`, {
+              const savedSetsResponse = await fetch(`https://fliply-backend.onrender.com/api/sets/saved/${userId}`, {
                 credentials: 'include'
               });
               
@@ -209,8 +209,8 @@ const SetViewingPage: React.FC = () => {
       setIsLiking(true);
       
       const endpoint = hasLiked 
-        ? 'http://localhost:6500/api/sets/unlike'
-        : 'http://localhost:6500/api/sets/like';
+        ? 'https://fliply-backend.onrender.com/api/sets/unlike'
+        : 'https://fliply-backend.onrender.com/api/sets/like';
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -286,7 +286,7 @@ const SetViewingPage: React.FC = () => {
       const userId = user.id || user.uid;
 
       // Perform save operation
-      const response = await fetch('http://localhost:6500/api/sets/save', {
+      const response = await fetch('https://fliply-backend.onrender.com/api/sets/save', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -337,7 +337,7 @@ const SetViewingPage: React.FC = () => {
 
       // If this is a saved set (we're viewing the saved copy)
       if (flashcardSet?.isDerived) {
-        const response = await fetch('http://localhost:6500/api/sets/unsave', {
+        const response = await fetch('https://fliply-backend.onrender.com/api/sets/unsave', {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -359,7 +359,7 @@ const SetViewingPage: React.FC = () => {
       } else {
         // If we're viewing the original set but want to unsave our saved copy
         // First we need to find our saved copy
-        const savedSetsResponse = await fetch(`http://localhost:6500/api/sets/saved/${userId}`, {
+        const savedSetsResponse = await fetch(`https://fliply-backend.onrender.com/api/sets/saved/${userId}`, {
           credentials: 'include'
         });
         
@@ -377,7 +377,7 @@ const SetViewingPage: React.FC = () => {
         }
         
         // Unsave the found copy
-        const unsaveResponse = await fetch('http://localhost:6500/api/sets/unsave', {
+        const unsaveResponse = await fetch('https://fliply-backend.onrender.com/api/sets/unsave', {
           method: 'POST',
           credentials: 'include',
           headers: {

@@ -108,7 +108,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`http://localhost:6500/api/sets/${setId}`, { credentials: 'include' });
+      const response = await fetch(`https://fliply-backend.onrender.com/api/sets/${setId}`, { credentials: 'include' });
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const data = await response.json();
       setFlashcardSet(data);
@@ -132,7 +132,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
       setLoadingOptions(true); // Indicate loading specifically for this action
 
       try {
-          const response = await fetch('http://localhost:6500/api/quiz/generate-distractors', {
+          const response = await fetch('https://fliply-backend.onrender.com/api/quiz/generate-distractors', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -261,7 +261,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
   
     // For text input, use the semantic answer checking API
     try {
-      const response = await fetch('http://localhost:6500/api/semantic-answer/check', {
+      const response = await fetch('https://fliply-backend.onrender.com/api/semantic-answer/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -56,7 +56,7 @@ const CreatedSets: React.FC = () => {
         
         // First try to get the response as text to see what's happening
         try {
-          const response = await fetch(`http://localhost:6500/api/sets/user/${userId}`, {
+          const response = await fetch(`https://fliply-backend.onrender.com/api/sets/user/${userId}`, {
             credentials: 'include' // Include cookies for authentication
           });
           
@@ -133,7 +133,7 @@ const CreatedSets: React.FC = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.id || user.uid;
       
-      const response = await fetch(`http://localhost:6500/api/sets/delete/${setToDelete}?userId=${userId}`, {
+      const response = await fetch(`https://fliply-backend.onrender.com/api/sets/delete/${setToDelete}?userId=${userId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
