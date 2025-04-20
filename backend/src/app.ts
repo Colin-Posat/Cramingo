@@ -21,7 +21,8 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3000",
-      "https://25fd-169-233-243-85.ngrok-free.app"  // ✅ Added ngrok origin
+      "https://25fd-169-233-243-85.ngrok-free.app",
+      "http://localhost:6500"  // ✅ Added ngrok origin
     ],
     credentials: true,
   })

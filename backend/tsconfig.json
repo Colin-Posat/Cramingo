@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "types": [], // ✅ Ensures no implicit types are forced
-    "typeRoots": ["./node_modules/@types"], // ✅ Explicitly tells TypeScript where to look for types
     "esModuleInterop": true, // ✅ Allows default imports from CommonJS modules like Firebase
     "strict": true, // ✅ Ensures better type safety
     "forceConsistentCasingInFileNames": true, // ✅ Prevents casing mismatches in imports
