@@ -9,8 +9,12 @@ const serviceAccount = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION
 if (!admin.apps.length) {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`
     });
 }
 
 const db = admin.firestore();
-export { db, admin };
+const storage = admin.storage();
+const bucket = storage.bucket();
+
+export { db, admin, storage, bucket };

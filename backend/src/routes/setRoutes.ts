@@ -9,7 +9,7 @@ import {
   deleteSet,
   saveSet,
   unsaveSet,
-  // New imports for likes functionality
+  // Like functionality
   likeSet,
   unlikeSet,
   checkLikeStatus
@@ -44,7 +44,6 @@ router.post("/save", saveSet);
 // Unsave (remove) a saved flashcard set
 router.post("/unsave", unsaveSet);
 
-// New routes for likes functionality
 // Like a flashcard set
 router.post("/like", likeSet);
 

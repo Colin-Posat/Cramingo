@@ -310,7 +310,13 @@ const SetViewingPage: React.FC = () => {
       
       // Optional: Navigate to the newly saved set
       if (savedSet.id !== setId) {
-        navigate(`/study/${savedSet.id}`);
+        // Preserve the fromSearch and searchQuery when navigating
+        navigate(`/study/${savedSet.id}`, {
+          state: {
+            fromSearch: fromSearch,
+            searchQuery: searchQuery
+          }
+        });
       } else {
         setLoading(false);
       }

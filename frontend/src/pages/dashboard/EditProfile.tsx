@@ -254,20 +254,7 @@ const EditProfile: React.FC = () => {
               />
             </div>
             
-            {/* Email field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email (optional)
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={profile.email || ''}
-                onChange={handleChange}
-                className="block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 border-gray-300 focus:ring-[#004a74]/20"
-                placeholder="Your email address"
-              />
-            </div>
+
             
             {/* Action buttons */}
             <div className="pt-4 border-t border-gray-200">

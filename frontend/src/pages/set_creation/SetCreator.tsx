@@ -10,7 +10,9 @@ import {
   Globe as GlobeIcon,
   Lock as LockIcon,
   Check as CheckIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Image as ImageIcon,
+  Trash2 as TrashIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
@@ -19,6 +21,10 @@ import AIGenerateOverlay from '../../components/AIGenerateOverlay';
 type Flashcard = {
   question: string;
   answer: string;
+  questionImage?: string;
+  answerImage?: string;
+  hasQuestionImage?: boolean;
+  hasAnswerImage?: boolean;
 };
 
 type FlashcardSet = {
@@ -37,16 +43,22 @@ type FlashcardSet = {
 
 const SetCreator: React.FC = () => {
   const navigate = useNavigate();
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([{ question: '', answer: '' }]);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([{ 
+    question: '', 
+    answer: '', 
+    hasQuestionImage: false, 
+    hasAnswerImage: false 
+  }]);
   const [title, setTitle] = useState('');
   const [classCode, setClassCode] = useState('');
-  const [description, setDescription] = useState(''); // New state for description
+  const [description, setDescription] = useState('');
   const [classCodes, setClassCodes] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [editingSet, setEditingSet] = useState<FlashcardSet | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
   const [exitDestination, setExitDestination] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [showInfoTips, setShowInfoTips] = useState(() => {
     // Check localStorage for user preference
     return localStorage.getItem('hideCreatorInfoTips') !== 'true';
@@ -56,7 +68,8 @@ const SetCreator: React.FC = () => {
   const [titleError, setTitleError] = useState('');
   const [classCodeError, setClassCodeError] = useState('');
   const [flashcardError, setFlashcardError] = useState('');
-  const [descriptionError, setDescriptionError] = useState(''); // New error state for description
+  const [imageError, setImageError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // New state for AI Generate Overlay
@@ -65,6 +78,7 @@ const SetCreator: React.FC = () => {
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const classCodeInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRefs = useRef<HTMLInputElement[]>([]);
 
   // Fetch class codes from CSV file
   const fetchClassCodes = async () => {
@@ -89,9 +103,18 @@ const SetCreator: React.FC = () => {
         setEditingSet(parsedSet);
         setTitle(parsedSet.title || '');
         setClassCode(parsedSet.classCode || '');
-        setDescription(parsedSet.description || ''); // Load description if available
+        setDescription(parsedSet.description || '');
         if (Array.isArray(parsedSet.flashcards) && parsedSet.flashcards.length > 0) {
-          setFlashcards(parsedSet.flashcards);
+          // Ensure all flashcards have the image properties
+          const updatedFlashcards = parsedSet.flashcards.map(card => ({
+            question: card.question || '',
+            answer: card.answer || '',
+            questionImage: card.questionImage || '',
+            answerImage: card.answerImage || '',
+            hasQuestionImage: !!card.questionImage,
+            hasAnswerImage: !!card.answerImage
+          }));
+          setFlashcards(updatedFlashcards);
         }
       } else {
         // If it doesn't belong to the current user, clear it.
@@ -182,11 +205,19 @@ const SetCreator: React.FC = () => {
 
   // Add a new flashcard
   const addFlashcard = () => {
-    setFlashcards([...flashcards, { question: '', answer: '' }]);
+    setFlashcards([
+      ...flashcards, 
+      { 
+        question: '', 
+        answer: '', 
+        hasQuestionImage: false, 
+        hasAnswerImage: false 
+      }
+    ]);
     setFlashcardError('');
   };
 
-  // Update a flashcard
+  // Update a flashcard's text content
   const updateFlashcard = (index: number, field: 'question' | 'answer', value: string) => {
     const updatedFlashcards = [...flashcards];
     updatedFlashcards[index][field] = value;
@@ -194,10 +225,99 @@ const SetCreator: React.FC = () => {
     setFlashcardError('');
   };
 
+  // Handle image upload for a flashcard
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>, 
+    index: number, 
+    type: 'question' | 'answer'
+  ) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+
+    const file = event.target.files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setImageError("Please select an image file (JPEG, PNG, etc.)");
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Image file must be less than 5MB");
+      return;
+    }
+
+    setImageUploading(true);
+    setImageError('');
+    
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Send the file to the server
+      const response = await fetch('http://localhost:6500/api/uploads/image', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const imageUrl = data.imageUrl;
+      
+      // Update the flashcard with the image URL
+      const updatedFlashcards = [...flashcards];
+      if (type === 'question') {
+        updatedFlashcards[index].questionImage = imageUrl;
+        updatedFlashcards[index].hasQuestionImage = true;
+      } else {
+        updatedFlashcards[index].answerImage = imageUrl;
+        updatedFlashcards[index].hasAnswerImage = true;
+      }
+      
+      setFlashcards(updatedFlashcards);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setImageError("Failed to upload image. Please try again.");
+    } finally {
+      setImageUploading(false);
+      // Reset the file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  // Remove an image from a flashcard
+  const removeImage = (index: number, type: 'question' | 'answer') => {
+    const updatedFlashcards = [...flashcards];
+    
+    if (type === 'question') {
+      updatedFlashcards[index].questionImage = '';
+      updatedFlashcards[index].hasQuestionImage = false;
+    } else {
+      updatedFlashcards[index].answerImage = '';
+      updatedFlashcards[index].hasAnswerImage = false;
+    }
+    
+    setFlashcards(updatedFlashcards);
+  };
+
   // Delete a flashcard
   const deleteFlashcard = (index: number) => {
     if (flashcards.length <= 1) {
-      setFlashcards([{ question: '', answer: '' }]);
+      setFlashcards([{ 
+        question: '', 
+        answer: '', 
+        hasQuestionImage: false, 
+        hasAnswerImage: false 
+      }]);
     } else {
       const updatedFlashcards = flashcards.filter((_, i) => i !== index);
       setFlashcards(updatedFlashcards);
@@ -206,7 +326,13 @@ const SetCreator: React.FC = () => {
 
   // Navigate with confirmation if needed
   const navigateWithConfirmation = (destination: string) => {
-    const hasContent = flashcards.some(card => card.question.trim() || card.answer.trim());
+    const hasContent = flashcards.some(card => 
+      card.question.trim() || 
+      card.answer.trim() || 
+      card.hasQuestionImage || 
+      card.hasAnswerImage
+    );
+    
     if (!hasContent && flashcards.length === 1) {
       navigate(destination);
       return;
@@ -216,7 +342,7 @@ const SetCreator: React.FC = () => {
       const noChanges = 
         editingSet.title === title &&
         editingSet.classCode === classCode &&
-        editingSet.description === description && // Check if description is unchanged
+        editingSet.description === description &&
         areFlashcardsEqual(editingSet.flashcards, flashcards);
       
       if (noChanges) {
@@ -232,10 +358,18 @@ const SetCreator: React.FC = () => {
   // Compare flashcard arrays
   const areFlashcardsEqual = (arr1: Flashcard[], arr2: Flashcard[]) => {
     if (arr1.length !== arr2.length) return false;
-    return arr1.every((flashcard, index) => 
-      flashcard.question === arr2[index].question &&
-      flashcard.answer === arr2[index].answer
-    );
+    
+    return arr1.every((flashcard, index) => {
+      const card2 = arr2[index];
+      return (
+        flashcard.question === card2.question &&
+        flashcard.answer === card2.answer &&
+        flashcard.questionImage === card2.questionImage &&
+        flashcard.answerImage === card2.answerImage &&
+        flashcard.hasQuestionImage === card2.hasQuestionImage &&
+        flashcard.hasAnswerImage === card2.hasAnswerImage
+      );
+    });
   };
 
   // Validate form before saving
@@ -272,8 +406,12 @@ const SetCreator: React.FC = () => {
       isValid = false;
     }
     
-    const validFlashcards = flashcards.filter(
-      card => card.question.trim() || card.answer.trim()
+    // Check for valid flashcards - now considers images as valid content
+    const validFlashcards = flashcards.filter(card => 
+      card.question.trim() || 
+      card.answer.trim() ||
+      card.hasQuestionImage ||
+      card.hasAnswerImage
     );
     
     if (validFlashcards.length === 0) {
@@ -281,86 +419,102 @@ const SetCreator: React.FC = () => {
       isValid = false;
     }
     
+    // Check that each card has both a question and an answer (text or image)
+    const invalidCards = flashcards.findIndex(card => {
+      const hasQuestion = card.question.trim() || card.hasQuestionImage;
+      const hasAnswer = card.answer.trim() || card.hasAnswerImage;
+      return (hasQuestion && !hasAnswer) || (!hasQuestion && hasAnswer);
+    });
+    
+    if (invalidCards !== -1) {
+      setFlashcardError(`Card ${invalidCards + 1} needs both a question and an answer`);
+      isValid = false;
+    }
+    
     return isValid;
   };
 
-// Save flashcard set
-const saveFlashcardSet = async (isPublic: boolean) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id && !user.uid) {
-      setFlashcardError("You must be logged in to save a set");
-      return;
-    }
-    
-    const userId = user.id || user.uid;
-    // Get the username from localStorage. If not available, fallback to email or displayName
-    const username = user.username || user.displayName || user.email || "Anonymous User";
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    const validFlashcards = flashcards.filter(
-      card => card.question.trim() || card.answer.trim()
-    );
-    
-    const setId = editingSet?.id || crypto.randomUUID();
-    
-    const newSet: FlashcardSet = {
-      id: setId,
-      title: title.trim(),
-      classCode: classCode.trim(),
-      description: description.trim(),
-      flashcards: validFlashcards,
-      isPublic: isPublic,
-      userId: userId,
-      username: username, // Add the username to the set
-      createdAt: editingSet?.createdAt || new Date().toISOString() // Add creation timestamp if not already present
-    };
-    
-    setIsLoading(true);
-    console.log('Sending data to backend:', JSON.stringify(newSet));
-    
-    const endpoint = editingSet 
-      ? `http://localhost:6500/api/sets/update/${setId}`
-      : 'http://localhost:6500/api/sets/create';
-      
-    const method = editingSet ? 'PUT' : 'POST';
-    
-    const response = await fetch(endpoint, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify(newSet)
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (response.ok) {
-      console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
-      localStorage.removeItem("editingFlashcardSet");
-      setSaveSuccess(true);
-      setTimeout(() => {
-        navigate('/created-sets');
-      }, 1500);
-    } else {
-      try {
-        const errorData = await response.json();
-        setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. ${errorData.message || ''}`);
-      } catch (parseError) {
-        setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. Server returned ${response.status} ${response.statusText}.`);
+  // Save flashcard set
+  const saveFlashcardSet = async (isPublic: boolean) => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.id && !user.uid) {
+        setFlashcardError("You must be logged in to save a set");
+        return;
       }
+      
+      const userId = user.id || user.uid;
+      // Get the username from localStorage. If not available, fallback to email or displayName
+      const username = user.username || user.displayName || user.email || "Anonymous User";
+      
+      if (!validateForm()) {
+        return;
+      }
+      
+      // Filter out empty flashcards but keep those with images
+      const validFlashcards = flashcards.filter(card => 
+        card.question.trim() || 
+        card.answer.trim() ||
+        card.hasQuestionImage ||
+        card.hasAnswerImage
+      );
+      
+      const setId = editingSet?.id || crypto.randomUUID();
+      
+      const newSet: FlashcardSet = {
+        id: setId,
+        title: title.trim(),
+        classCode: classCode.trim(),
+        description: description.trim(),
+        flashcards: validFlashcards,
+        isPublic: isPublic,
+        userId: userId,
+        username: username,
+        createdAt: editingSet?.createdAt || new Date().toISOString()
+      };
+      
+      setIsLoading(true);
+      console.log('Sending data to backend:', JSON.stringify(newSet));
+      
+      const endpoint = editingSet 
+        ? `http://localhost:6500/api/sets/update/${setId}`
+        : 'http://localhost:6500/api/sets/create';
+        
+      const method = editingSet ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(newSet)
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        console.log(`Flashcard set ${editingSet ? 'updated' : 'saved'} successfully`);
+        localStorage.removeItem("editingFlashcardSet");
+        setSaveSuccess(true);
+        setTimeout(() => {
+          navigate('/created-sets');
+        }, 1500);
+      } else {
+        try {
+          const errorData = await response.json();
+          setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. ${errorData.message || ''}`);
+        } catch (parseError) {
+          setFlashcardError(`Failed to ${editingSet ? 'update' : 'save'} flashcard set. Server returned ${response.status} ${response.statusText}.`);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving flashcard set:", error);
+      setFlashcardError("Failed to save flashcard set. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Error saving flashcard set:", error);
-    setFlashcardError("Failed to save flashcard set. Please check your connection and try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleSaveAndExit = () => {
     if (validateForm()) {
@@ -375,15 +529,33 @@ const saveFlashcardSet = async (isPublic: boolean) => {
     setShowExitModal(false);
   };
 
-  // Check if there are any non-empty flashcards
-  const hasValidContent = flashcards.some(card => card.question.trim() || card.answer.trim());
+  // Check if there are any non-empty flashcards (including those with images)
+  const hasValidContent = flashcards.some(card => 
+    card.question.trim() || 
+    card.answer.trim() ||
+    card.hasQuestionImage ||
+    card.hasAnswerImage
+  );
 
   // Handler for AI Generated Flashcards
   const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[]) => {
-    const currentFlashcards = flashcards.filter(card => card.question.trim() || card.answer.trim());
+    // Make sure AI-generated cards have image properties
+    const processedFlashcards = generatedFlashcards.map(card => ({
+      ...card,
+      hasQuestionImage: false,
+      hasAnswerImage: false
+    }));
+    
+    const currentFlashcards = flashcards.filter(card => 
+      card.question.trim() || 
+      card.answer.trim() ||
+      card.hasQuestionImage ||
+      card.hasAnswerImage
+    );
+    
     const finalFlashcards = currentFlashcards.length === 0 
-      ? generatedFlashcards 
-      : [...currentFlashcards, ...generatedFlashcards];
+      ? processedFlashcards 
+      : [...currentFlashcards, ...processedFlashcards];
 
     setFlashcards(finalFlashcards);
     setShowAIGenerateOverlay(false);
@@ -460,7 +632,7 @@ const saveFlashcardSet = async (isPublic: boolean) => {
                     </h3>
                     <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
                       <li>• Fill in the set title and select a class code</li>
-                      <li>• Add at least one flashcard with a question and answer</li>
+                      <li>• Add flashcards with questions and answers (text or images)</li>
                       <li>• Save as private (only you can see) or publish publicly (everyone can see)</li>
                     </ul>
                     <div className="mt-3 flex items-center">
@@ -593,10 +765,11 @@ const saveFlashcardSet = async (isPublic: boolean) => {
               )}
             </div>
 
-            {flashcardError && (
+            {/* Error Messages */}
+            {(flashcardError || imageError) && (
               <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-center">
                 <AlertCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
-                {flashcardError}
+                {flashcardError || imageError}
               </div>
             )}
 
@@ -637,31 +810,124 @@ const saveFlashcardSet = async (isPublic: boolean) => {
                     </button>
                   </div>
                   <div className="p-6 grid md:grid-cols-2 gap-6">
+                    {/* Question Side */}
                     <div>
                       <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
                         <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
                         Question
                       </h3>
+                      
+                      {/* Question Text Input */}
                       <textarea 
                         value={card.question}
                         onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
                         placeholder="Enter your question here"
-                        className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
+                        className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
                           focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
                       />
+                      
+                      {/* Question Image Upload */}
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-700">Add Image (Optional)</span>
+                          {card.hasQuestionImage && card.questionImage && (
+                            <button 
+                              onClick={() => removeImage(index, 'question')}
+                              className="text-red-600 text-sm flex items-center"
+                            >
+                              <TrashIcon className="w-4 h-4 mr-1" />
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        
+                        {card.hasQuestionImage && card.questionImage ? (
+                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                            <img 
+                              src={card.questionImage} 
+                              alt="Question" 
+                              className="w-full h-auto max-h-[150px] object-contain" 
+                            />
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div className="flex flex-col items-center justify-center p-3">
+                              <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                              <p className="text-sm text-gray-500">Click to upload an image</p>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              className="hidden"
+                              disabled={imageUploading}
+                              onChange={(e) => handleImageUpload(e, index, 'question')}
+                              ref={el => {
+                                if (el) fileInputRefs.current[index * 2] = el;
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
+                    
+                    {/* Answer Side */}
                     <div>
                       <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
                         <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
                         Answer
                       </h3>
+                      
+                      {/* Answer Text Input */}
                       <textarea 
                         value={card.answer}
                         onChange={(e) => updateFlashcard(index, 'answer', e.target.value)}
                         placeholder="Enter your answer here"
-                        className="w-full min-h-[150px] p-3 text-base rounded-lg border border-gray-200 
+                        className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
                           focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
                       />
+                      
+                      {/* Answer Image Upload */}
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-700">Add Image (Optional)</span>
+                          {card.hasAnswerImage && card.answerImage && (
+                            <button 
+                              onClick={() => removeImage(index, 'answer')}
+                              className="text-red-600 text-sm flex items-center"
+                            >
+                              <TrashIcon className="w-4 h-4 mr-1" />
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        
+                        {card.hasAnswerImage && card.answerImage ? (
+                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                            <img 
+                              src={card.answerImage} 
+                              alt="Answer" 
+                              className="w-full h-auto max-h-[150px] object-contain" 
+                            />
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div className="flex flex-col items-center justify-center p-3">
+                              <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                              <p className="text-sm text-gray-500">Click to upload an image</p>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              className="hidden"
+                              disabled={imageUploading}
+                              onChange={(e) => handleImageUpload(e, index, 'answer')}
+                              ref={el => {
+                                if (el) fileInputRefs.current[index * 2 + 1] = el;
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -694,12 +960,12 @@ const saveFlashcardSet = async (isPublic: boolean) => {
               className="px-4 py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
                 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                 flex items-center justify-center gap-3 group shadow-md"
-              disabled={isLoading}
+              disabled={isLoading || imageUploading}
             >
               <LockIcon className="w-6 h-6 text-[#004a74] group-hover:scale-110 transition-transform" />
               <div className="text-left">
                 <span className="font-bold block">
-                  {isLoading ? 'Saving...' : 'Save as Private'}
+                  {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save as Private')}
                 </span>
                 <span className="text-xs text-gray-500 block">Only you can access</span>
               </div>
@@ -709,12 +975,12 @@ const saveFlashcardSet = async (isPublic: boolean) => {
               className="px-4 py-4 bg-[#004a74] text-white rounded-xl 
                 hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
                 flex items-center justify-center gap-3 group shadow-xl"
-              disabled={isLoading}
+              disabled={isLoading || imageUploading}
             >
               <GlobeIcon className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
               <div className="text-left">
                 <span className="font-bold block">
-                  {isLoading ? 'Saving...' : 'Save & Publish'}
+                  {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save & Publish')}
                 </span>
                 <span className="text-xs text-white/80 block">Everyone can view</span>
               </div>

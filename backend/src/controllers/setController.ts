@@ -14,6 +14,18 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Validate flashcards structure - now includes image properties
+    for (const card of flashcards) {
+      // Check if at least a question or answer is provided (either text or image)
+      const hasQuestionContent = card.question?.trim() || card.questionImage;
+      const hasAnswerContent = card.answer?.trim() || card.answerImage;
+      
+      if (!hasQuestionContent || !hasAnswerContent) {
+        res.status(400).json({ message: "Each flashcard must have both question and answer content" });
+        return;
+      }
+    }
+
     const existingDoc = await db.collection("flashcardSets").doc(id).get();
     if (existingDoc.exists) {
       res.status(409).json({ message: "A set with this ID already exists" });
@@ -64,6 +76,18 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
     if (!title || !classCode || !Array.isArray(flashcards) || flashcards.length === 0 || !userId) {
       res.status(400).json({ message: "Missing required fields" });
       return;
+    }
+    
+    // Validate flashcards structure - now includes image properties
+    for (const card of flashcards) {
+      // Check if at least a question or answer is provided (either text or image)
+      const hasQuestionContent = card.question?.trim() || card.questionImage;
+      const hasAnswerContent = card.answer?.trim() || card.answerImage;
+      
+      if (!hasQuestionContent || !hasAnswerContent) {
+        res.status(400).json({ message: "Each flashcard must have both question and answer content" });
+        return;
+      }
     }
     
     // Check if the document exists
@@ -277,8 +301,54 @@ export const deleteSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     
+    // Get the flashcards to check for images to delete
+    const flashcards = setData.flashcards || [];
+    const imageUrls: string[] = [];
+    
+    // Define the flashcard type
+    interface Flashcard {
+      question: string;
+      answer: string;
+      questionImage?: string;
+      answerImage?: string;
+      hasQuestionImage?: boolean;
+      hasAnswerImage?: boolean;
+    }
+    
+    // Collect image URLs to delete
+    flashcards.forEach((card: Flashcard) => {
+      if (card.questionImage) imageUrls.push(card.questionImage);
+      if (card.answerImage) imageUrls.push(card.answerImage);
+    });
+    
     // Delete the document
     await db.collection("flashcardSets").doc(setId).delete();
+    
+    // Delete associated images from storage if they exist
+    if (imageUrls.length > 0) {
+      try {
+        const storage = admin.storage();
+        const bucket = storage.bucket();
+        
+        // Delete each image asynchronously
+        const deletePromises = imageUrls.map(url => {
+          // Extract the path from the URL
+          const urlObj = new URL(url);
+          const path = urlObj.pathname.split('/').slice(2).join('/');
+          return bucket.file(path).delete().catch(err => {
+            console.error(`Failed to delete image at path ${path}:`, err);
+            // Continue even if one image deletion fails
+            return null;
+          });
+        });
+        
+        await Promise.all(deletePromises);
+        console.log(`Deleted ${imageUrls.length} images associated with set ${setId}`);
+      } catch (storageError) {
+        console.error(`Error deleting images for set ${setId}:`, storageError);
+        // Continue with set deletion even if image deletion fails
+      }
+    }
     
     // Also delete any associated likes
     const likesQuery = await db.collection("setLikes")
@@ -344,7 +414,14 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       title: string;
       classCode: string;
       description?: string;
-      flashcards: Array<{question: string, answer: string}>;
+      flashcards: Array<{
+        question: string; 
+        answer: string;
+        questionImage?: string;
+        answerImage?: string;
+        hasQuestionImage?: boolean;
+        hasAnswerImage?: boolean;
+      }>;
       isPublic: boolean;
       icon?: string;
       createdAt: any; // Firestore timestamp
@@ -698,6 +775,7 @@ export const unlikeSet = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
 // Check if a user has liked a set
 export const checkLikeStatus = async (req: Request, res: Response): Promise<void> => {
   try {
