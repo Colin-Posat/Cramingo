@@ -1,17 +1,31 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
-import { AlertCircle as AlertCircleIcon } from "lucide-react";
+import { AlertCircle as AlertCircleIcon, Eye, EyeOff } from "lucide-react";
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
-const Signup: React.FC = () => {
+const CombinedSignup: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Basic user information
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Additional details
+  const [university, setUniversity] = useState("");
+  
+  // UI state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // University autocomplete states
+  const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
+  const [allUniversities, setAllUniversities] = useState<string[]>([]);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState<boolean>(true);
+  const autocompleteRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Memoize particle background props to prevent re-rendering
   const particleProps = useMemo(() => ({
@@ -23,21 +37,119 @@ const Signup: React.FC = () => {
     particleSpeed: 0.1
   }), []);
 
+  // Load universities from CSV
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        setIsLoadingUniversities(true);
+        
+        // Fetch the CSV file
+        const response = await fetch('/data/schools.csv'); 
+        const text = await response.text();
+        
+        // Parse CSV - simple split by new line
+        const universities = text.split('\n')
+          .map(school => school.trim())
+          .filter(school => 
+            school.length > 0 && 
+            !school.includes('<!doctype') && 
+            !school.includes('<script') &&
+            !school.includes('import')
+          );
+        
+        console.log('✅ Loaded universities:', universities);
+        setAllUniversities(universities);
+        setIsLoadingUniversities(false);
+      } catch (error) {
+        console.error('❌ Error loading universities:', error);
+        setIsLoadingUniversities(false);
+      }
+    };
+
+    fetchUniversities();
+  }, []);
+
   // Clear error when user starts typing again
   useEffect(() => {
     if (error) setError("");
-  }, [email, username, password, confirmPassword]);
+  }, [email, username, password, university]);
+
+  // Filter universities - only show matches that START WITH or INCLUDE the input
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUniversity(value);
+    setError("");
+    
+    if (value.length > 0) {
+      // Filter universities that START WITH or INCLUDE the input value
+      const filteredResults = allUniversities
+        .filter(school => 
+          school.toLowerCase().startsWith(value.toLowerCase()) || 
+          school.toLowerCase().includes(value.toLowerCase())
+        )
+        .slice(0, 5); // Limit to 5 results
+      
+      setAutocompleteResults(filteredResults);
+    } else {
+      setAutocompleteResults([]);
+    }
+  }, [allUniversities]);
+
+  // Handle autocomplete item selection
+  const handleAutocompleteSelect = useCallback((school: string) => {
+    setUniversity(school);
+    setAutocompleteResults([]);
+    setError("");
+  }, []);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        autocompleteRef.current && 
+        !autocompleteRef.current.contains(event.target as Node) &&
+        inputRef.current !== event.target
+      ) {
+        setAutocompleteResults([]);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // Handle input blur - validate university input
+  const handleBlur = useCallback(() => {
+    // Small timeout to allow click on autocomplete item to register first
+    setTimeout(() => {
+      if (university.trim() !== '' && !allUniversities.some(school => 
+        school.toLowerCase() === university.trim().toLowerCase()
+      )) {
+        setError('Please select a valid university from the list');
+        // Don't clear right away
+        setTimeout(() => {
+          setUniversity('');
+          // Clear error message after a delay
+          setTimeout(() => {
+            setError('');
+          }, 3000);
+        }, 1500);
+      }
+    }, 100);
+  }, [university, allUniversities]);
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(prev => !prev);
+  };
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-  
+
     // Form validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-  
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -47,40 +159,66 @@ const Signup: React.FC = () => {
       setError("Username cannot be empty");
       return;
     }
+
+    // Validate university selection
+    if (university.trim() === '') {
+      setError("Please enter your university");
+      return;
+    }
+
+    // Check if the university is valid (case-insensitive)
+    const isValidUniversity = allUniversities.some(school => 
+      school.toLowerCase() === university.trim().toLowerCase()
+    );
+    
+    if (!isValidUniversity) {
+      setError("Please select a valid university from the list");
+      return;
+    }
   
     try {
       setLoading(true);
       
-      // Proceed with signup without username check
-      const response = await fetch("https://fliply-backend.onrender.com/api/auth/signup-init", {
+      // First call signup-init endpoint
+      const initResponse = await fetch("https://fliply-backend.onrender.com/api/auth/signup-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),
       });
   
-      const data = await response.json();
+      const initData = await initResponse.json();
   
-      if (response.ok) {
-        console.log("User credentials stored, proceeding to details page");
+      if (!initResponse.ok) {
+        setError(initData.message || "Signup failed");
+        setLoading(false);
+        return;
+      }
+      
+      console.log("User credentials stored, proceeding to completion");
+      
+      // Then immediately call complete-signup endpoint
+      const completeResponse = await fetch("https://fliply-backend.onrender.com/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email, 
+          university, 
+          fieldOfStudy: "" // Empty string as we removed this field
+        }),
+      });
+
+      const completeData = await completeResponse.json();
+      
+      if (completeResponse.ok) {
+        console.log("User signed up successfully:", completeData);
         
-        // IMPORTANT: Ensure the username is properly stored
-        const initialUserData = {
-          username: username.trim(), // Make sure to trim whitespace
-          email: email,
-          likes: 0,
-          fieldOfStudy: '',
-          uid: data.uid || '' // If your API returns a user ID
-        };
+        // Save user data to localStorage
+        localStorage.setItem("user", JSON.stringify(completeData.user));
         
-        console.log("Saving initial user data:", initialUserData);
-        
-        // Store both pendingEmail (for backward compatibility) and the user object
-        localStorage.setItem("pendingEmail", email);
-        localStorage.setItem("user", JSON.stringify(initialUserData));
-        
-        navigate("/details");
+        // Navigate to created-sets page
+        navigate("/created-sets");
       } else {
-        setError(data.message || "Signup failed");
+        setError(completeData.message || "Signup completion failed");
       }
     } catch (err) {
       console.error("Signup error:", err);
@@ -95,7 +233,7 @@ const Signup: React.FC = () => {
       <ParticlesBackground {...particleProps} />
       <div className="bg-white p-12 rounded-xl shadow-xl w-[min(550px,90vw)] max-h-[90vh] overflow-y-auto text-center relative z-10 scrollbar-thin scrollbar-thumb-[#004a74] scrollbar-track-gray-100">
         <h1 className="text-[#004a74] text-[min(3.5rem,8vw)] font-bold mb-3 leading-tight">
-          Welcome!
+        Welcome!
         </h1>
         
         {error && (
@@ -105,58 +243,114 @@ const Signup: React.FC = () => {
           </p>
         )}
         
-        <p className="p-2 text-gray-600 text-base">
-          Already have an account? <a 
-            href="/login" 
+        <p className="mt-2 mb-4 text-base text-gray-600">
+          Already have an account? <Link 
+            to="/login" 
             className="text-[#004a74] font-medium hover:text-[#00659f] hover:underline transition-colors"
           >
             Sign In
-          </a>
+          </Link>
         </p>
 
         <form onSubmit={handleSignup} className="w-full">
-          <input 
-            type="email" 
-            placeholder="Enter Email" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            required 
-            aria-label="Email"
-            className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
-          />
-          <input 
-            type="text" 
-            placeholder="Create Username" 
-            value={username} 
-            onChange={(e) => setUsername(e.target.value)} 
-            required 
-            aria-label="Username"
-            className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
-          />
-          <input 
-            type="password" 
-            placeholder="Create Password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
-            aria-label="Password"
-            className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
-          />
-          <input 
-            type="password" 
-            placeholder="Confirm Password" 
-            value={confirmPassword} 
-            onChange={(e) => setConfirmPassword(e.target.value)} 
-            required 
-            aria-label="Confirm Password"
-            className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
-          />
+          <div className="mb-4">
+            <input 
+              type="email" 
+              placeholder="Enter Email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+              aria-label="Email"
+              autoComplete="email"
+              className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
+            />
+            <input 
+              type="text" 
+              placeholder="Create Username" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              required 
+              aria-label="Username"
+              className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
+            />
+            
+            {/* Password field with toggle */}
+            <div className="relative my-3">
+              <input 
+                type={showPassword ? "text" : "password"}
+                placeholder="Create Password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                aria-label="Password"
+                autoComplete="new-password"
+                className="w-full p-4 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all pr-12"
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+            
+            {/* University dropdown with autocomplete */}
+            <div className="relative w-full mt-6">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder={isLoadingUniversities ? "Loading universities..." : "Enter Your University"}
+                value={university}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                required
+                disabled={isLoadingUniversities}
+                aria-label="University"
+                className={`w-full p-4 border ${error.includes('university') ? 'border-[#e53935]' : 'border-gray-200'} rounded-lg text-base 
+                  outline-none transition-all duration-300 
+                  focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10`}
+                autoComplete="off"
+              />
+              
+              {/* Autocomplete dropdown list */}
+              {autocompleteResults.length > 0 && (
+                <ul 
+                  ref={autocompleteRef}
+                  className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg"
+                  style={{
+                    width: '100%',
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                    overscrollBehavior: 'contain',
+                    zIndex: 1000
+                  }}
+                >
+                  {autocompleteResults.map((school, index) => (
+                    <li 
+                      key={index}
+                      className="p-3 hover:bg-[#e3f3ff] cursor-pointer border-b border-gray-100 text-left font-medium"
+                      onMouseDown={() => handleAutocompleteSelect(school)}
+                    >
+                      {school}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          
           <button 
             type="submit" 
-            disabled={loading}
+            disabled={loading || isLoadingUniversities}
             className="mt-7 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Processing..." : "Sign Up"}
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>
@@ -164,4 +358,22 @@ const Signup: React.FC = () => {
   );
 };
 
-export default Signup;
+// Add CSS for animation
+const fadeInAnimation = `
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out forwards;
+}
+`;
+
+// Add the animation styles to the document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = fadeInAnimation;
+  document.head.appendChild(style);
+}
+
+export default CombinedSignup;

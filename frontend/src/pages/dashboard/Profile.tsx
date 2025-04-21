@@ -325,19 +325,6 @@ const ProfilePage: React.FC = () => {
                 </div>
               </div>
               
-              {/* Field of Study */}
-              <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-start">
-                  <div className="mr-3 mt-1">
-                    <BookOpenIcon className="h-5 w-5 text-[#004a74]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-1">Field of Study</h3>
-                    <p className="text-lg font-semibold text-[#004a74]">{userProfile.fieldOfStudy}</p>
-                  </div>
-                </div>
-              </div>
-              
               {/* Email (if available) */}
               {userProfile.email && (
                 <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
