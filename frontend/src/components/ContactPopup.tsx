@@ -59,7 +59,7 @@ const ContactPopup: React.FC<ContactPopupProps> = ({ isOpen, onClose }) => {
             </button>
             
             <p className="text-white/60 text-sm mt-3 text-center">
-              Click the button above to open your email client with a pre-written message to our team
+            Click the button above to open your email app with our email already filled in.
             </p>
           </div>
         </div>
