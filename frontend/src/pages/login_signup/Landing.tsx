@@ -17,7 +17,7 @@ const FeatureCard: React.FC<{
 
   return (
     <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-white/20 
-                   hover:border-blue-400/40 transition-all duration-300 transform hover:-translate-y-1">
+                   hover:border-blue-400/40 transition-all duration-300 transform hover:-translate-y-1 w-full">
       <div className="flex flex-col items-center">
         <div className="mb-4">{processedIcon}</div>
         <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
@@ -79,11 +79,14 @@ const Landing: React.FC = () => {
             {/* Hero Section */}
             <main className="text-center">
               <section className="max-w-4xl mx-auto mb-20">
-                <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                  Create, Share, and Study <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">Smarter</span>
+                <h1 className="text-5xl md:text-7xl font-bold text-white mb-5 leading-tight">
+                  Fliply
                 </h1>
-                <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed">
-                  Revolutionize your learning with AI-powered study tools that make knowledge creation and sharing effortless.
+                <h2 className="text-3xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                  The Shortcut to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">Better Grades</span>
+                </h2>
+                <p className="text-xl text-white/70 mb-6 max-w-2xl mx-auto leading-relaxed">
+                  Create, Share, and Study Smarter With AI
                 </p>
                 <button 
                   onClick={() => navigate("/signup")} 
@@ -94,8 +97,8 @@ const Landing: React.FC = () => {
                 </button>
               </section>
               
-              {/* Features Section - 3 Column Layout */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4">
+              {/* Features Section - 3 Column Layout with wider cards */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-7xl mx-auto px-4">
                 <FeatureCard 
                   icon={<Brain />}
                   title="AI-Powered Creation"
@@ -104,7 +107,7 @@ const Landing: React.FC = () => {
                 <FeatureCard 
                   icon={<Share2 />}
                   title="Share with Peers"
-                  description="Post your study sets and help others learn. Collaborate with classmates and track progress together."
+                  description="Post your own study sets to help others learn. Share what you know and contribute to the community."
                 />
                 <FeatureCard 
                   icon={<Search />}
