@@ -50,7 +50,7 @@ const ForgotPassword: React.FC = () => {
       const data = await response.json();
       
       // Show a success message regardless of whether the email exists or not (for security reasons)
-      setSuccess("If your email is registered, you will receive reset instructions");
+      setSuccess("If your email is registered, you will receive reset instructions. Be sure to check your spam folder too!");
       setEmail(""); // Clear email field after successful request
       
     } catch (err: any) {

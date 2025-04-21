@@ -156,6 +156,9 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       return;
     }
     
+    // Import email service
+    const { emailService } = await import('../services/emailService');
+    
     // Check if user exists
     try {
       await auth.getUserByEmail(email);
@@ -163,23 +166,18 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       // If we get here, the user exists, so generate and send the reset link
       const resetLink = await auth.generatePasswordResetLink(email);
       
-      // Here you would integrate with your email service (SendGrid, Mailgun, etc.)
-      // to send the password reset email with the resetLink
+      // Send the password reset email
+      await emailService.sendPasswordResetEmail(email, resetLink);
+      console.log(`Password reset email sent to ${email}`);
       
-      // Example (pseudo-code):
-      // await emailService.send({
-      //   to: email,
-      //   subject: "Reset Your Fliply Password",
-      //   template: "password-reset",
-      //   variables: { resetLink }
-      // });
-      
-      // For now, we'll just log it (for development only)
-      console.log(`Reset link for ${email}: ${resetLink}`);
-      
-    } catch (error) {
+    } catch (error: any) {
       // User doesn't exist, but we don't reveal this fact
-      console.log(`Password reset attempted for non-existent email: ${email}`);
+      if (error.code === 'auth/user-not-found') {
+        console.log(`Password reset attempted for non-existent email: ${email}`);
+      } else {
+        // For other errors, log but don't expose to client
+        console.error(`Error in password reset for ${email}:`, error);
+      }
     }
     
     // Always return the same message, regardless of whether email exists or not

@@ -1,5 +1,6 @@
 import { db } from "./config/firebase"; // Import Firestore instance
 import app from "./app";
+import { emailService } from './services/emailService';
 
 const PORT = process.env.PORT || 6000;
 
