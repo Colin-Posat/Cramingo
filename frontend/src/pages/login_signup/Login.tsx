@@ -66,9 +66,40 @@ const Login: React.FC = () => {
   }, [email, password, navigate]);
 
   return (
-    <div className="flex justify-center items-center h-screen w-screen overflow-hidden relative bg-[#004a74]">
+    <div className="flex flex-col justify-center items-center min-h-screen w-screen overflow-hidden relative bg-gradient-to-br from-[#004a74] to-[#001f3f]">
+      {/* Particle Background */}
       <ParticlesBackground {...particleProps} />
-      <div className="bg-white p-12 rounded-xl shadow-xl w-[min(550px,90vw)] max-h-[90vh] overflow-y-auto text-center relative z-10 scrollbar-thin scrollbar-thumb-[#004a74] scrollbar-track-gray-100">
+      
+      {/* Fixed Navigation Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
+                     bg-black/5 backdrop-blur-md border-b border-white/5">
+        <Link to="/" className="flex items-center space-x-3">
+          <img 
+            src="/images/fliply_logo.png" 
+            alt="Fliply Logo" 
+            className="h-8 w-auto" 
+          />
+          <span className="text-white text-xl font-medium tracking-wide">Fliply</span>
+        </Link>
+        <nav className="flex items-center space-x-8">
+          <Link 
+            to="/signup" 
+            className="text-white/80 hover:text-white transition-colors text-sm font-medium"
+          >
+            Sign Up
+          </Link>
+          <Link 
+            to="/login" 
+            className="text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full 
+                   transition-colors text-sm font-medium border border-white/10"
+          >
+            Sign In
+          </Link>
+        </nav>
+      </header>
+      
+      {/* Main Content with spacing for the fixed header */}
+      <div className="bg-white p-12 rounded-xl shadow-xl w-[min(550px,90vw)] max-h-[90vh] overflow-y-auto text-center relative z-10 scrollbar-thin scrollbar-thumb-[#004a74] scrollbar-track-gray-100 mt-20">
         <h1 className="text-[#004a74] text-[min(3.5rem,8vw)] font-bold mb-3 leading-tight">
           Welcome Back
         </h1>
