@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 const Details: React.FC = () => {
   const navigate = useNavigate();

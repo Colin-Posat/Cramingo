@@ -12,6 +12,7 @@ import {
   Heart as HeartIcon  // Added HeartIcon import
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 // Type definitions
 type Flashcard = {
@@ -63,7 +64,7 @@ const SearchResultsPage: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`https://fliply-backend.onrender.com/api/sets/search?classCode=${encodeURIComponent(query)}`, {
+        const response = await fetch(`${API_BASE_URL}/sets/search?classCode=${encodeURIComponent(query)}`, {
           credentials: 'include'
         });
         

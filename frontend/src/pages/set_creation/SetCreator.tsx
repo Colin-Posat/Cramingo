@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 // Type definitions
 type Flashcard = {
@@ -258,7 +259,7 @@ const SetCreator: React.FC = () => {
       formData.append('image', file);
       
       // Send the file to the server
-      const response = await fetch('https://fliply-backend.onrender.com/api/uploads/image', {
+      const response = await fetch(`${API_BASE_URL}/uploads/image`, {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -477,8 +478,8 @@ const SetCreator: React.FC = () => {
       console.log('Sending data to backend:', JSON.stringify(newSet));
       
       const endpoint = editingSet 
-        ? `https://fliply-backend.onrender.com/api/sets/update/${setId}`
-        : 'https://fliply-backend.onrender.com/api/sets/create';
+        ? `${API_BASE_URL}/sets/update/${setId}`
+        : `${API_BASE_URL}/sets/create`;
         
       const method = editingSet ? 'PUT' : 'POST';
       

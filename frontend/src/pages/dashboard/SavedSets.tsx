@@ -11,6 +11,7 @@ import {
   HeartIcon  // Added HeartIcon import
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 // Type for Flashcard Set
 type FlashcardSet = {

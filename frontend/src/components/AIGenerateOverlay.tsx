@@ -10,6 +10,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Info as InfoIcon
 } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 interface AIGenerateOverlayProps {
   onClose: () => void;
@@ -187,7 +188,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       // Encode user info for authorization
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
-      const response = await fetch('https://fliply-backend.onrender.com/api/files/parse-pdf', {
+      const response = await fetch(`${API_BASE_URL}/files/parse-pdf`, {
         method: 'POST',
         headers: {
           'Authorization': authHeader
@@ -276,7 +277,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       // Encode user info for authorization
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
-      const response = await fetch('https://fliply-backend.onrender.com/api/ai/generate-flashcards', {
+      const response = await fetch(`${API_BASE_URL}/ai/generate-flashcards`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

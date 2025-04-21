@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 const Login: React.FC = () => {
   const navigate = useNavigate();

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
 import { AlertCircle as AlertCircleIcon } from "lucide-react";
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();

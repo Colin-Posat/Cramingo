@@ -9,6 +9,7 @@ import {
   CheckCircle as CheckCircleIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
+import { API_BASE_URL} from '../../config/api';
 
 interface UserProfile {
   username: string;
@@ -73,7 +74,7 @@ const EditProfile: React.FC = () => {
       
       // Send to your specific endpoint using PUT method (same pattern as your SetController)
       const userId = profile.uid;
-      const endpoint = `https://fliply-backend.onrender.com/api/user/${userId}`;
+      const endpoint = `${API_BASE_URL}/user/${userId}`;
       
       console.log('Using endpoint:', endpoint);
       
@@ -107,7 +108,7 @@ const EditProfile: React.FC = () => {
         // Try fallback endpoint (matching your component logic)
         console.log('Trying fallback endpoint: /api/user/update-profile');
         
-        const fallbackResponse = await fetch('https://fliply-backend.onrender.com/api/user/update-profile', {
+        const fallbackResponse = await fetch(`${API_BASE_URL}/user/update-profile`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

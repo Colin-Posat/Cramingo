@@ -79,7 +79,7 @@ const Landing: React.FC = () => {
             {/* Hero Section */}
             <main className="text-center">
               <section className="max-w-4xl mx-auto mb-20">
-                <h1 className="text-5xl md:text-7xl font-bold text-white mb-5 leading-tight">
+                <h1 className="text-5xl md:text-6xl font-bold text-white mb-5 leading-tight">
                   Fliply
                 </h1>
                 <h2 className="text-3xl md:text-6xl font-bold text-white mb-6 leading-tight">
@@ -98,7 +98,7 @@ const Landing: React.FC = () => {
               </section>
               
               {/* Features Section - 3 Column Layout with wider cards */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-7xl mx-auto px-4">
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-8xl mx-auto px-4">
                 <FeatureCard 
                   icon={<Brain />}
                   title="AI-Powered Creation"

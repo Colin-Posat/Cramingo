@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Shuffle, AlertCircle, RefreshCcw } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 type Flashcard = {
   id: number;
@@ -52,7 +53,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`https://fliply-backend.onrender.com/api/sets/${setId}`, { credentials: 'include' });
+      const response = await fetch(`${API_BASE_URL}/sets/${setId}`, { credentials: 'include' });
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const data = await response.json();
       setFlashcardSet(data);

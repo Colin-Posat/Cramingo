@@ -10,6 +10,7 @@ import {
   HeartIcon  // Added HeartIcon import
 } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 // Enhanced type for Flashcard Set
 type FlashcardSet = {
@@ -56,7 +57,7 @@ const CreatedSets: React.FC = () => {
         
         // First try to get the response as text to see what's happening
         try {
-          const response = await fetch(`https://fliply-backend.onrender.com/api/sets/user/${userId}`, {
+          const response = await fetch(`${API_BASE_URL}/sets/user/${userId}`, {
             credentials: 'include' // Include cookies for authentication
           });
           
@@ -133,7 +134,7 @@ const CreatedSets: React.FC = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.id || user.uid;
       
-      const response = await fetch(`https://fliply-backend.onrender.com/api/sets/delete/${setToDelete}?userId=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/sets/delete/${setToDelete}?userId=${userId}`, {
         method: 'DELETE',
         credentials: 'include'
       });

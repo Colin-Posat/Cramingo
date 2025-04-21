@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Check, X, ChevronRight, RotateCw, ChevronLeft, AlertCircle } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
+import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 type Flashcard = {
   question: string;
@@ -108,7 +109,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`https://fliply-backend.onrender.com/api/sets/${setId}`, { credentials: 'include' });
+      const response = await fetch(`${API_BASE_URL}/sets/${setId}`, { credentials: 'include' });
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const data = await response.json();
       setFlashcardSet(data);
@@ -132,7 +133,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
       setLoadingOptions(true); // Indicate loading specifically for this action
 
       try {
-          const response = await fetch('https://fliply-backend.onrender.com/api/quiz/generate-distractors', {
+          const response = await fetch(`${API_BASE_URL}/quiz/generate-distractors`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -261,7 +262,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
   
     // For text input, use the semantic answer checking API
     try {
-      const response = await fetch('https://fliply-backend.onrender.com/api/semantic-answer/check', {
+      const response = await fetch(`${API_BASE_URL}/semantic-answer/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
