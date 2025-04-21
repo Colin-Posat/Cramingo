@@ -13,6 +13,7 @@ import FlashcardViewMode from "./pages/set_using/FlashcardViewMode";
 import QuizViewMode from "./pages/set_using/QuizViewMode";
 import EditProfile from "./pages/dashboard/EditProfile";
 import SearchResultsPage from "./pages/dashboard/SearchResultsPage";
+import ForgotPassword from "./pages/login_signup/ForgotPassword";
 
 const App = () => {
   return (
@@ -34,6 +35,7 @@ const App = () => {
       <Route path="/quiz/:setId/multiple-choice" element={<QuizViewMode quizType="multiple-choice" />} />
       <Route path="*" element={<Navigate to="/" />} />
       <Route path="/search-results" element={<SearchResultsPage />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
     </Routes>
   );
 };

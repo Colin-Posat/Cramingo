@@ -180,7 +180,7 @@ const CombinedSignup: React.FC = () => {
       setLoading(true);
       
       // First call signup-init endpoint
-      const initResponse = await fetch("https://fliply-backend.onrender.com/api/auth/signup-init", {
+      const initResponse = await fetch(`${API_BASE_URL}/auth/signup-init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),
@@ -197,7 +197,7 @@ const CombinedSignup: React.FC = () => {
       console.log("User credentials stored, proceeding to completion");
       
       // Then immediately call complete-signup endpoint
-      const completeResponse = await fetch("https://fliply-backend.onrender.com/api/auth/complete-signup", {
+      const completeResponse = await fetch(`${API_BASE_URL}/auth/complete-signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
