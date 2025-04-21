@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import { Brain, Share2, Search, ArrowRight } from "lucide-react";
 import ModernParticleBackground from "../../components/ParticlesBackground";
+import ContactPopup from "../../components/ContactPopup";
 
 const FeatureCard: React.FC<{
   icon: React.ReactNode;
@@ -29,6 +30,12 @@ const FeatureCard: React.FC<{
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  // Add state for contact popup visibility
+  const [isContactOpen, setIsContactOpen] = useState<boolean>(false);
+
+  // Functions to handle opening and closing the contact popup
+  const openContactPopup = () => setIsContactOpen(true);
+  const closeContactPopup = () => setIsContactOpen(false);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#004a74] to-[#001f3f]">
@@ -56,12 +63,13 @@ const Landing: React.FC = () => {
             <span className="text-white text-xl font-medium tracking-wide">Fliply</span>
           </Link>
           <nav className="flex items-center space-x-8">
-            <Link 
-              to="/contact" 
+            {/* Changed from Link to button to trigger the popup */}
+            <button 
+              onClick={openContactPopup}
               className="text-white/80 hover:text-white transition-colors text-sm font-medium"
             >
               Contact
-            </Link>
+            </button>
             <Link 
               to="/login" 
               className="text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full 
@@ -142,6 +150,9 @@ const Landing: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Contact Popup */}
+      <ContactPopup isOpen={isContactOpen} onClose={closeContactPopup} />
     </div>
   );
 };

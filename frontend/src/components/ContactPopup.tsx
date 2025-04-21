@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Mail, Phone, MapPin } from "lucide-react";
+import React from 'react';
+import { X, Mail } from "lucide-react";
 
 // Contact Popup Component with TypeScript interface
 interface ContactPopupProps {
@@ -10,6 +10,15 @@ interface ContactPopupProps {
 const ContactPopup: React.FC<ContactPopupProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
   
+  const openEmailClient = () => {
+    const subject = ""
+    const body = ""
+    const mailtoUrl = `mailto:fliply.help@gmail.com?subject=${subject}&body=${body}`;
+    
+    // Open in a new tab
+    window.open(mailtoUrl, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
@@ -20,8 +29,8 @@ const ContactPopup: React.FC<ContactPopupProps> = ({ isOpen, onClose }) => {
       
       {/* Popup Content */}
       <div className="relative z-10 bg-gradient-to-b from-[#004a74] to-[#003152] 
-                    p-8 rounded-2xl border border-white/20 shadow-xl max-w-md w-full">
-        <button 
+                p-8 rounded-2xl border border-white/20 shadow-xl max-w-md w-full">
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/70 hover:text-white"
         >
@@ -35,65 +44,24 @@ const ContactPopup: React.FC<ContactPopupProps> = ({ isOpen, onClose }) => {
             <Mail className="text-blue-300 mt-1 flex-shrink-0" size={20} />
             <div>
               <h3 className="text-white font-medium">Email</h3>
-              <p className="text-white/70">support@fliply.edu</p>
+              <p className="text-white/70">fliply.help@gmail.com</p>
             </div>
           </div>
           
-          <div className="flex items-start space-x-4">
-            <Phone className="text-blue-300 mt-1 flex-shrink-0" size={20} />
-            <div>
-              <h3 className="text-white font-medium">Phone</h3>
-              <p className="text-white/70">(555) 123-4567</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-4">
-            <MapPin className="text-blue-300 mt-1 flex-shrink-0" size={20} />
-            <div>
-              <h3 className="text-white font-medium">Address</h3>
-              <p className="text-white/70">
-                123 Education Ave<br />
-                Suite 400<br />
-                San Francisco, CA 94110
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-8">
-          <form className="space-y-4">
-            <div>
-              <input 
-                type="text" 
-                placeholder="Your Name" 
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg 
-                         text-white placeholder-white/50 focus:outline-none focus:border-blue-400/70"
-              />
-            </div>
-            <div>
-              <input 
-                type="email" 
-                placeholder="Your Email" 
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg 
-                         text-white placeholder-white/50 focus:outline-none focus:border-blue-400/70"
-              />
-            </div>
-            <div>
-              <textarea 
-                placeholder="Your Message" 
-                rows={4}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg 
-                         text-white placeholder-white/50 focus:outline-none focus:border-blue-400/70"
-              />
-            </div>
-            <button 
-              type="submit"
-              className="w-full bg-blue-500/70 hover:bg-blue-600/70 text-white font-medium 
-                      py-3 rounded-lg transition-colors"
+          <div className="mt-8">
+            <button
+              onClick={openEmailClient}
+              className="w-full bg-blue-500/70 hover:bg-blue-600/70 text-white font-medium
+                    py-4 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
-              Send Message
+              <Mail size={20} />
+              Send Us an Email
             </button>
-          </form>
+            
+            <p className="text-white/60 text-sm mt-3 text-center">
+              Click the button above to open your email client with a pre-written message to our team
+            </p>
+          </div>
         </div>
       </div>
     </div>
