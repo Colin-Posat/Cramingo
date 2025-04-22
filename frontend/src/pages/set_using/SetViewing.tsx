@@ -738,7 +738,7 @@ const SetViewingPage: React.FC = () => {
                         </div>
                       )}
                       
-                      {card.question && <p className="text-gray-800">{card.question}</p>}
+                      {card.question && <p className="text-gray-800 whitespace-pre-wrap">{card.question}</p>}
                     </div>
                   </div>
                   <div>
@@ -791,7 +791,7 @@ const SetViewingPage: React.FC = () => {
                         </div>
                       )}
                       
-                      {card.answer && <p className="text-gray-800">{card.answer}</p>}
+                      {card.answer && <p className="text-gray-800 whitespace-pre-wrap">{card.answer}</p>}
                     </div>
                   </div>
                 </div>
