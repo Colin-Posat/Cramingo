@@ -828,20 +828,7 @@ const SetCreator: React.FC = () => {
                       />
                       
                       {/* Question Image Upload */}
-                      <div className="mt-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-gray-700">Add Image (Optional)</span>
-                          {card.hasQuestionImage && card.questionImage && (
-                            <button 
-                              onClick={() => removeImage(index, 'question')}
-                              className="text-red-600 text-sm flex items-center"
-                            >
-                              <TrashIcon className="w-4 h-4 mr-1" />
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        
+                      <div className="mt-2">
                         {card.hasQuestionImage && card.questionImage ? (
                           <div className="relative border rounded-lg overflow-hidden mb-2">
                             <img 
@@ -849,13 +836,17 @@ const SetCreator: React.FC = () => {
                               alt="Question" 
                               className="w-full h-auto max-h-[150px] object-contain" 
                             />
+                            <button 
+                              onClick={() => removeImage(index, 'question')}
+                              className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
                           </div>
                         ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div className="flex flex-col items-center justify-center p-3">
-                              <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
-                              <p className="text-sm text-gray-500">Click to upload an image</p>
-                            </div>
+                          <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                            <PlusIcon className="w-4 h-4" />
+                            <span className="text-sm">Add image</span>
                             <input 
                               type="file" 
                               accept="image/*"
@@ -869,7 +860,7 @@ const SetCreator: React.FC = () => {
                           </label>
                         )}
                       </div>
-                    </div>
+                     </div>
                     
                     {/* Answer Side */}
                     <div>
@@ -888,20 +879,7 @@ const SetCreator: React.FC = () => {
                       />
                       
                       {/* Answer Image Upload */}
-                      <div className="mt-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-gray-700">Add Image (Optional)</span>
-                          {card.hasAnswerImage && card.answerImage && (
-                            <button 
-                              onClick={() => removeImage(index, 'answer')}
-                              className="text-red-600 text-sm flex items-center"
-                            >
-                              <TrashIcon className="w-4 h-4 mr-1" />
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        
+                      <div className="mt-2">
                         {card.hasAnswerImage && card.answerImage ? (
                           <div className="relative border rounded-lg overflow-hidden mb-2">
                             <img 
@@ -909,13 +887,17 @@ const SetCreator: React.FC = () => {
                               alt="Answer" 
                               className="w-full h-auto max-h-[150px] object-contain" 
                             />
+                            <button 
+                              onClick={() => removeImage(index, 'answer')}
+                              className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
                           </div>
                         ) : (
-                          <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div className="flex flex-col items-center justify-center p-3">
-                              <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
-                              <p className="text-sm text-gray-500">Click to upload an image</p>
-                            </div>
+                          <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                            <PlusIcon className="w-4 h-4" />
+                            <span className="text-sm">Add image</span>
                             <input 
                               type="file" 
                               accept="image/*"
