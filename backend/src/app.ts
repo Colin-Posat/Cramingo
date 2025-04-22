@@ -24,7 +24,8 @@ app.use(
       "https://25fd-169-233-243-85.ngrok-free.app",
       "https://fliply-backend.onrender.com",
       "https://fliply-frontend.onrender.com",
-      "https://fliply.org"
+      "https://fliply.org",
+      "https://fliplyai.com"
     ],
     credentials: true,
   })
