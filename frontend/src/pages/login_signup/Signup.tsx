@@ -24,7 +24,7 @@ const CombinedSignup: React.FC = () => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState(false);
-  const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const usernameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // University autocomplete states
   const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
