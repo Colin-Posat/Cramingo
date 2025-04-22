@@ -19,6 +19,10 @@ import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as ne
 type Flashcard = {
   question: string;
   answer: string;
+  questionImage?: string;
+  answerImage?: string;
+  hasQuestionImage?: boolean;
+  hasAnswerImage?: boolean;
 };
 
 type FlashcardSet = {
@@ -689,60 +693,106 @@ const SetViewingPage: React.FC = () => {
                       <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
                       Question
                     </h3>
-                    <div
-                      className={`
-                        bg-gray-50 p-4 rounded-lg border border-gray-200
-                        ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
-                      `}
-                    >
-                      <p className="text-gray-800">{card.question || "No question provided"}</p>
-                      {!expandedCards.has(index) && card.question && card.question.length > 200 && (
-                        <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      {card.questionImage && (
+                        <div className="mb-3">
+                          <img 
+                            src={card.questionImage} 
+                            alt="Question" 
+                            className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
+                            onClick={() => {
+                              if (!card.questionImage) return; // Type safety check
+                              
+                              // Create a modal or lightbox effect
+                              const modal = document.createElement('div');
+                              modal.style.position = 'fixed';
+                              modal.style.top = '0';
+                              modal.style.left = '0';
+                              modal.style.width = '100%';
+                              modal.style.height = '100%';
+                              modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                              modal.style.display = 'flex';
+                              modal.style.alignItems = 'center';
+                              modal.style.justifyContent = 'center';
+                              modal.style.zIndex = '9999';
+                              modal.style.cursor = 'pointer';
+                              
+                              // Add full-size image
+                              const img = document.createElement('img');
+                              img.src = card.questionImage; // Now safe because of check above
+                              img.style.maxWidth = '90%';
+                              img.style.maxHeight = '90%';
+                              img.style.objectFit = 'contain';
+                              
+                              // Close on click
+                              modal.onclick = () => {
+                                document.body.removeChild(modal);
+                              };
+                              
+                              modal.appendChild(img);
+                              document.body.appendChild(modal);
+                            }}
+                            style={{ cursor: 'zoom-in' }}
+                          />
+                          <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                        </div>
                       )}
+                      
+                      {card.question && <p className="text-gray-800">{card.question}</p>}
                     </div>
-                    {card.question && card.question.length > 200 && (
-                      <button 
-                        onClick={() => toggleCardExpansion(index)}
-                        className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
-                      >
-                        <ChevronDownIcon 
-                          className={`w-5 h-5 transition-transform ${
-                            expandedCards.has(index) ? 'rotate-180' : ''
-                          }`}
-                        />
-                        {expandedCards.has(index) ? 'Collapse' : 'Show More'}
-                      </button>
-                    )}
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
                       <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
                       Answer
                     </h3>
-                    <div
-                      className={`
-                        bg-gray-50 p-4 rounded-lg border border-gray-200
-                        ${expandedCards.has(index) ? 'min-h-fit' : 'max-h-36 overflow-hidden relative'}
-                      `}
-                    >
-                      <p className="text-gray-800">{card.answer || "No answer provided"}</p>
-                      {!expandedCards.has(index) && card.answer && card.answer.length > 200 && (
-                        <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      {card.answerImage && (
+                        <div className="mb-3">
+                          <img 
+                            src={card.answerImage} 
+                            alt="Answer" 
+                            className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
+                            onClick={() => {
+                              if (!card.answerImage) return; // Type safety check
+                              
+                              // Create a modal or lightbox effect
+                              const modal = document.createElement('div');
+                              modal.style.position = 'fixed';
+                              modal.style.top = '0';
+                              modal.style.left = '0';
+                              modal.style.width = '100%';
+                              modal.style.height = '100%';
+                              modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                              modal.style.display = 'flex';
+                              modal.style.alignItems = 'center';
+                              modal.style.justifyContent = 'center';
+                              modal.style.zIndex = '9999';
+                              modal.style.cursor = 'pointer';
+                              
+                              // Add full-size image
+                              const img = document.createElement('img');
+                              img.src = card.answerImage; // Now safe because of check above
+                              img.style.maxWidth = '90%';
+                              img.style.maxHeight = '90%';
+                              img.style.objectFit = 'contain';
+                              
+                              // Close on click
+                              modal.onclick = () => {
+                                document.body.removeChild(modal);
+                              };
+                              
+                              modal.appendChild(img);
+                              document.body.appendChild(modal);
+                            }}
+                            style={{ cursor: 'zoom-in' }}
+                          />
+                          <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                        </div>
                       )}
+                      
+                      {card.answer && <p className="text-gray-800">{card.answer}</p>}
                     </div>
-                    {card.answer && card.answer.length > 200 && (
-                      <button 
-                        onClick={() => toggleCardExpansion(index)}
-                        className="w-full mt-2 flex items-center justify-center text-[#004a74] hover:bg-blue-50 py-1 rounded-lg transition-colors"
-                      >
-                        <ChevronDownIcon 
-                          className={`w-5 h-5 transition-transform ${
-                            expandedCards.has(index) ? 'rotate-180' : ''
-                          }`}
-                        />
-                        {expandedCards.has(index) ? 'Collapse' : 'Show More'}
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
