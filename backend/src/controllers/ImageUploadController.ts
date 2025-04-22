@@ -60,7 +60,7 @@ export const uploadImage = async (req: Request, res: Response): Promise<void> =>
       const projectId = 'fliply-f4f1b';
       const possibleBucketNames = [
         projectId,  // Just the project ID
-        `${projectId}.appspot.com`
+        `fliply-f4f1b.firebasestorage.app`
       ];
       
       console.log('Trying these bucket names:', possibleBucketNames);
