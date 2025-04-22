@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
-import { AlertCircle as AlertCircleIcon, Eye, EyeOff } from "lucide-react";
+import { AlertCircle as AlertCircleIcon, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 const CombinedSignup: React.FC = () => {
@@ -19,6 +19,12 @@ const CombinedSignup: React.FC = () => {
   // UI state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Username validation state
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState(false);
+  const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // University autocomplete states
   const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
@@ -69,10 +75,82 @@ const CombinedSignup: React.FC = () => {
     fetchUniversities();
   }, []);
 
-  // Clear error when user starts typing again
+  // Check if username is available
+  const checkUsername = useCallback(async (usernameToCheck: string) => {
+    if (!usernameToCheck || usernameToCheck.length < 3) {
+      setUsernameAvailable(false);
+      setUsernameError(usernameToCheck ? "Username must be at least 3 characters" : "");
+      return;
+    }
+    
+    try {
+      setIsCheckingUsername(true);
+      setUsernameError("");
+      
+      const response = await fetch(`${API_BASE_URL}/auth/check-username`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: usernameToCheck }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (data.available) {
+          setUsernameAvailable(true);
+          setUsernameError("");
+        } else {
+          setUsernameAvailable(false);
+          setUsernameError("Username already taken");
+        }
+      } else {
+        console.error("Error checking username:", data);
+        setUsernameError("Error checking username availability");
+        setUsernameAvailable(false);
+      }
+    } catch (err) {
+      console.error("Username check error:", err);
+      setUsernameError("Connection error. Please try again.");
+      setUsernameAvailable(false);
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  }, []);
+
+  // Debounced username check
+  useEffect(() => {
+    // Clear the error when user starts typing
+    if (error) setError("");
+    
+    // Clear any existing timeout
+    if (usernameTimeoutRef.current) {
+      clearTimeout(usernameTimeoutRef.current);
+    }
+    
+    // Reset username availability when editing
+    if (username) {
+      setUsernameAvailable(false);
+      setUsernameError("");
+    }
+    
+    // Set a new timeout for the username check (500ms debounce)
+    if (username.trim().length >= 3) {
+      usernameTimeoutRef.current = setTimeout(() => {
+        checkUsername(username.trim());
+      }, 500);
+    }
+    
+    return () => {
+      if (usernameTimeoutRef.current) {
+        clearTimeout(usernameTimeoutRef.current);
+      }
+    };
+  }, [username, checkUsername]);
+
+  // Clear general error when user starts typing again
   useEffect(() => {
     if (error) setError("");
-  }, [email, username, password, university]);
+  }, [email, password, university]);
 
   // Filter universities - only show matches that START WITH or INCLUDE the input
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +172,13 @@ const CombinedSignup: React.FC = () => {
       setAutocompleteResults([]);
     }
   }, [allUniversities]);
+
+  // Handle username input
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow alphanumeric and underscore
+    const sanitizedValue = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+    setUsername(sanitizedValue);
+  };
 
   // Handle autocomplete item selection
   const handleAutocompleteSelect = useCallback((school: string) => {
@@ -155,9 +240,19 @@ const CombinedSignup: React.FC = () => {
       return;
     }
 
-    if (!username.trim()) {
-      setError("Username cannot be empty");
+    if (!username.trim() || username.length < 3) {
+      setError("Username must be at least 3 characters");
       return;
+    }
+    
+    // Check if username is available
+    if (!usernameAvailable && !isCheckingUsername) {
+      // Perform one final check for the username
+      await checkUsername(username);
+      if (!usernameAvailable) {
+        setError(usernameError || "Username unavailable");
+        return;
+      }
     }
 
     // Validate university selection
@@ -189,6 +284,13 @@ const CombinedSignup: React.FC = () => {
       const initData = await initResponse.json();
   
       if (!initResponse.ok) {
+        // Handle specific error cases
+        if (initData.code === "USERNAME_TAKEN") {
+          setUsernameAvailable(false);
+          setError("Username already taken");
+          return;
+        }
+        
         setError(initData.message || "Signup failed");
         setLoading(false);
         return;
@@ -294,18 +396,50 @@ const CombinedSignup: React.FC = () => {
               autoComplete="email"
               className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
             />
-            <input 
-              type="text" 
-              placeholder="Create Username" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-              required 
-              aria-label="Username"
-              className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
-            />
+            
+            {/* Username field with validation status */}
+            <div className="relative my-3">
+              <input 
+                type="text" 
+                placeholder="Create Username" 
+                value={username} 
+                onChange={handleUsernameChange}
+                required 
+                aria-label="Username"
+                className={`w-full p-4 border ${usernameError ? 'border-[#e53935]' : usernameAvailable && username.length >= 3 ? 'border-green-500' : 'border-gray-200'} 
+                          rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all pr-12`}
+              />
+              
+              {/* Username validation indicator */}
+              {username.length >= 3 && (
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  {isCheckingUsername ? (
+                    <div className="h-5 w-5 border-2 border-[#004a74] border-t-transparent rounded-full animate-spin"></div>
+                  ) : usernameAvailable ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircleIcon className="h-5 w-5 text-[#e53935]" />
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Username validation message */}
+            {usernameError && (
+              <p className="text-[#e53935] text-xs mt-1 ml-1 text-left">
+                {usernameError}
+              </p>
+            )}
+            
+            {/* Username available message */}
+            {usernameAvailable && username.length >= 3 && (
+              <p className="text-green-500 text-xs mt-1 ml-1 text-left">
+                Username available
+              </p>
+            )}
             
             {/* Password field with toggle */}
-            <div className="relative my-3">
+            <div className="relative mt-6">
               <input 
                 type={showPassword ? "text" : "password"}
                 placeholder="Create Password" 
@@ -377,7 +511,7 @@ const CombinedSignup: React.FC = () => {
           
           <button 
             type="submit" 
-            disabled={loading || isLoadingUniversities}
+            disabled={loading || isLoadingUniversities || isCheckingUsername || (username.length >= 3 && !usernameAvailable)}
             className="mt-7 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating Account..." : "Create Account"}

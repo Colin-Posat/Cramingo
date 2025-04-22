@@ -234,3 +234,46 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     res.status(401).json({ message: "Authentication failed" });
   }
 };
+
+
+export const checkUsernameAvailability = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username } = req.body;
+    if (!username || username.trim().length < 3) {
+      res
+        .status(400)
+        .json({ available: false, message: "Username must be at least 3 characters" });
+      return;
+    }
+
+    const candidate = username.trim().toLowerCase();
+
+    // 1) Check in 'users' collection
+    const usersSnap = await db.collection("users").get();
+    const clashInUsers = usersSnap.docs.some(doc => {
+      const u = doc.data().username as string | undefined;
+      return u?.toLowerCase() === candidate;
+    });
+    if (clashInUsers) {
+      res.status(200).json({ available: false });
+      return;
+    }
+
+    // 2) Check in 'pendingUsers' collection
+    const pendingSnap = await db.collection("pendingUsers").get();
+    const clashInPending = pendingSnap.docs.some(doc => {
+      const u = doc.data().username as string | undefined;
+      return u?.toLowerCase() === candidate;
+    });
+    if (clashInPending) {
+      res.status(200).json({ available: false });
+      return
+    }
+
+    // no clash → available
+    res.status(200).json({ available: true });
+  } catch (err) {
+    console.error("Error checking username:", err);
+    res.status(500).json({ available: false, message: "Internal error" });
+  }
+};
