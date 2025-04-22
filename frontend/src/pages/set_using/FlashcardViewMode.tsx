@@ -4,10 +4,13 @@ import { ChevronLeft, ChevronRight, Shuffle, AlertCircle, RefreshCcw } from 'luc
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
+// Updated Flashcard type with image properties
 type Flashcard = {
   id: number;
   question: string;
   answer: string;
+  questionImage?: string;
+  answerImage?: string;
 };
 
 type FlashcardViewModeProps = {
@@ -21,6 +24,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   const [showAnswer, setShowAnswer] = useState(false);
   const [localFlashcards, setLocalFlashcards] = useState<Flashcard[]>([]);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
   // State for standalone mode
   const [loading, setLoading] = useState(false);
@@ -48,6 +52,24 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     setCurrentIndex(0);
     setShowAnswer(false);
   }, [propFlashcards, flashcardSet.flashcards]);
+
+  // Add keyboard event listener for spacebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Flip card on spacebar press if no image is expanded and not currently shuffling
+      if (event.code === 'Space' && !expandedImage && !isShuffling) {
+        event.preventDefault(); // Prevent page scroll on spacebar
+        toggleCardSide();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up event listener when component unmounts
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedImage, isShuffling, showAnswer]); // Added showAnswer to dependencies to ensure listener is updated
 
   const fetchFlashcardSet = async () => {
     try {
@@ -79,8 +101,9 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     }
   };
 
+  // This function toggles between question and answer
   const toggleCardSide = () => {
-    setShowAnswer(!showAnswer);
+    setShowAnswer(prev => !prev);
   };
 
   const shuffleCards = () => {
@@ -91,6 +114,17 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     setCurrentIndex(0);
     setShowAnswer(false);
     setTimeout(() => setIsShuffling(false), 50);
+  };
+
+  // New function to expand images
+  const handleImageClick = (imageUrl: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering card flip
+    setExpandedImage(imageUrl);
+  };
+
+  // New function to close expanded image modal
+  const closeExpandedImage = () => {
+    setExpandedImage(null);
   };
 
   // Loading state
@@ -159,20 +193,52 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   const currentCard = localFlashcards[currentIndex];
   if (!currentCard) { return <div>Error: Could not load the current card.</div>; }
 
+  // Image expanded modal
+  const ImageExpandedModal = () => {
+    if (!expandedImage) return null;
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-pointer"
+        onClick={closeExpandedImage}
+      >
+        <div className="relative w-11/12 max-w-4xl">
+          <img 
+            src={expandedImage} 
+            alt="Expanded" 
+            className="max-w-full max-h-[90vh] object-contain"
+          />
+          <button 
+            className="absolute top-4 right-4 bg-white bg-opacity-25 hover:bg-opacity-50 p-2 rounded-full text-white"
+            onClick={closeExpandedImage}
+          >
+            X
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Modified FlashcardElement with click-to-flip and explicit flip button
   const FlashcardElement = () => (
     <div className="flex flex-col items-center w-full">
+      {/* Image expanded modal */}
+      <ImageExpandedModal />
+      
       {/* Top section */}
       <div className="w-full max-w-7xl mx-auto mb-4">
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
           <span>Card {currentIndex + 1} of {totalCards}</span>
-          <button 
-            onClick={shuffleCards} 
-            disabled={totalCards <= 1 || isShuffling} 
-            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs transition-colors duration-150 ${(totalCards <= 1 || isShuffling) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white text-[#004a74] border border-[#004a74] hover:bg-blue-50'}`}
-          >
-            <Shuffle className="w-3 h-3" /> Shuffle 
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Press spacebar to flip</span>
+            <button 
+              onClick={shuffleCards} 
+              disabled={totalCards <= 1 || isShuffling} 
+              className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs transition-colors duration-150 ${(totalCards <= 1 || isShuffling) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white text-[#004a74] border border-[#004a74] hover:bg-blue-50'}`}
+            >
+              <Shuffle className="w-3 h-3" /> Shuffle 
+            </button>
+          </div>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div 
@@ -182,7 +248,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Flashcard with Flip Animation - Now clickable and with explicit flip button */}
+      {/* Flashcard with Flip Animation - Now with image support */}
       <div className="w-full max-w-7xl h-96 mb-6 mx-auto [perspective:1000px]">
         <div 
           key={currentCard.id} 
@@ -197,17 +263,36 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
               bg-white border border-gray-200 rounded-xl 
               shadow-lg p-6 md:p-8 
               flex flex-col items-center justify-center 
-              overflow-hidden 
+              overflow-auto 
               transition-transform duration-700 ease-in-out
               cursor-pointer hover:shadow-xl
+              select-none
               ${showAnswer ? '[transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'}
             `}
           >
             <span className="absolute top-4 left-6 text-sm font-medium text-gray-500">Question</span>
             <div className="absolute top-4 right-6 text-xs text-gray-400">Click to flip</div>
-            <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
-              {currentCard.question}
-            </p>
+            
+            <div className="w-full flex flex-col items-center gap-4">
+              {/* Question Image */}
+              {currentCard.questionImage && (
+                <div className="relative w-full max-w-md">
+                  <img 
+                    src={currentCard.questionImage} 
+                    alt="Question" 
+                    className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
+                    onClick={(e) => handleImageClick(currentCard.questionImage!, e)}
+                    style={{ cursor: 'zoom-in' }}
+                  />
+                  <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                </div>
+              )}
+              
+              {/* Question Text */}
+              <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
+                {currentCard.question}
+              </p>
+            </div>
           </div>
 
           {/* Back Face (Answer) */}
@@ -218,17 +303,36 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
               bg-white border border-gray-200 rounded-xl 
               shadow-lg p-6 md:p-8 
               flex flex-col items-center justify-center 
-              overflow-hidden 
+              overflow-auto 
               transition-transform duration-700 ease-in-out
               cursor-pointer hover:shadow-xl
+              select-none
               ${showAnswer ? '[transform:rotateY(0deg)]' : '[transform:rotateY(180deg)]'}
             `}
           >
             <span className="absolute top-4 left-6 text-sm font-medium text-gray-500">Answer</span>
             <div className="absolute top-4 right-6 text-xs text-gray-400">Click to flip</div>
-            <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
-              {currentCard.answer}
-            </p>
+            
+            <div className="w-full flex flex-col items-center gap-4">
+              {/* Answer Image */}
+              {currentCard.answerImage && (
+                <div className="relative w-full max-w-md">
+                  <img 
+                    src={currentCard.answerImage} 
+                    alt="Answer" 
+                    className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
+                    onClick={(e) => handleImageClick(currentCard.answerImage!, e)}
+                    style={{ cursor: 'zoom-in' }}
+                  />
+                  <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                </div>
+              )}
+              
+              {/* Answer Text */}
+              <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
+                {currentCard.answer}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -244,7 +348,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           <ChevronLeft className="w-5 h-5" /> Prev 
         </button>
         
-        {/* New Explicit Flip Button */}
+        {/* Explicit Flip Button */}
         <button 
           onClick={toggleCardSide} 
           disabled={isShuffling} 
