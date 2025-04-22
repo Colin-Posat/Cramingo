@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Check, X, ChevronRight, RotateCw, ChevronLeft, AlertCircle } from 'lucide-react';
+import { Check, X, ChevronRight, RotateCw, ChevronLeft, AlertCircle, ImageIcon } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
+// Updated Flashcard type to include image properties
 type Flashcard = {
   question: string;
   answer: string;
+  questionImage?: string;
+  answerImage?: string;
 };
 
 type AnswerFeedback = {
@@ -56,8 +59,20 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
   // Determine if component is being used standalone or as a child
   const isStandalone = !propFlashcards;
 
-  // Get flashcards from props or fetched data
-  const flashcards = propFlashcards || flashcardSet.flashcards || [];
+  // Get flashcards from props or fetched data and filter out cards with images
+  const allFlashcards = propFlashcards || flashcardSet.flashcards || [];
+  
+  // Filter out flashcards with images
+  const [flashcards, setFilteredFlashcards] = useState<Flashcard[]>([]);
+  const [skippedCards, setSkippedCards] = useState<number>(0);
+  
+  useEffect(() => {
+    const filtered = allFlashcards.filter(card => 
+      !card.questionImage && !card.answerImage
+    );
+    setFilteredFlashcards(filtered);
+    setSkippedCards(allFlashcards.length - filtered.length);
+  }, [allFlashcards]);
 
   // --- State Initialization ---
   const initializeQuizState = (cards: Flashcard[]): QuizState => ({
@@ -384,8 +399,7 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
         <div className="min-h-screen bg-white">
           <NavBar />
           <div className="pt-24 px-6 pb-6">
-            {/* ... (error display code - unchanged) ... */}
-             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded flex items-start">
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded flex items-start">
               <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-bold">Error</p>
@@ -409,53 +423,60 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
         </div>
       );
     }
-
-    if (!flashcards || flashcards.length === 0) {
-      return (
-        <div className="min-h-screen bg-white">
-          <NavBar />
-          <div className="pt-24 px-6 pb-6">
-            {/* ... (empty set display code - unchanged) ... */}
-            <div className="bg-blue-50 p-6 rounded-xl text-center">
-              <p className="text-xl text-[#004a74]">This set doesn't have any flashcards yet.</p>
-              <button
-                onClick={() => navigate(`/set-creator`)} // Assuming this is the correct route
-                className="mt-4 bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
-              >
-                Add Flashcards
-              </button>
-            </div>
-            <button
-              onClick={() => navigate('/created-sets')}
-              className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded flex items-center"
-            >
-              <ChevronLeft className="w-5 h-5 mr-1" />
-              Back to Created Sets
-            </button>
-          </div>
-        </div>
-      );
-    }
-  } else {
-      // Embedded mode: Handle no flashcards
-      if (!flashcards || flashcards.length === 0) {
-         return (
-            <div className="flex flex-col items-center justify-center p-8 bg-blue-50 rounded-xl text-center">
-                <p className="text-2xl text-[#004a74] font-medium mb-4">No flashcards in this set</p>
-                <p className="text-gray-600">Add some flashcards to start studying!</p>
-            </div>
-        );
-      }
   }
 
-  // Guard clause for rendering quiz content if flashcards array is somehow empty after checks
+  // Check if there are any valid flashcards after filtering
   if (flashcards.length === 0) {
-    return <div>Error: No flashcards available to display.</div>;
+    return (
+      <div className={isStandalone ? "min-h-screen bg-white" : ""}>
+        {isStandalone && <NavBar />}
+        <div className={isStandalone ? "pt-24 px-6 pb-6" : ""}>
+          <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
+            {skippedCards > 0 ? (
+              <>
+                <div className="flex justify-center mb-4">
+                  <ImageIcon size={48} className="text-blue-500" />
+                </div>
+                <p className="text-xl text-[#004a74] mb-3">
+                  {allFlashcards.length > 0 
+                    ? "This set only contains flashcards with images" 
+                    : "This set doesn't have any flashcards yet"}
+                </p>
+                <p className="text-gray-700 mb-4">
+                  {allFlashcards.length > 0 
+                    ? "Quiz mode currently doesn't support flashcards with images. Please try using View mode instead." 
+                    : "Add some flashcards to start studying!"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl text-[#004a74]">This set doesn't have any flashcards yet.</p>
+                <p className="text-gray-700 mt-2 mb-4">Add some flashcards to start studying!</p>
+              </>
+            )}
+            
+                          {isStandalone && skippedCards > 0 && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => navigate(`/study/${setId}`)}
+                    className="flex items-center mx-auto bg-[#004a74] text-white px-6 py-3 rounded-lg hover:bg-[#00659f] transition-all font-semibold"
+                  >
+                    <ChevronLeft className="w-5 h-5 mr-2" />
+                    Back to Set Viewer
+                  </button>
+                </div>
+              )}
+
+
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const totalCards = flashcards.length;
   const currentCard = flashcards[quizState.currentIndex];
-   // Add a check for currentCard existence before accessing its properties
+  // Add a check for currentCard existence before accessing its properties
   if (!currentCard) {
     console.error("Error: currentCard is undefined at index", quizState.currentIndex);
     // Optionally, reset or show an error state
@@ -510,7 +531,6 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
     );
   };
 
-  // Main quiz content rendering
   // Main quiz content rendering
   const renderQuizContent = () => {
     const totalAnswered = quizState.answeredFlags.filter(Boolean).length;
@@ -630,6 +650,24 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
             </div>
         </div>
 
+        {/* Skipped cards notification */}
+        {skippedCards > 0 && (
+          <div className="w-full mb-4 bg-blue-50 p-3 rounded-lg border border-blue-200 flex items-center justify-between">
+            <div className="flex items-center">
+              <ImageIcon size={18} className="text-blue-500 mr-2" />
+              <p className="text-blue-700 text-sm">
+                {skippedCards} {skippedCards === 1 ? 'flashcard' : 'flashcards'} with images {skippedCards === 1 ? 'was' : 'were'} skipped from this quiz.
+              </p>
+            </div>
+            <button 
+              onClick={() => setSkippedCards(0)} 
+              className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
+              aria-label="Dismiss notification"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         {/* Question Card */}
         <div className="w-full bg-white border border-gray-200 rounded-xl shadow-lg p-6 md:p-8 mb-6">
