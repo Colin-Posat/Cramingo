@@ -65,10 +65,24 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
   // Filter out flashcards with images
   const [flashcards, setFilteredFlashcards] = useState<Flashcard[]>([]);
   const [skippedCards, setSkippedCards] = useState<number>(0);
+
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setIsImageModalOpen(true);
+  };
+
+  const closeImageModal = (): void => {
+    setIsImageModalOpen(false);
+  };
+  
+
   
   useEffect(() => {
     const filtered = allFlashcards.filter(card => 
-      !card.questionImage && !card.answerImage
+      !card.answerImage // Only filter out cards with answer images
     );
     setFilteredFlashcards(filtered);
     setSkippedCards(allFlashcards.length - filtered.length);
@@ -85,6 +99,9 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
     options: Array(cards.length).fill([]),
     feedback: Array(cards.length).fill({}),
   });
+
+  
+  
 
   const [quizState, setQuizState] = useState<QuizState>(initializeQuizState(flashcards));
 
@@ -432,23 +449,23 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
         {isStandalone && <NavBar />}
         <div className={isStandalone ? "pt-24 px-6 pb-6" : ""}>
           <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
-            {skippedCards > 0 ? (
-              <>
-                <div className="flex justify-center mb-4">
-                  <ImageIcon size={48} className="text-blue-500" />
-                </div>
-                <p className="text-xl text-[#004a74] mb-3">
-                  {allFlashcards.length > 0 
-                    ? "This set only contains flashcards with images" 
-                    : "This set doesn't have any flashcards yet"}
-                </p>
-                <p className="text-gray-700 mb-4">
-                  {allFlashcards.length > 0 
-                    ? "Quiz mode currently doesn't support flashcards with images. Please try using View mode instead." 
-                    : "Add some flashcards to start studying!"}
-                </p>
-              </>
-            ) : (
+          {skippedCards > 0 ? (
+            <>
+              <div className="flex justify-center mb-4">
+                <ImageIcon size={48} className="text-blue-500" />
+              </div>
+              <p className="text-xl text-[#004a74] mb-3">
+                {allFlashcards.length > 0 
+                  ? "This set only contains flashcards with answer images" 
+                  : "This set doesn't have any flashcards yet"}
+              </p>
+              <p className="text-gray-700 mb-4">
+                {allFlashcards.length > 0 
+                  ? "Quiz mode currently doesn't support flashcards with answer images. Please try using View mode instead." 
+                  : "Add some flashcards to start studying!"}
+              </p>
+            </>
+          ) : (
               <>
                 <p className="text-xl text-[#004a74]">This set doesn't have any flashcards yet.</p>
                 <p className="text-gray-700 mt-2 mb-4">Add some flashcards to start studying!</p>
@@ -652,30 +669,41 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
 
         {/* Skipped cards notification */}
         {skippedCards > 0 && (
-          <div className="w-full mb-4 bg-blue-50 p-3 rounded-lg border border-blue-200 flex items-center justify-between">
-            <div className="flex items-center">
-              <ImageIcon size={18} className="text-blue-500 mr-2" />
-              <p className="text-blue-700 text-sm">
-                {skippedCards} {skippedCards === 1 ? 'flashcard' : 'flashcards'} with images {skippedCards === 1 ? 'was' : 'were'} skipped from this quiz.
-              </p>
-            </div>
-            <button 
-              onClick={() => setSkippedCards(0)} 
-              className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
-              aria-label="Dismiss notification"
-            >
-              <X size={16} />
-            </button>
+        <div className="w-full mb-4 bg-blue-50 p-3 rounded-lg border border-blue-200 flex items-center justify-between">
+          <div className="flex items-center">
+            <ImageIcon size={18} className="text-blue-500 mr-2" />
+            <p className="text-blue-700 text-sm">
+              {skippedCards} {skippedCards === 1 ? 'flashcard' : 'flashcards'} with answer images {skippedCards === 1 ? 'was' : 'were'} skipped from this quiz.
+            </p>
           </div>
-        )}
+          <button 
+            onClick={() => setSkippedCards(0)} 
+            className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
+            aria-label="Dismiss notification"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
         {/* Question Card */}
         <div className="w-full bg-white border border-gray-200 rounded-xl shadow-lg p-6 md:p-8 mb-6">
           {/* Question Display */}
-           <div className="mb-6 min-h-[80px]"> {/* Ensure minimum height */}
-             <p className="text-gray-500 text-sm font-medium mb-1">QUESTION</p>
-             <p className="text-xl md:text-2xl text-gray-800">{currentCard.question}</p>
-           </div>
+          <div className="mb-6 min-h-[80px]">
+          <p className="text-gray-500 text-sm font-medium mb-1">QUESTION</p>
+          {currentCard.questionImage ? (
+            <div className="mb-2">
+              <img 
+                src={currentCard.questionImage} 
+                alt="Question image" 
+                className="max-w-full max-h-64 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => handleImageClick(currentCard.questionImage!)}
+              />
+              <p className="text-xs text-gray-600 mt-1">Click image to enlarge</p>
+            </div>
+          ) : null}
+          <p className="text-xl md:text-2xl text-gray-800">{currentCard.question}</p>
+        </div>
 
 
           {/* Answer Area (Input or Feedback) */}
@@ -808,6 +836,27 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
 
         </div>
 
+        {/* Image Modal */}
+        {isImageModalOpen && selectedImage && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 cursor-pointer"
+            onClick={closeImageModal}
+          >
+            <div className="max-w-4xl max-h-[90vh] w-full">
+              {/* Image - no stopPropagation, so clicks will bubble up and close the modal */}
+              <div className="bg-white p-2 rounded-lg">
+                <img 
+                  src={selectedImage} 
+                  alt="Enlarged question image" 
+                  className="max-w-full max-h-[80vh] object-contain mx-auto"
+                  // No onClick handler here, so clicks will bubble up to the parent
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+
       </div>
     );
   };
@@ -885,6 +934,34 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
       </div>
     );
   }
+
+  const ImageModal = () => {
+    if (!isImageModalOpen || !selectedImage) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div className="relative max-w-4xl max-h-[90vh] w-full">
+          {/* Close button */}
+          <button 
+            onClick={() => setIsImageModalOpen(false)}
+            className="absolute -top-12 right-0 text-white bg-red-600 hover:bg-red-700 rounded-full p-2 transition-colors"
+            aria-label="Close modal"
+          >
+            <X size={24} />
+          </button>
+          
+          {/* Image */}
+          <div className="bg-white p-2 rounded-lg">
+            <img 
+              src={selectedImage} 
+              alt="Enlarged question image" 
+              className="max-w-full max-h-[80vh] object-contain mx-auto"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Embedded version
   return renderQuizContent();

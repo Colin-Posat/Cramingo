@@ -12,10 +12,12 @@ import {
   Check as CheckIcon,
   Info as InfoIcon,
   Image as ImageIcon,
-  Trash2 as TrashIcon
+  Trash2 as TrashIcon,
+  Calculator as CalculatorIcon // Changed to Calculator icon for equation button
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
+import EquationEditor from '../../components/EquationEditor'; // Import the EquationEditor component
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 
 // Type definitions
@@ -75,6 +77,10 @@ const SetCreator: React.FC = () => {
 
   // New state for AI Generate Overlay
   const [showAIGenerateOverlay, setShowAIGenerateOverlay] = useState(false);
+  
+  // New state for Equation Editor
+  const [showEquationEditor, setShowEquationEditor] = useState(false);
+  const [activeEquationField, setActiveEquationField] = useState<{index: number, field: 'question' | 'answer'} | null>(null);
   
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const classCodeInputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +328,28 @@ const SetCreator: React.FC = () => {
     } else {
       const updatedFlashcards = flashcards.filter((_, i) => i !== index);
       setFlashcards(updatedFlashcards);
+    }
+  };
+
+  // Open equation editor for a specific flashcard and field
+  const openEquationEditor = (index: number, field: 'question' | 'answer') => {
+    setActiveEquationField({ index, field });
+    setShowEquationEditor(true);
+  };
+
+  // Handle equation save from the equation editor
+  const handleEquationSave = (equation: string) => {
+    if (activeEquationField) {
+      const { index, field } = activeEquationField;
+      const updatedFlashcards = [...flashcards];
+      
+      // Insert equation at the cursor position or append to the end
+      const currentText = updatedFlashcards[index][field];
+      updatedFlashcards[index][field] = currentText + (currentText && !currentText.endsWith(' ') ? ' ' : '') + equation;
+      
+      setFlashcards(updatedFlashcards);
+      setShowEquationEditor(false);
+      setActiveEquationField(null);
     }
   };
 
@@ -633,7 +661,7 @@ const SetCreator: React.FC = () => {
                     </h3>
                     <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
                       <li>• Fill in the set title and select a class code</li>
-                      <li>• Add flashcards with questions and answers (text or images)</li>
+                      <li>• Add flashcards with questions and answers (text, images, or equations)</li>
                       <li>• Save as private (only you can see) or publish publicly (everyone can see)</li>
                     </ul>
                     <div className="mt-3 flex items-center">
@@ -827,10 +855,10 @@ const SetCreator: React.FC = () => {
                           focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
                       />
                       
-                      {/* Question Image Upload */}
-                      <div className="mt-2">
+                      {/* Question Action Buttons (Image & Equation) */}
+                      <div className="mt-2 flex gap-3">
                         {card.hasQuestionImage && card.questionImage ? (
-                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                          <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
                             <img 
                               src={card.questionImage} 
                               alt="Question" 
@@ -844,23 +872,35 @@ const SetCreator: React.FC = () => {
                             </button>
                           </div>
                         ) : (
-                          <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
-                            <PlusIcon className="w-4 h-4" />
-                            <span className="text-sm">Add image</span>
-                            <input 
-                              type="file" 
-                              accept="image/*"
-                              className="hidden"
-                              disabled={imageUploading}
-                              onChange={(e) => handleImageUpload(e, index, 'question')}
-                              ref={el => {
-                                if (el) fileInputRefs.current[index * 2] = el;
-                              }}
-                            />
-                          </label>
+                          <div className="flex gap-2">
+                            {/* Add Image Button */}
+                            <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                              <ImageIcon className="w-4 h-4" />
+                              <span className="text-sm">Add image</span>
+                              <input 
+                                type="file" 
+                                accept="image/*"
+                                className="hidden"
+                                disabled={imageUploading}
+                                onChange={(e) => handleImageUpload(e, index, 'question')}
+                                ref={el => {
+                                  if (el) fileInputRefs.current[index * 2] = el;
+                                }}
+                              />
+                            </label>
+                            
+                            {/* Add Equation Button */}
+                            <button
+                              onClick={() => openEquationEditor(index, 'question')}
+                              className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
+                            >
+                              <CalculatorIcon className="w-4 h-4" />
+                              <span className="text-sm">Add equation</span>
+                            </button>
+                          </div>
                         )}
                       </div>
-                     </div>
+                    </div>
                     
                     {/* Answer Side */}
                     <div>
@@ -878,10 +918,10 @@ const SetCreator: React.FC = () => {
                           focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
                       />
                       
-                      {/* Answer Image Upload */}
-                      <div className="mt-2">
+                      {/* Answer Action Buttons (Image & Equation) */}
+                      <div className="mt-2 flex gap-3">
                         {card.hasAnswerImage && card.answerImage ? (
-                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                          <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
                             <img 
                               src={card.answerImage} 
                               alt="Answer" 
@@ -895,20 +935,32 @@ const SetCreator: React.FC = () => {
                             </button>
                           </div>
                         ) : (
-                          <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
-                            <PlusIcon className="w-4 h-4" />
-                            <span className="text-sm">Add image</span>
-                            <input 
-                              type="file" 
-                              accept="image/*"
-                              className="hidden"
-                              disabled={imageUploading}
-                              onChange={(e) => handleImageUpload(e, index, 'answer')}
-                              ref={el => {
-                                if (el) fileInputRefs.current[index * 2 + 1] = el;
-                              }}
-                            />
-                          </label>
+                          <div className="flex gap-2">
+                            {/* Add Image Button */}
+                            <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                              <ImageIcon className="w-4 h-4" />
+                              <span className="text-sm">Add image</span>
+                              <input 
+                                type="file" 
+                                accept="image/*"
+                                className="hidden"
+                                disabled={imageUploading}
+                                onChange={(e) => handleImageUpload(e, index, 'answer')}
+                                ref={el => {
+                                  if (el) fileInputRefs.current[index * 2 + 1] = el;
+                                }}
+                              />
+                            </label>
+                            
+                            {/* Add Equation Button */}
+                            <button
+                              onClick={() => openEquationEditor(index, 'answer')}
+                              className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
+                            >
+                              <CalculatorIcon className="w-4 h-4" />
+                              <span className="text-sm">Add equation</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -978,6 +1030,22 @@ const SetCreator: React.FC = () => {
           onClose={() => setShowAIGenerateOverlay(false)}
           onGenerate={handleAIGeneratedFlashcards}
         />
+      )}
+
+      {/* Equation Editor Overlay */}
+      {showEquationEditor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full">
+            <EquationEditor
+              onSave={handleEquationSave}
+              onCancel={() => {
+                setShowEquationEditor(false);
+                setActiveEquationField(null);
+              }}
+              initialValue=""
+            />
+          </div>
+        </div>
       )}
 
       {showExitModal && (
