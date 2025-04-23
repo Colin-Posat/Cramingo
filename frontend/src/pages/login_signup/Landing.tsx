@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Brain, Share2, Search, ArrowRight } from "lucide-react";
 import ModernParticleBackground from "../../components/ParticlesBackground";
 import ContactPopup from "../../components/ContactPopup";
+import TermsOfServicePopup from "../../components/TermsOfServicePopup";
 
 const FeatureCard: React.FC<{
   icon: React.ReactNode;
@@ -32,10 +33,16 @@ const Landing: React.FC = () => {
   const navigate = useNavigate();
   // Add state for contact popup visibility
   const [isContactOpen, setIsContactOpen] = useState<boolean>(false);
+  // Add state for terms of service popup visibility
+  const [isTermsOpen, setIsTermsOpen] = useState<boolean>(false);
 
   // Functions to handle opening and closing the contact popup
   const openContactPopup = () => setIsContactOpen(true);
   const closeContactPopup = () => setIsContactOpen(false);
+  
+  // Functions to handle opening and closing the terms popup
+  const openTermsPopup = () => setIsTermsOpen(true);
+  const closeTermsPopup = () => setIsTermsOpen(false);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#004a74] to-[#001f3f]">
@@ -134,18 +141,13 @@ const Landing: React.FC = () => {
               © {new Date().getFullYear()} Fliply. All rights reserved.
             </p>
             <div className="flex justify-center space-x-6">
-              <Link 
-                to="/terms" 
-                className="text-white/50 hover:text-white transition-colors text-sm"
+              {/* Changed from Link to button to trigger the terms popup */}
+              <button 
+                onClick={openTermsPopup}
+                className="text-white/50 hover:text-white transition-colors text-sm cursor-pointer"
               >
-                Terms of Service
-              </Link>
-              <Link 
-                to="/privacy" 
-                className="text-white/50 hover:text-white transition-colors text-sm"
-              >
-                Privacy Policy
-              </Link>
+                By using Fliply, you agree to our Terms of Service and Privacy Policy
+              </button>
             </div>
           </div>
         </footer>
@@ -153,6 +155,9 @@ const Landing: React.FC = () => {
 
       {/* Contact Popup */}
       <ContactPopup isOpen={isContactOpen} onClose={closeContactPopup} />
+      
+      {/* Terms of Service Popup */}
+      <TermsOfServicePopup isOpen={isTermsOpen} onClose={closeTermsPopup} />
     </div>
   );
 };

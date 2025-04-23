@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
 import { AlertCircle as AlertCircleIcon, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import TermsOfServicePopup from "../../components/TermsOfServicePopup";
+import PrivacyPolicyPopup from "../../components/PrivacyPolicyPopup";
 
 const CombinedSignup: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ const CombinedSignup: React.FC = () => {
   // UI state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   
   // Username validation state
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
@@ -42,6 +46,14 @@ const CombinedSignup: React.FC = () => {
     particleSize: { min: 2, max: 6 },
     particleSpeed: 0.1
   }), []);
+
+  // Functions to handle opening and closing the terms popup
+  const openTermsPopup = () => setIsTermsOpen(true);
+  const closeTermsPopup = () => setIsTermsOpen(false);
+  
+  // Functions to handle opening and closing the privacy popup
+  const openPrivacyPopup = () => setIsPrivacyOpen(true);
+  const closePrivacyPopup = () => setIsPrivacyOpen(false);
 
   // Load universities from CSV
   useEffect(() => {
@@ -270,6 +282,8 @@ const CombinedSignup: React.FC = () => {
       setError("Please select a valid university from the list");
       return;
     }
+    
+
   
     try {
       setLoading(true);
@@ -507,17 +521,45 @@ const CombinedSignup: React.FC = () => {
                 </ul>
               )}
             </div>
+            
+            {/* Terms of Service Statement */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                By using Fliply, you agree to our {" "}
+                <button
+                  type="button"
+                  onClick={openPrivacyPopup}
+                  className="text-[#004a74] font-medium hover:text-[#00659f] hover:underline transition-colors inline"
+                >
+                  Privacy Policy
+                </button>
+                {" "} and {" "}
+                <button
+                  type="button"
+                  onClick={openTermsPopup}
+                  className="text-[#004a74] font-medium hover:text-[#00659f] hover:underline transition-colors inline"
+                >
+                  Terms of Service
+                </button>
+              </p>
+            </div>
           </div>
           
           <button 
             type="submit" 
             disabled={loading || isLoadingUniversities || isCheckingUsername || (username.length >= 3 && !usernameAvailable)}
-            className="mt-7 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-5 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>
+      
+      {/* Terms of Service Popup */}
+      <TermsOfServicePopup isOpen={isTermsOpen} onClose={closeTermsPopup} />
+      
+      {/* Privacy Policy Popup */}
+      <PrivacyPolicyPopup isOpen={isPrivacyOpen} onClose={closePrivacyPopup} />
     </div>
   );
 };
