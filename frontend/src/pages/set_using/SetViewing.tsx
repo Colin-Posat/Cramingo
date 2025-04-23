@@ -601,21 +601,6 @@ const SetViewingPage: React.FC = () => {
                   • Like the set to show your appreciation
                 </p>
                 <div className="mt-3 flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="dontShowAgainViewer" 
-                    className="h-4 w-4 text-[#004a74] rounded border-gray-300"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        localStorage.setItem('hideViewerInfoTips', 'true');
-                      } else {
-                        localStorage.removeItem('hideViewerInfoTips');
-                      }
-                    }}
-                  />
-                  <label htmlFor="dontShowAgainViewer" className="ml-2 text-xs text-[#004a74]/80">
-                    Don't show this tip again
-                  </label>
                 </div>
               </div>
               <button 
