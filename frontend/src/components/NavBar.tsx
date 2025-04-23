@@ -148,7 +148,7 @@ const NavBar: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white text-gray-800 rounded-lg shadow-lg w-full max-w-md overflow-hidden">
             <div className="bg-[#004a74] text-white px-4 py-3 flex justify-between items-center">
-              <h3 className="font-medium">Submit Feedback</h3>
+              <h3 className="font-medium">Submit Feedback or Question</h3>
               <button onClick={toggleFeedback} className="text-white hover:text-gray-200">
                 <XIcon className="w-5 h-5" />
               </button>
