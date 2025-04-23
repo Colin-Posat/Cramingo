@@ -4,6 +4,7 @@ import { Brain, Share2, Search, ArrowRight } from "lucide-react";
 import ModernParticleBackground from "../../components/ParticlesBackground";
 import ContactPopup from "../../components/ContactPopup";
 import TermsOfServicePopup from "../../components/TermsOfServicePopup";
+import PrivacyPolicyPopup from "../../components/PrivacyPolicyPopup";
 
 const FeatureCard: React.FC<{
   icon: React.ReactNode;
@@ -36,6 +37,8 @@ const Landing: React.FC = () => {
   // Add state for terms of service popup visibility
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(false);
 
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+
   // Functions to handle opening and closing the contact popup
   const openContactPopup = () => setIsContactOpen(true);
   const closeContactPopup = () => setIsContactOpen(false);
@@ -43,6 +46,9 @@ const Landing: React.FC = () => {
   // Functions to handle opening and closing the terms popup
   const openTermsPopup = () => setIsTermsOpen(true);
   const closeTermsPopup = () => setIsTermsOpen(false);
+
+  const openPrivacyPopup = () => setIsPrivacyOpen(true);      // ← new handler
+  const closePrivacyPopup = () => setIsPrivacyOpen(false); 
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#004a74] to-[#001f3f]">
@@ -136,21 +142,28 @@ const Landing: React.FC = () => {
         
         {/* Footer */}
         <footer className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center">
-            <p className="text-white/50 text-sm mb-4">
-              © {new Date().getFullYear()} Fliply. All rights reserved.
-            </p>
-            <div className="flex justify-center space-x-6">
-              {/* Changed from Link to button to trigger the terms popup */}
-              <button 
-                onClick={openTermsPopup}
-                className="text-white/50 hover:text-white transition-colors text-sm cursor-pointer"
-              >
-                By using Fliply, you agree to our Terms of Service and Privacy Policy
-              </button>
-            </div>
+        <div className="flex flex-col items-center space-y-2">
+          <p className="text-white/50 text-sm">
+            © {new Date().getFullYear()} Fliply. All rights reserved.
+          </p>
+          <div className="text-white/50 text-sm">
+            By using Fliply, you agree to our{' '}
+            <button
+              onClick={openTermsPopup}
+              className="underline hover:text-white transition-colors"
+            >
+              Terms of Service
+            </button>{' '}
+            and{' '}
+            <button
+              onClick={openPrivacyPopup}
+              className="underline hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </button>.
           </div>
-        </footer>
+        </div>
+      </footer>
       </div>
 
       {/* Contact Popup */}
@@ -158,6 +171,8 @@ const Landing: React.FC = () => {
       
       {/* Terms of Service Popup */}
       <TermsOfServicePopup isOpen={isTermsOpen} onClose={closeTermsPopup} />
+
+      <PrivacyPolicyPopup isOpen={isPrivacyOpen} onClose={closePrivacyPopup} />
     </div>
   );
 };
