@@ -664,23 +664,7 @@ const SetCreator: React.FC = () => {
                       <li>• Add flashcards with questions and answers (text, images, or equations)</li>
                       <li>• Save as private (only you can see) or publish publicly (everyone can see)</li>
                     </ul>
-                    <div className="mt-3 flex items-center">
-                      <input 
-                        type="checkbox" 
-                        id="dontShowAgainCreator" 
-                        className="h-4 w-4 text-[#004a74] rounded border-gray-300"
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            localStorage.setItem('hideCreatorInfoTips', 'true');
-                          } else {
-                            localStorage.removeItem('hideCreatorInfoTips');
-                          }
-                        }}
-                      />
-                      <label htmlFor="dontShowAgainCreator" className="ml-2 text-xs text-[#004a74]/80">
-                        Don't show this tip again
-                      </label>
-                    </div>
+                    
                   </div>
                   <button 
                     onClick={() => setShowInfoTips(false)}

@@ -427,7 +427,7 @@ const CreatedSets: React.FC = () => {
                   Welcome to Your Flashcard Sets!
                 </h2>
                 <p className="text-xl text-gray-600 mb-8">
-                  It looks like you don't have any flashcard sets yet. Click "Create Set" to get started and boost your learning!
+                  It looks like you don't have any flashcard sets yet. Click "Create Set" to get started! Or click "Search Sets" at the top to find sets for your class!
                 </p>
                 <button 
                   onClick={closeHelper}
