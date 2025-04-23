@@ -362,7 +362,7 @@ const SearchResultsPage: React.FC = () => {
                       type="text"
                       value={titleSearch}
                       onChange={handleTitleSearchChange}
-                      placeholder="Search by title or description..."
+                      placeholder={`Search in ${query} by title or keywords...`} 
                       className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#004a74]/20 focus:outline-none focus:ring-2 focus:ring-[#004a74]/50"
                     />
                     <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -438,7 +438,7 @@ const SearchResultsPage: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">No matching flashcard sets</h3>
                 <p className="text-gray-500 mb-6">
-                  No flashcard sets match your search criteria. Try adjusting your filters.
+                  No {query} flashcard sets match your search criteria. Try adjusting your filters.
                 </p>
                 <button
                   onClick={() => {

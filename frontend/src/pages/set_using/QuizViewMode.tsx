@@ -763,21 +763,28 @@ const MultipleChoiceQuiz: React.FC<QuizViewModeProps> = ({
                 renderMultipleChoiceOptions()
               ) : (
                 // Text Input
-                 <div className="flex flex-col gap-4">
-                    <textarea
+                <div className="flex flex-col gap-4">
+                  <textarea
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
+                    onChange={e => setUserInput(e.target.value)}
+                    // catch it as early as possible
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()         // stop the newline
+                        handleTextCheck()          // fire immediately
+                      }
+                    }}
                     placeholder="Type your answer here..."
-                    rows={4} // Set a reasonable number of rows
+                    rows={4}
                     className="w-full p-3 rounded-lg border border-[#004a74] focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 text-base resize-vertical transition-all"
-                    />
-                    <button
+                  />
+                  <button
                     onClick={handleTextCheck}
-                    disabled={!userInput.trim()} // Disable if input is empty
+                    disabled={!userInput.trim()}
                     className={`w-full bg-[#004a74] text-white py-3 px-6 rounded-lg hover:bg-[#00659f] transition-colors font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed`}
-                    >
+                  >
                     Check Answer
-                    </button>
+                  </button>
                 </div>
               )
             )}

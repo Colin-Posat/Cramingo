@@ -7,7 +7,8 @@ import {
   Edit3Icon,
   TrashIcon,
   AlertCircleIcon,
-  HeartIcon  // Added HeartIcon import
+  HeartIcon,  // Added HeartIcon import
+  SearchIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
@@ -106,6 +107,10 @@ const CreatedSets: React.FC = () => {
   // Handle create set button click
   const handleCreateSet = () => {
     navigate('/set-creator');
+  };
+
+  const handleSearchSets = () => {
+    navigate("/search-sets");
   };
 
   // Handle edit set
@@ -373,7 +378,7 @@ const CreatedSets: React.FC = () => {
                 
                 {/* Action buttons footer */}
                 <div className="bg-[#004a74] p-4 flex justify-between items-center mt-auto">
-                  <div className="text-white text-sm font-medium">Click to study</div>
+                  <div className="text-white text-sm font-medium">Click card to study</div>
                   <div className="flex gap-2">
                     <button 
                       onClick={(e) => handleEditSet(e, set)}
@@ -397,23 +402,35 @@ const CreatedSets: React.FC = () => {
         ) : (
           // Empty State - Shows when no sets are present
           <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
-              <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
-              <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                No Flashcard Sets Yet
-              </h2>
-              <p className="text-lg text-gray-600 mb-8">
-                You haven't created any flashcard sets yet. Get started by creating your first flashcard set.
-              </p>
-              <button 
+          <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
+            <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
+            <h2 className="text-3xl font-bold text-[#004a74] mb-6">
+              No Flashcard Sets Yet
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              You haven't created any flashcard sets yet. Get started by creating your first flashcard set or explore existing ones.
+            </p>
+            {/* Button group */}
+            <div className="mx-auto flex items-center justify-center gap-4">
+              <button
                 onClick={handleCreateSet}
-                className="mx-auto flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
+                className="flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
               >
                 <PlusIcon className="w-6 h-6" />
                 <span>Create Set</span>
               </button>
+              <button
+                onClick={handleSearchSets}
+
+                className="flex items-center justify-center gap-3 bg-white text-[#004a74] font-bold py-3 px-6 rounded-xl border-2 border-[#004a74] hover:bg-[#e6f2fa] active:scale-[0.98] transition-all shadow-md text-xl"
+              >
+                <SearchIcon className="w-6 h-6" />
+                <span>Find Sets</span>
+              </button>
             </div>
           </div>
+        </div>
+
 
         )}
 

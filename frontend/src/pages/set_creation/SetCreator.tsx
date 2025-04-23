@@ -705,7 +705,7 @@ const SetCreator: React.FC = () => {
                 <label htmlFor="classCode" className="block text-sm font-medium text-gray-700 mb-1">
                   Class Code <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
+                <div className="relative w-full">
                   <input
                     id="classCode"
                     ref={classCodeInputRef}
@@ -729,19 +729,14 @@ const SetCreator: React.FC = () => {
 
                   {suggestions.length > 0 && (
                     <ul 
-                      ref={autocompleteRef}
-                      className="absolute left-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-full"
-                      style={{
-                        maxHeight: '240px',
-                        overflowY: 'auto',
-                        overscrollBehavior: 'contain',
-                        zIndex: 1000
-                      }}
-                    >
+                    ref={autocompleteRef}
+                       className="absolute inset-x-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg"
+                       style={{ maxHeight: '240px', overflowY: 'auto', overscrollBehavior: 'contain' }}
+                     >
                       {suggestions.map((code, index) => (
                         <li 
                           key={index}
-                          className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-center font-medium"
+                         className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-left pl-4 font-medium"
                           onMouseDown={() => handleAutocompleteSelect(code)}
                         >
                           {code}
