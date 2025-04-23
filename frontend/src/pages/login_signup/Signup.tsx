@@ -16,7 +16,7 @@ const CombinedSignup: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   // Additional details
-  const [university, setUniversity] = useState("");
+  const [university, setUniversity] = useState("University of California, Santa Cruz");
   
   // UI state
   const [error, setError] = useState("");
