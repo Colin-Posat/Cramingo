@@ -8,7 +8,8 @@ import userRoutes from './routes/userRoutes';
 import genFlashcardsRoutes from './routes/genFlashcardsRoute';
 import fileRoutes from './routes/fileRoutes';
 import semanticRouter from './routes/semanticAnswerRoutes';
-import imageUploadRoutes from './routes/ImageUploadRoutes'; // Add this new import
+import imageUploadRoutes from './routes/ImageUploadRoutes'; 
+import feedbackRoutes from './routes/feedbackRoutes';
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -34,6 +35,7 @@ app.use(
 app.use(express.json());
 
 // Route registrations
+app.use('/api/feedback', feedbackRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/sets", setsRoutes);
 app.use("/api/quiz", distractorRoutes);
