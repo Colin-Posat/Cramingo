@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   User as UserIcon, 
   ChevronLeft as ChevronLeftIcon,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface UserProfile {
   username: string;
@@ -21,6 +22,32 @@ interface UserProfile {
 
 const EditProfile: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
+
+  // Force a reload when the component is mounted to ensure fresh data
+  useEffect(() => {
+    // Get navigation type
+    const navEntries = window.performance.getEntriesByType('navigation');
+    const navType = navEntries.length > 0 
+      ? (navEntries[0] as PerformanceNavigationTiming).type 
+      : '';
+    
+    // Only reload if it's a navigation (not a reload)
+    if (navType === 'navigate') {
+      // Store a flag in sessionStorage to prevent infinite reloads
+      if (!sessionStorage.getItem('profile_edited_reloaded')) {
+        sessionStorage.setItem('profile_edited_reloaded', 'true');
+        window.location.reload();
+      }
+    }
+
+    // Clean up the flag when component unmounts
+    return () => {
+      sessionStorage.removeItem('profile_edited_reloaded');
+    };
+  }, []);
+
   const [profile, setProfile] = useState<UserProfile>({
     username: '',
     fieldOfStudy: '',
@@ -30,31 +57,168 @@ const EditProfile: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [initialUserData, setInitialUserData] = useState<UserProfile | null>(null);
+  const [profileDataSource, setProfileDataSource] = useState<string>('');
 
-  // — Username‐availability check state & refs —
+  // Username‐availability check state & refs
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [usernameError, setUsernameError]       = useState('');
+  const [usernameError, setUsernameError] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState(false);
   const usernameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load existing user from localStorage
+  // Load user data using the same approach as ProfilePage
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      const u = JSON.parse(stored);
-      setProfile({
-        username:    u.username || '',
-        fieldOfStudy: u.fieldOfStudy || '',
-        email:        u.email || '',
-        uid:          u.uid || u.id || '',
-        likes:        u.likes || 0,
-      });
-    } else {
-      setError('User not found. Please log in.');
-      setTimeout(() => navigate('/login'), 2000);
+    const fetchUserProfile = async () => {
+      try {
+        setIsLoading(true);
+        setError('');
+        
+        // Check if user is authenticated through the auth context
+        if (!user) {
+          setError('Not authenticated. Please log in to edit your profile.');
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        // Set initial profile data from auth context
+        const userData = {
+          username: user.username?.trim() || 'Anonymous User',
+          fieldOfStudy: user.fieldOfStudy || '',
+          email: user.email || '',
+          uid: user.uid || '',
+          likes: user.likes || 0,
+        };
+        
+        setProfile(userData);
+        setInitialUserData(userData);
+        setProfileDataSource('authContext');
+        
+        // If user has a username, mark it as available since it's the user's current username
+        if (userData.username && userData.username !== 'Anonymous User') {
+          setUsernameAvailable(true);
+        }
+        
+        // Try to fetch the latest profile data from Firestore
+        try {
+          // Fetch the user document by ID if available
+          if (user.uid) {
+            const userDocResponse = await fetch(`${API_BASE_URL}/user/${user.uid}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include'
+            });
+            
+            if (userDocResponse.ok) {
+              const userDocData = await userDocResponse.json();
+              updateProfileData(userDocData, 'User document');
+            } else {
+              // Try fallback API if user document fetch fails
+              await fetchFromFallbackAPI();
+            }
+          } else {
+            // No user ID available, try fallback API
+            await fetchFromFallbackAPI();
+          }
+        } catch (apiError) {
+          console.error('API fetch error:', apiError);
+          // Continue using auth context data
+        } finally {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error processing user profile:', error);
+        setError('Failed to load profile. Please try again later.');
+        setIsLoading(false);
+      }
+    };
+
+    // Fetch data from fallback API
+    const fetchFromFallbackAPI = async () => {
+      try {
+        const fallbackResponse = await fetch(`${API_BASE_URL}/user/profile`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          
+          // Try to get user document by ID if available
+          const firebaseUserId = user?.uid || fallbackData.uid;
+          if (firebaseUserId) {
+            try {
+              const userDocResponse = await fetch(`${API_BASE_URL}/user/${firebaseUserId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+              
+              if (userDocResponse.ok) {
+                const userDocData = await userDocResponse.json();
+                updateProfileData(userDocData, 'User document', fallbackData);
+              } else {
+                // Use fallback API data
+                updateProfileData(fallbackData, 'Fallback API');
+              }
+            } catch (userDocError) {
+              console.error('Error fetching user document:', userDocError);
+              // Use fallback API data
+              updateProfileData(fallbackData, 'Fallback API');
+            }
+          } else {
+            // No user ID available, use fallback data
+            updateProfileData(fallbackData, 'Fallback API');
+          }
+        }
+      } catch (error) {
+        console.error('Error in fallback API:', error);
+      }
+    };
+
+    // Helper function to update profile data - similar to ProfilePage
+    const updateProfileData = (
+      newData: any, 
+      source: string,
+      fallbackData?: any
+    ) => {
+      // Determine the best username from available sources
+      const updatedUsername = newData.username?.trim() || 
+                             fallbackData?.username?.trim() || 
+                             user?.username?.trim() || 
+                             'Anonymous User';
+      
+      // Update profile with the new data
+      setProfile(prev => ({
+        ...prev,
+        username: updatedUsername,
+        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || prev.fieldOfStudy,
+        email: newData.email || fallbackData?.email || prev.email,
+        uid: newData.uid || fallbackData?.uid || prev.uid
+      }));
+
+      // Also update initialUserData to track what data we started with
+      setInitialUserData(prev => ({
+        ...prev as UserProfile,
+        username: updatedUsername,
+        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || (prev as UserProfile)?.fieldOfStudy || '',
+        email: newData.email || fallbackData?.email || (prev as UserProfile)?.email || '',
+        uid: newData.uid || fallbackData?.uid || (prev as UserProfile)?.uid || ''
+      }));
+      
+      // If username exists, mark it as available since it's the user's current username
+      if (updatedUsername && updatedUsername !== 'Anonymous User') {
+        setUsernameAvailable(true);
+      }
+      
+      setProfileDataSource(source);
+    };
+
+    // Only fetch when auth is not loading anymore
+    if (!authLoading) {
+      fetchUserProfile();
     }
-    setIsLoading(false);
-  }, [navigate]);
+  }, [user, authLoading, navigate]);
 
   // Debounced username‐availability check
   const checkUsername = useCallback(async (name: string) => {
@@ -63,6 +227,14 @@ const EditProfile: React.FC = () => {
       setUsernameError(name ? 'Username must be at least 3 characters' : '');
       return;
     }
+    
+    // Skip the availability check if username hasn't changed from the initial value
+    if (initialUserData && name === initialUserData.username) {
+      setUsernameAvailable(true);
+      setUsernameError('');
+      return;
+    }
+    
     try {
       setIsCheckingUsername(true);
       setUsernameError('');
@@ -85,24 +257,38 @@ const EditProfile: React.FC = () => {
     } finally {
       setIsCheckingUsername(false);
     }
-  }, []);
+  }, [initialUserData]);
 
   useEffect(() => {
-    // reset state & clear previous timer
+    // Reset state & clear previous timer
     if (usernameTimeoutRef.current) clearTimeout(usernameTimeoutRef.current);
+    
+    // Skip if we're still loading
+    if (isLoading) return;
+    
+    const name = profile.username.trim();
+    
+    // If username is the same as the original, mark it as available
+    if (initialUserData && name === initialUserData.username) {
+      setUsernameAvailable(true);
+      setUsernameError('');
+      return;
+    }
+    
+    // Otherwise, reset availability status
     setUsernameAvailable(false);
     setUsernameError('');
-
-    const name = profile.username.trim();
+    
     if (name.length >= 3) {
       usernameTimeoutRef.current = setTimeout(() => {
         checkUsername(name);
       }, 500);
     }
+    
     return () => {
       if (usernameTimeoutRef.current) clearTimeout(usernameTimeoutRef.current);
     };
-  }, [profile.username, checkUsername]);
+  }, [profile.username, checkUsername, isLoading, initialUserData]);
 
   // Handle form field changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +310,10 @@ const EditProfile: React.FC = () => {
       setIsSaving(false);
       return;
     }
-    if (!usernameAvailable && !isCheckingUsername) {
+    
+    // Skip username check if unchanged
+    const usernameChanged = initialUserData && name !== initialUserData.username;
+    if (usernameChanged && !usernameAvailable && !isCheckingUsername) {
       await checkUsername(name);
       if (!usernameAvailable) {
         setError(usernameError || 'Username unavailable');
@@ -135,11 +324,12 @@ const EditProfile: React.FC = () => {
 
     try {
       const userData = {
-        username:    name,
+        username: name,
         fieldOfStudy: profile.fieldOfStudy.trim(),
-        email:        profile.email?.trim() || '',
-        uid:          profile.uid,
+        email: profile.email?.trim() || '',
+        uid: profile.uid,
       };
+      
       const endpoint = `${API_BASE_URL}/user/${profile.uid}`;
       let res = await fetch(endpoint, {
         method: 'PUT',
@@ -147,6 +337,7 @@ const EditProfile: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify(userData),
       });
+      
       if (!res.ok) {
         // fallback
         res = await fetch(`${API_BASE_URL}/user/update-profile`, {
@@ -156,13 +347,8 @@ const EditProfile: React.FC = () => {
           body: JSON.stringify(userData),
         });
       }
+      
       if (res.ok) {
-        // update localStorage
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          const current = JSON.parse(stored);
-          localStorage.setItem('user', JSON.stringify({ ...current, ...userData }));
-        }
         setIsSuccess(true);
         setTimeout(() => navigate('/profile'), 1500);
       } else {
@@ -178,7 +364,7 @@ const EditProfile: React.FC = () => {
 
   const handleCancel = () => navigate('/profile');
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
@@ -242,44 +428,46 @@ const EditProfile: React.FC = () => {
             )}
             <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg text-sm">
               Fill in the information below to update your profile.
+
             </div>
             {/* Username field with availability indicator */}
- <div>
-   <label className="block text-sm font-medium text-gray-700 mb-1">
-     Username
-   </label>
-   <div className="relative">
-     <input
-       type="text"
-      name="username"
-      value={profile.username}
-       onChange={handleChange}
-       placeholder="Your display name"
-       className={`block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
-         usernameError
-           ? 'border-red-500 focus:ring-red-200'
-           : usernameAvailable
-           ? 'border-green-500 focus:ring-green-200'
-           : 'border-gray-300 focus:ring-[#004a74]/20'
-       }`}
-       autoComplete="off"
-     />
-     {profile.username.length >= 3 && (
-       <div className="absolute inset-y-0 right-3 flex items-center">
-         {isCheckingUsername ? (
-           <div className="h-5 w-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-         ) : usernameAvailable ? (
-           <CheckCircleIcon className="h-5 w-5 text-green-500" />
-         ) : (
-           <AlertCircleIcon className="h-5 w-5 text-red-500" />
-         )}
-       </div>
-    )}
-   </div>
-   {usernameError && (
-     <p className="text-red-500 text-xs mt-1">{usernameError}</p>
-   )}
- </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Username
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="username"
+                  value={profile.username}
+                  onChange={handleChange}
+                  placeholder="Your display name"
+                  className={`block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    usernameError
+                      ? 'border-red-500 focus:ring-red-200'
+                      : usernameAvailable
+                      ? 'border-green-500 focus:ring-green-200'
+                      : 'border-gray-300 focus:ring-[#004a74]/20'
+                  }`}
+                  autoComplete="off"
+                />
+                {profile.username.length >= 3 && (
+                  <div className="absolute inset-y-0 right-3 flex items-center">
+                    {isCheckingUsername ? (
+                      <div className="h-5 w-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                    ) : usernameAvailable ? (
+                      <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <AlertCircleIcon className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {usernameError && (
+                <p className="text-red-500 text-xs mt-1">{usernameError}</p>
+              )}
+            </div>
+
 
             {/* Action buttons */}
             <div className="pt-4 border-t border-gray-200">

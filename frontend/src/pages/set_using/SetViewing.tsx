@@ -10,12 +10,14 @@ import {
   ClipboardList as ClipboardListIcon,
   Info as InfoIcon,
   X as XIcon,
-  Heart as HeartIcon // Add Heart icon
+  Heart as HeartIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { API_BASE_URL } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Type definitions
+
 type Flashcard = {
   question: string;
   answer: string;
@@ -38,456 +40,252 @@ type FlashcardSet = {
   userId?: string;
   isDerived?: boolean;
   originalSetId?: string;
-  likes?: number; // Add likes field
+  likes?: number;
 };
 
 const SetViewingPage: React.FC = () => {
+  const { user } = useAuth();
   const { setId } = useParams<{ setId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'flashcards' | 'quiz'>('flashcards');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(() => {
-    // Check localStorage for user preference
     return localStorage.getItem('hideViewerInfoTips') !== 'true';
   });
   const [isSavedByCurrentUser, setIsSavedByCurrentUser] = useState(false);
   const [isUnsaving, setIsUnsaving] = useState(false);
-  
-  // New state variables for likes
+
+  // Likes state
   const [hasLiked, setHasLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
-  
-  // Extract navigation state to check if we came from search results
+
+  // Navigation flags
   const fromSearch = location.state?.fromSearch || false;
   const searchQuery = location.state?.searchQuery || '';
   const fromPopularSets = location.state?.fromPopularSets || false;
 
+  // Check like status
   useEffect(() => {
-    // Get current user ID from localStorage
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUserId(user.id || user.uid);
-  }, []);
+    if (!user?.uid || !setId) return;
 
-  useEffect(() => {
     const checkLikeStatus = async () => {
-      if (!setId || !currentUserId) return;
-      
       try {
-        // Add a timestamp parameter and no-cache headers to prevent caching issues
         const timestamp = new Date().getTime();
-        const response = await fetch(`${API_BASE_URL}/sets/like-status?setId=${setId}&userId=${currentUserId}&_t=${timestamp}`, {
-          credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+        const response = await fetch(
+          `${API_BASE_URL}/sets/like-status?setId=${setId}&userId=${user.uid}&_t=${timestamp}`,
+          {
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
           }
-        });
-        
+        );
         if (response.ok) {
           const data = await response.json();
           setHasLiked(data.hasLiked);
-          console.log('Like status retrieved:', data.hasLiked);
-        } else {
-          console.error('Failed to get like status:', response.status);
         }
-      } catch (error) {
-        console.error('Error checking like status:', error);
+      } catch (err) {
+        console.error('Error checking like status:', err);
       }
     };
-    
-    if (currentUserId && setId) {
-      checkLikeStatus();
-    }
-  }, [currentUserId, setId]);
 
+    checkLikeStatus();
+  }, [user, setId]);
+
+  // Fetch flashcard set
   useEffect(() => {
     const fetchFlashcardSet = async () => {
+      setLoading(true);
+      setError(null);
+
+      if (!user?.uid) {
+        setError('User not authenticated. Please log in to view flashcard sets.');
+        setLoading(false);
+        return;
+      }
+
+      if (!setId) {
+        setError('No flashcard set ID provided. Please select a valid set.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        setLoading(true);
-        setError(null);
-        
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const userId = user.id || user.uid;
-        
-        if (!userId) {
-          setError("User not authenticated. Please log in to view flashcard sets.");
-          setLoading(false);
-          return;
-        }
-        
-        if (!setId) {
-          setError("No flashcard set ID provided. Please select a valid set.");
-          setLoading(false);
-          return;
-        }
-        
-        try {
-          const response = await fetch(`${API_BASE_URL}/sets/${setId}`, {
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
+        const response = await fetch(`${API_BASE_URL}/sets/${setId}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const text = await response.text();
+        const data: FlashcardSet = JSON.parse(text);
+
+        setFlashcardSet(data);
+        setLikesCount(data.likes || 0);
+
+        // Check saved status
+        if (data.isDerived && data.userId === user.uid) {
+          setIsSavedByCurrentUser(true);
+        } else if (data.originalSetId) {
+          const savedRes = await fetch(
+            `${API_BASE_URL}/sets/saved/${user.uid}`,
+            { credentials: 'include' }
+          );
+          if (savedRes.ok) {
+            const savedSets: FlashcardSet[] = await savedRes.json();
+            const isSaved = savedSets.some(s =>
+              s.originalSetId === data.id && s.userId === user.uid
+            );
+            setIsSavedByCurrentUser(isSaved);
           }
-          
-          const responseText = await response.text();
-          
-          try {
-            const data = JSON.parse(responseText);
-            console.log('Flashcard set data:', data);
-            setFlashcardSet(data);
-            
-            // Set the likes count
-            setLikesCount(data.likes || 0);
-            
-            // Check if this set is already saved by the current user
-            if (data.isDerived && data.userId === userId) {
-              setIsSavedByCurrentUser(true);
-            } else if (data.originalSetId) {
-              // Check if this is a set the current user has saved
-              const savedSetsResponse = await fetch(`${API_BASE_URL}/sets/saved/${userId}`, {
-                credentials: 'include'
-              });
-              
-              if (savedSetsResponse.ok) {
-                const savedSets = await savedSetsResponse.json();
-                const isSaved = savedSets.some((set: FlashcardSet) => 
-                  set.originalSetId === data.id && set.userId === userId
-                );
-                setIsSavedByCurrentUser(isSaved);
-              }
-            }
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-            setError("Invalid data format received from server. Please try again later.");
-          }
-        } catch (fetchError) {
-          console.error('Fetch error:', fetchError);
-          setError("Failed to load flashcard set. Please check your connection and try again.");
         }
-      } catch (error) {
-        console.error('Error in fetchFlashcardSet:', error);
-        setError("An unexpected error occurred while loading the flashcard set");
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError('Failed to load flashcard set. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchFlashcardSet();
-  }, [setId]);
+  }, [setId, user]);
 
-  // Get back link text based on navigation state
+  // Back link helpers
   const getBackLinkText = () => {
-    if (fromSearch) {
-      return `Back to Search Results`;
-    }
-    if (fromPopularSets) {
-      return `Back to Search Sets`;
-    }
-    return flashcardSet?.isDerived ? "Back to Saved Sets" : "Back to Created Sets";
+    if (fromSearch) return 'Back to Search Results';
+    if (fromPopularSets) return 'Back to Search Sets';
+    return flashcardSet?.isDerived ? 'Back to Saved Sets' : 'Back to Created Sets';
   };
-  
-  // Get back link path based on navigation state
+
   const getBackLinkPath = () => {
-    if (fromSearch) {
-      return `/search-results?q=${encodeURIComponent(searchQuery)}`;
-    }
-    if (fromPopularSets) {
-      return '/search-sets'; // Path to the search sets page
-    }
-    return flashcardSet?.isDerived ? "/saved-sets" : "/created-sets";
+    if (fromSearch) return `/search-results?q=${encodeURIComponent(searchQuery)}`;
+    if (fromPopularSets) return '/search-sets';
+    return flashcardSet?.isDerived ? '/saved-sets' : '/created-sets';
   };
 
-  // Handle edit button click
+  // Actions
   const handleEditSet = () => {
-    if (flashcardSet) {
-      localStorage.setItem("editingFlashcardSet", JSON.stringify(flashcardSet));
-      navigate('/set-creator');
-    }
+    localStorage.setItem('editingFlashcardSet', JSON.stringify(flashcardSet));
+    navigate('/set-creator');
   };
 
-  // New function to handle liking/unliking
   const handleLikeToggle = async () => {
-    if (!currentUserId || !setId || isLiking) return;
-    
+    if (!user?.uid || !setId || isLiking) return;
+    setIsLiking(true);
     try {
-      setIsLiking(true);
-      
-      const endpoint = hasLiked 
+      const endpoint = hasLiked
         ? `${API_BASE_URL}/sets/unlike`
         : `${API_BASE_URL}/sets/like`;
-      
-      const response = await fetch(endpoint, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        body: JSON.stringify({
-          setId,
-          userId: currentUserId
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setId, userId: user.uid })
       });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Update both local state and flashcardSet state to ensure consistency
+      if (!res.ok) throw new Error(`Server ${res.status}`);
+      const data = await res.json();
       setHasLiked(!hasLiked);
       setLikesCount(data.likesCount);
-      
-      // Update the flashcardSet object to include the updated likes count
-      setFlashcardSet(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          likes: data.likesCount
-        };
-      });
-      
-      // Store the like status in localStorage as a backup strategy
-      localStorage.setItem(`set_${setId}_liked`, !hasLiked ? 'true' : 'false');
-      
-      console.log('Like status updated:', !hasLiked, 'Likes count:', data.likesCount);
-      
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      // Show error message to the user
-      alert(error instanceof Error ? error.message : 'Failed to like/unlike the set. Please try again.');
+      setFlashcardSet(prev => prev ? { ...prev, likes: data.likesCount } : prev);
+      localStorage.setItem(`set_${setId}_liked`, (!hasLiked).toString());
+    } catch (err) {
+      console.error('Error toggling like:', err);
+      alert('Failed to update like status.');
     } finally {
       setIsLiking(false);
     }
   };
-  
-  // Finally, add a localStorage check in the initial useEffect to ensure we have a fallback
-  // if the API call fails or is delayed:
-  
-  useEffect(() => {
-    // Get current user ID from localStorage
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUserId(user.id || user.uid);
-    
-    // Check if we have a stored like state for this set
-    if (setId) {
-      const storedLikeStatus = localStorage.getItem(`set_${setId}_liked`);
-      if (storedLikeStatus === 'true') {
-        setHasLiked(true);
-      }
-    }
-  }, [setId]);
-  
 
-  // Handle save button click
   const handleSaveSet = async () => {
+    if (!user?.uid) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || user.uid;
-
-      // Perform save operation
-      const response = await fetch(`${API_BASE_URL}/sets/save`, {
+      const res = await fetch(`${API_BASE_URL}/sets/save`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          originalSetId: flashcardSet?.id,
-          userId
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalSetId: flashcardSet?.id, userId: user.uid })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save set');
-      }
-
-      const savedSet = await response.json();
-      
-      // Update state to reflect the set is now saved
+      if (!res.ok) throw new Error('Save failed');
+      const saved = await res.json();
       setIsSavedByCurrentUser(true);
-      
-      // Optional: Navigate to the newly saved set
-      if (savedSet.id !== setId) {
-        // Preserve the fromSearch and searchQuery when navigating
-        navigate(`/study/${savedSet.id}`, {
-          state: {
-            fromSearch: fromSearch,
-            searchQuery: searchQuery
-          }
-        });
-      } else {
-        setLoading(false);
+      if (saved.id !== setId) {
+        navigate(`/study/${saved.id}`, { state: { fromSearch, searchQuery } });
       }
-    } catch (error) {
-      console.error('Error saving set:', error);
+    } catch (err) {
+      console.error('Error saving set:', err);
+      alert('Failed to save the set.');
+    } finally {
       setLoading(false);
-      // Show error message to the user
-      alert(error instanceof Error ? error.message : 'Failed to save the set. Please try again.');
     }
   };
 
-  // Handle unsave button click
   const handleUnsaveSet = async () => {
+    if (!user?.uid) return;
+    setIsUnsaving(true);
     try {
-      setIsUnsaving(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || user.uid;
-
-      // If this is a saved set (we're viewing the saved copy)
       if (flashcardSet?.isDerived) {
-        const response = await fetch(`${API_BASE_URL}/sets/unsave`, {
+        const res = await fetch(`${API_BASE_URL}/sets/unsave`, {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            setId: flashcardSet.id,
-            userId
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ setId: flashcardSet.id, userId: user.uid })
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to unsave set');
-        }
-
-        // Navigate back to saved sets page after unsaving
+        if (!res.ok) throw new Error('Unsave failed');
         navigate('/saved-sets');
       } else {
-        // If we're viewing the original set but want to unsave our saved copy
-        // First we need to find our saved copy
-        const savedSetsResponse = await fetch(`${API_BASE_URL}/sets/saved/${userId}`, {
-          credentials: 'include'
-        });
-        
-        if (!savedSetsResponse.ok) {
-          throw new Error('Failed to fetch saved sets');
-        }
-        
-        const savedSets = await savedSetsResponse.json();
-        const savedCopy = savedSets.find((set: FlashcardSet) => 
-          set.originalSetId === flashcardSet?.id && set.userId === userId
-        );
-        
-        if (!savedCopy) {
-          throw new Error('Could not find your saved copy of this set');
-        }
-        
-        // Unsave the found copy
-        const unsaveResponse = await fetch(`${API_BASE_URL}/sets/unsave`, {
+        const savedRes = await fetch(`${API_BASE_URL}/sets/saved/${user.uid}`, { credentials: 'include' });
+        const savedSets: FlashcardSet[] = await savedRes.json();
+        const savedCopy = savedSets.find(s => s.originalSetId === flashcardSet?.id && s.userId === user.uid);
+        if (!savedCopy) throw new Error('No saved copy found');
+        const res = await fetch(`${API_BASE_URL}/sets/unsave`, {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            setId: savedCopy.id,
-            userId
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ setId: savedCopy.id, userId: user.uid })
         });
-        
-        if (!unsaveResponse.ok) {
-          const errorData = await unsaveResponse.json();
-          throw new Error(errorData.message || 'Failed to unsave set');
-        }
-        
-        // Update state to reflect the set is no longer saved
+        if (!res.ok) throw new Error('Unsave failed');
         setIsSavedByCurrentUser(false);
       }
-    } catch (error) {
-      console.error('Error unsaving set:', error);
-      // Show error message to the user
-      alert(error instanceof Error ? error.message : 'Failed to unsave the set. Please try again.');
+    } catch (err) {
+      console.error('Error unsaving:', err);
+      alert('Failed to unsave the set.');
     } finally {
       setIsUnsaving(false);
     }
   };
 
-  // Toggle card expansion
-  const toggleCardExpansion = (index: number) => {
-    const newExpandedCards = new Set(expandedCards);
-    if (newExpandedCards.has(index)) {
-      newExpandedCards.delete(index);
-    } else {
-      newExpandedCards.add(index);
-    }
-    setExpandedCards(newExpandedCards);
+  const toggleCardExpansion = (i: number) => {
+    const next = new Set(expandedCards);
+    next.has(i) ? next.delete(i) : next.add(i);
+    setExpandedCards(next);
   };
 
-  // Navigate to flashcard view mode
   const navigateToFlashcardView = () => {
     setViewMode('flashcards');
     navigate(`/study/${setId}/flashcards`);
   };
 
-  // Navigate to quiz view mode
   const navigateToQuizView = () => {
     setViewMode('quiz');
     navigate(`/study/${setId}/quiz`);
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
-            <p className="mt-4 text-[#004a74] font-medium">Loading flashcard set...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50"><NavBar /><div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div></div></div>
+  );
 
-  // Error state
-  if (error || !flashcardSet) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 max-w-4xl mx-auto">
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded flex items-start mb-4">
-            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Error</p>
-              <p>{error || "Failed to load flashcard set"}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-          <button 
-            onClick={() => navigate('/created-sets')}
-            className="bg-[#004a74] text-white px-4 py-2 rounded flex items-center text-sm hover:bg-[#00659f]"
-          >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> 
-            Back to Created Sets
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (error || !flashcardSet) return (
+    <div className="min-h-screen bg-gray-50"><NavBar /><div className="pt-24 px-6"><div className="bg-red-100 p-4 rounded flex items-start"><AlertCircleIcon /><div><p className="font-bold">Error</p><p>{error}</p><button onClick={() => window.location.reload()} className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm">Try Again</button></div></div><button onClick={() => navigate('/created-sets')} className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded">Back to Created Sets</button></div></div>
+  );
 
-  const isCreator = currentUserId === flashcardSet.userId && !flashcardSet.isDerived;
+  const isCreator = user?.uid === flashcardSet.userId && !flashcardSet.isDerived;
 
   return (
     <div className="min-h-screen bg-gray-50">

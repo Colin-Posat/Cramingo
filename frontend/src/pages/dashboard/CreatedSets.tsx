@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import NavBar from '../../components/NavBar'; // Adjust the import path as needed
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { useAuth } from '../../context/AuthContext';
 
 // Enhanced type for Flashcard Set
 type FlashcardSet = {
@@ -28,6 +29,7 @@ type FlashcardSet = {
 
 const CreatedSets: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading, isAuthenticated } = useAuth(); // Use the auth context
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [showHelper, setShowHelper] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -35,26 +37,25 @@ const CreatedSets: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
 
-  // Fetch created sets when component mounts
+  // Fetch created sets when component mounts or user changes
   useEffect(() => {
     const fetchSets = async () => {
+      // Don't fetch if auth is still loading or user is not authenticated
+      if (authLoading) return;
+      
+      if (!isAuthenticated || !user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
         setError(null);
         
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const userId = user.id || user.uid;
+        const userId = user.uid; // Use user ID from auth context
         
-        console.log('User from localStorage:', user);
-        console.log('Using userId:', userId);
-        
-        if (!userId) {
-          setError("User not authenticated");
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Fetching sets for user ID:', userId);
+        console.log('Using userId from auth context:', userId);
         
         // First try to get the response as text to see what's happening
         try {
@@ -102,7 +103,7 @@ const CreatedSets: React.FC = () => {
     };
 
     fetchSets();
-  }, []);
+  }, [user, authLoading, isAuthenticated]); // Depend on auth context values
 
   // Handle create set button click
   const handleCreateSet = () => {
@@ -133,11 +134,10 @@ const CreatedSets: React.FC = () => {
 
   // Handle actual deletion
   const deleteSet = async () => {
-    if (!setToDelete) return;
+    if (!setToDelete || !user) return;
     
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || user.uid;
+      const userId = user.uid; // Use user ID from auth context
       
       const response = await fetch(`${API_BASE_URL}/sets/delete/${setToDelete}?userId=${userId}`, {
         method: 'DELETE',
@@ -257,8 +257,8 @@ const CreatedSets: React.FC = () => {
     setShowHelper(false);
   };
 
-  // Render loading state
-  if (loading) {
+  // Render loading state for either auth loading or data loading
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-white overflow-auto-if-needed">
         <NavBar />
@@ -266,6 +266,30 @@ const CreatedSets: React.FC = () => {
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
             <p className="mt-4 text-[#004a74] font-medium">Loading your sets...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render not authenticated state
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-white overflow-auto-if-needed">
+        <NavBar />
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
+            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold">Authentication Error</p>
+              <p>You need to be logged in to view your flashcard sets.</p>
+              <button 
+                onClick={() => navigate('/login')}
+                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
+              >
+                Log In
+              </button>
+            </div>
           </div>
         </div>
       </div>

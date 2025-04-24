@@ -8,50 +8,56 @@ import {
   AlertCircle as AlertCircleIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
+import { useAuth } from '../../context/AuthContext';
 
 const AIGeneratePage: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [inputNotes, setInputNotes] = useState<string>(() => {
-    // Retrieve notes from local storage when component mounts
     return localStorage.getItem('ai-generate-notes') || '';
   });
   const [notesError, setNotesError] = useState<string>('');
   const [showTip, setShowTip] = useState<boolean>(() => {
-    // Check local storage to see if user has previously dismissed the tip
     const dismissedTip = localStorage.getItem('ai-generate-tip-dismissed');
     return dismissedTip !== 'true';
   });
   const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
 
-  // Save notes to local storage whenever they change
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [authLoading, user, navigate]);
+
+  // Persist notes
   useEffect(() => {
     localStorage.setItem('ai-generate-notes', inputNotes);
   }, [inputNotes]);
 
-  // Validate form before generating
+  // Validate form
   const validateForm = () => {
     let isValid = true;
     setNotesError('');
 
     if (!inputNotes.trim()) {
-      setNotesError("Please provide some notes to generate flashcards");
+      setNotesError('Please provide some notes to generate flashcards');
       isValid = false;
     }
 
     return isValid;
   };
 
-  // Generate Flashcards (placeholder for future AI functionality)
   const handleGenerateFlashcards = () => {
     if (validateForm()) {
-      // Future: Implement AI generation logic
       console.log('Generating flashcards for:', {
-        notes: inputNotes
+        notes: inputNotes,
+        userId: user?.uid
       });
+      // Future: call your AI endpoint, passing user.uid if needed
     }
   };
 
-  // Dismiss tip permanently
   const handleDismissTip = () => {
     if (dontShowAgainChecked) {
       localStorage.setItem('ai-generate-tip-dismissed', 'true');
@@ -59,12 +65,23 @@ const AIGeneratePage: React.FC = () => {
     setShowTip(false);
   };
 
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <NavBar />
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
 
       <div className="container mx-auto px-4 pt-24 pb-12">
-        {/* Header with back button and page title */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <button 
             onClick={() => navigate('/set-creator')}
@@ -72,13 +89,10 @@ const AIGeneratePage: React.FC = () => {
           >
             <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Set Creator
           </button>
-          <h1 className="text-xl font-bold text-[#004a74]">
-            AI Flashcard Generator
-          </h1>
+          <h1 className="text-xl font-bold text-[#004a74]">AI Flashcard Generator</h1>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Header with AI Theme */}
           <div className="bg-[#004a74] px-6 py-4 text-white flex items-center">
             <SparklesIcon className="w-6 h-6 mr-3" />
             <h2 className="text-xl font-bold">Generate Flashcards with AI</h2>
@@ -98,9 +112,11 @@ const AIGeneratePage: React.FC = () => {
                   setNotesError('');
                 }}
                 placeholder="Paste or type your study notes here. The more detailed, the better the flashcards!"
-                className={`w-full min-h-[300px] p-4 text-base rounded-lg border 
-                  focus:outline-none focus:ring-2 transition-all resize-none
-                  ${notesError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
+                className={`w-full min-h-[300px] p-4 text-base rounded-lg border focus:outline-none focus:ring-2 transition-all resize-none ${
+                  notesError
+                    ? 'border-red-500 focus:ring-red-200'
+                    : 'border-gray-300 focus:ring-[#004a74]/20'
+                }`}
               />
               {notesError && (
                 <div className="text-red-500 text-sm mt-1 flex items-center">
@@ -113,9 +129,7 @@ const AIGeneratePage: React.FC = () => {
             {/* Generate Button */}
             <button 
               onClick={handleGenerateFlashcards}
-              className="w-full flex items-center justify-center gap-2 
-                bg-[#004a74] text-white font-bold
-                px-6 py-3 rounded-lg hover:bg-[#00659f] transition-colors shadow-md"
+              className="w-full flex items-center justify-center gap-2 bg-[#004a74] text-white font-bold px-6 py-3 rounded-lg hover:bg-[#00659f] transition-colors shadow-md"
             >
               <SparklesIcon className="w-6 h-6" />
               Generate Flashcards
@@ -148,10 +162,7 @@ const AIGeneratePage: React.FC = () => {
                         onChange={(e) => setDontShowAgainChecked(e.target.checked)}
                         className="mr-2 text-[#004a74] focus:ring-[#004a74] rounded"
                       />
-                      <label 
-                        htmlFor="dontShowAgain" 
-                        className="text-sm text-[#004a74]"
-                      >
+                      <label htmlFor="dontShowAgain" className="text-sm text-[#004a74]">
                         Don't show this tip again
                       </label>
                     </div>
@@ -163,7 +174,7 @@ const AIGeneratePage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div> 
             )}
           </div>
         </div>

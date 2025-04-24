@@ -11,6 +11,7 @@ import {
   Info as InfoIcon
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 
 interface AIGenerateOverlayProps {
   onClose: () => void;
@@ -29,6 +30,9 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Use the auth context instead of localStorage
+  const { user, isAuthenticated } = useAuth();
   
   const MIN_CHARACTERS = 100;
   const MAX_CHARACTERS = 30000;
@@ -173,11 +177,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     setNotesSuccess('');
     
     try {
-      // Retrieve user from localStorage for authentication
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      // Ensure user is authenticated
-      if (!user.id && !user.uid) {
+      // Check if user is authenticated using auth context
+      if (!isAuthenticated || !user) {
         throw new Error('User not authenticated. Please log in.');
       }
       
@@ -185,7 +186,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       const formData = new FormData();
       formData.append('pdfFile', uploadedFile);
       
-      // Encode user info for authorization
+      // Encode user info for authorization - use the user from context
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
       const response = await fetch(`${API_BASE_URL}/files/parse-pdf`, {
@@ -266,15 +267,12 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     setNotesSuccess('');
 
     try {
-      // Retrieve user from localStorage
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      // Ensure user is authenticated
-      if (!user.id && !user.uid) {
+      // Check if user is authenticated using auth context
+      if (!isAuthenticated || !user) {
         throw new Error('User not authenticated. Please log in.');
       }
       
-      // Encode user info for authorization
+      // Encode user info for authorization - use the user from context
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
       const response = await fetch(`${API_BASE_URL}/ai/generate-flashcards`, {
@@ -390,8 +388,6 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
 
         {/* Overlay Content */}
         <div className="p-6 flex-grow overflow-y-auto">
-
-
           {/* PDF Upload Section */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-1">

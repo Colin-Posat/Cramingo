@@ -13,12 +13,13 @@ import {
   Info as InfoIcon,
   Image as ImageIcon,
   Trash2 as TrashIcon,
-  Calculator as CalculatorIcon // Changed to Calculator icon for equation button
+  Calculator as CalculatorIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
-import EquationEditor from '../../components/EquationEditor'; // Import the EquationEditor component
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import EquationEditor from '../../components/EquationEditor';
+import { API_BASE_URL, getApiUrl } from '../../config/api';
+import { useAuth } from '../../context/AuthContext'; // Import the auth context hook
 
 // Type definitions
 type Flashcard = {
@@ -40,12 +41,14 @@ type FlashcardSet = {
   isPublic: boolean;
   icon?: string;
   createdAt?: string;
-  userId?: string; // Track the owner of the set
-  username?: string; // Add username of the creator
+  userId?: string;
+  username?: string;
 };
 
 const SetCreator: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, loading } = useAuth(); // Use auth context
+  
   const [flashcards, setFlashcards] = useState<Flashcard[]>([{ 
     question: '', 
     answer: '', 
@@ -63,7 +66,6 @@ const SetCreator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [showInfoTips, setShowInfoTips] = useState(() => {
-    // Check localStorage for user preference
     return localStorage.getItem('hideCreatorInfoTips') !== 'true';
   });
   
@@ -75,10 +77,10 @@ const SetCreator: React.FC = () => {
   const [descriptionError, setDescriptionError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // New state for AI Generate Overlay
+  // State for AI Generate Overlay
   const [showAIGenerateOverlay, setShowAIGenerateOverlay] = useState(false);
   
-  // New state for Equation Editor
+  // State for Equation Editor
   const [showEquationEditor, setShowEquationEditor] = useState(false);
   const [activeEquationField, setActiveEquationField] = useState<{index: number, field: 'question' | 'answer'} | null>(null);
   
@@ -102,11 +104,11 @@ const SetCreator: React.FC = () => {
   // Check if we're editing an existing set and if it belongs to the current user
   const checkForEditingMode = () => {
     const storedSet = localStorage.getItem("editingFlashcardSet");
-    if (storedSet) {
+    if (storedSet && user) {
       const parsedSet = JSON.parse(storedSet) as FlashcardSet;
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      // Only load the stored set if it belongs to the current user.
-      if (user && (user.id === parsedSet.userId || user.uid === parsedSet.userId)) {
+      
+      // Only load the stored set if it belongs to the current user
+      if (user.uid === parsedSet.userId) {
         setEditingSet(parsedSet);
         setTitle(parsedSet.title || '');
         setClassCode(parsedSet.classCode || '');
@@ -124,7 +126,7 @@ const SetCreator: React.FC = () => {
           setFlashcards(updatedFlashcards);
         }
       } else {
-        // If it doesn't belong to the current user, clear it.
+        // If it doesn't belong to the current user, clear it
         localStorage.removeItem("editingFlashcardSet");
       }
     }
@@ -133,20 +135,18 @@ const SetCreator: React.FC = () => {
   // Fetch class codes and check for editing mode on component mount
   useEffect(() => {
     fetchClassCodes();
-    checkForEditingMode();
     
-    // Check authentication - but don't redirect immediately
-    const checkAuth = () => {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user || (!user.id && !user.uid)) {
+    // Check authentication after auth context has loaded
+    if (!loading) {
+      if (!isAuthenticated) {
         console.log('No authenticated user found, redirecting to landing page');
         navigate('/');
+      } else {
+        // Only check for editing mode if user is authenticated
+        checkForEditingMode();
       }
-    };
-    
-    const timer = setTimeout(checkAuth, 300);
-    return () => clearTimeout(timer);
-  }, [navigate]);
+    }
+  }, [navigate, loading, isAuthenticated, user]);
 
   // Close autocomplete when clicking outside
   useEffect(() => {
@@ -466,15 +466,14 @@ const SetCreator: React.FC = () => {
   // Save flashcard set
   const saveFlashcardSet = async (isPublic: boolean) => {
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.id && !user.uid) {
+      if (!user) {
         setFlashcardError("You must be logged in to save a set");
         return;
       }
       
-      const userId = user.id || user.uid;
-      // Get the username from localStorage. If not available, fallback to email or displayName
-      const username = user.username || user.displayName || user.email || "Anonymous User";
+      const userId = user.uid;
+      // Get the username from the auth context
+      const username = user.username || user.email || "Anonymous User";
       
       if (!validateForm()) {
         return;
@@ -590,6 +589,14 @@ const SetCreator: React.FC = () => {
     setShowAIGenerateOverlay(false);
   };
 
+  // Show loading state while auth context is loading
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+        <p className="text-lg text-gray-600">Loading...</p>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />

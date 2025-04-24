@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
 import { AlertCircle as AlertCircleIcon, Eye, EyeOff, CheckCircle } from "lucide-react";
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { API_BASE_URL, getApiUrl } from '../../config/api';
 import TermsOfServicePopup from "../../components/TermsOfServicePopup";
 import PrivacyPolicyPopup from "../../components/PrivacyPolicyPopup";
+import { useAuth } from "../../context/AuthContext"; // Import the auth hook
 
 const CombinedSignup: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth(); // Use the auth context
   
   // Basic user information
   const [email, setEmail] = useState("");
@@ -282,8 +284,6 @@ const CombinedSignup: React.FC = () => {
       setError("Please select a valid university from the list");
       return;
     }
-    
-
   
     try {
       setLoading(true);
@@ -328,11 +328,18 @@ const CombinedSignup: React.FC = () => {
       if (completeResponse.ok) {
         console.log("User signed up successfully:", completeData);
         
-        // Save user data to localStorage
-        localStorage.setItem("user", JSON.stringify(completeData.user));
-        
-        // Navigate to created-sets page
-        navigate("/created-sets");
+        // Instead of manually storing user data, use the login function from AuthContext
+        try {
+          // After successful signup, login the user
+          await login(email, password);
+          // Navigate to created-sets page after successful login
+          navigate("/created-sets");
+        } catch (loginError) {
+          console.error("Auto-login failed after signup:", loginError);
+          setError("Account created but login failed. Please try logging in manually.");
+          // If auto-login fails, redirect to login page
+          navigate("/login");
+        }
       } else {
         setError(completeData.message || "Signup completion failed");
       }

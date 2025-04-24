@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
 import admin from "firebase-admin";
+import jwt from "jsonwebtoken";
 
 const db = admin.firestore(); // Firestore instance
 const auth = admin.auth(); // Firebase Authentication instance
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // Use environment variable in production
+const TOKEN_EXPIRY = "7d"; // Token valid for 7 days
 
 export const signupInit = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -85,9 +88,24 @@ export const completeSignup = async (req: Request, res: Response): Promise<void>
     // Cleanup pending user data
     await userRef.delete();
 
+    // Generate JWT token for immediate login after signup
+    const token = jwt.sign(
+      { uid: userRecord.uid, email: userRecord.email },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+
     res.status(201).json({
       message: "User successfully created",
-      user: { uid: userRecord.uid, email: userRecord.email, university, fieldOfStudy },
+      token, // Send token for localStorage
+      user: { 
+        uid: userRecord.uid, 
+        email: userRecord.email, 
+        username: userData.username,
+        university, 
+        fieldOfStudy,
+        likes: 0
+      },
     });
   } catch (error) {
     console.error("Signup completion error:", error);
@@ -124,12 +142,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     
     const userData = userDoc.data();
 
-    // Generate a custom token for the client
+    // Generate Firebase custom token
     const customToken = await auth.createCustomToken(userRecord.uid);
+
+    // Generate JWT for persistent login via localStorage
+    const persistentToken = jwt.sign(
+      { 
+        uid: userRecord.uid, 
+        email: userRecord.email,
+        username: userData?.username
+      },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
 
     res.status(200).json({
       message: "Login successful",
-      token: customToken,
+      firebaseToken: customToken, // For Firebase Auth
+      token: persistentToken, // For localStorage persistent login
       user: {
         uid: userRecord.uid,
         email: userRecord.email,
@@ -144,6 +174,49 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(401).json({ 
       message: error instanceof Error ? error.message : "Authentication failed" 
     });
+  }
+};
+
+export const verifyToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get the token from the authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Verify the JWT token
+    const decoded = jwt.verify(token, JWT_SECRET) as { uid: string, email: string };
+    
+    // Get user data from Firestore
+    const userDoc = await db.collection("users").doc(decoded.uid).get();
+    
+    if (!userDoc.exists) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    
+    const userData = userDoc.data();
+    
+    res.status(200).json({
+      success: true,
+      user: {
+        uid: decoded.uid,
+        email: userData?.email,
+        username: userData?.username,
+        university: userData?.university,
+        fieldOfStudy: userData?.fieldOfStudy,
+        likes: userData?.likes ?? 0
+      }
+    });
+    
+  } catch (error) {
+    console.error("Token verification error:", error);
+    res.status(401).json({ message: "Invalid token" });
   }
 };
 
@@ -204,37 +277,72 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
       return;
     }
     
-    const idToken = authHeader.split('Bearer ')[1];
-    
-    // Verify the ID token
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-    
-    // Get user data from Firestore
-    const userDoc = await db.collection("users").doc(uid).get();
-    
-    if (!userDoc.exists) {
-      res.status(404).json({ message: "User not found" });
+    // Try to verify as JWT first (for our localStorage authentication)
+    try {
+      const token = authHeader.split('Bearer ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET) as { uid: string };
+      
+      // Get user data from Firestore
+      const userDoc = await db.collection("users").doc(decoded.uid).get();
+      
+      if (!userDoc.exists) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      
+      const userData = userDoc.data();
+      
+      res.status(200).json({
+        uid: decoded.uid,
+        email: userData?.email,
+        username: userData?.username,
+        university: userData?.university,
+        fieldOfStudy: userData?.fieldOfStudy,
+        likes: userData?.likes ?? 0
+      });
       return;
+    } catch (jwtError) {
+      // If JWT verification fails, try Firebase token verification
+      try {
+        const idToken = authHeader.split('Bearer ')[1];
+        const decodedToken = await auth.verifyIdToken(idToken);
+        const uid = decodedToken.uid;
+        
+        // Get user data from Firestore
+        const userDoc = await db.collection("users").doc(uid).get();
+        
+        if (!userDoc.exists) {
+          res.status(404).json({ message: "User not found" });
+          return;
+        }
+        
+        const userData = userDoc.data();
+        
+        res.status(200).json({
+          uid,
+          email: userData?.email,
+          username: userData?.username,
+          university: userData?.university,
+          fieldOfStudy: userData?.fieldOfStudy,
+          likes: userData?.likes ?? 0
+        });
+        return;
+      } catch (firebaseError) {
+        // Both verification methods failed
+        throw new Error("Authentication failed");
+      }
     }
-    
-    const userData = userDoc.data();
-    
-    res.status(200).json({
-      uid,
-      email: userData?.email,
-      username: userData?.username,
-      university: userData?.university,
-      fieldOfStudy: userData?.fieldOfStudy,
-      likes: userData?.likes ?? 0
-    });
-    
   } catch (error) {
     console.error("Get current user error:", error);
     res.status(401).json({ message: "Authentication failed" });
   }
 };
 
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  // No server-side action needed for localStorage-based authentication
+  // The client will clear the token from localStorage
+  res.status(200).json({ message: "Logout successful" });
+};
 
 export const checkUsernameAvailability = async (req: Request, res: Response): Promise<void> => {
   try {

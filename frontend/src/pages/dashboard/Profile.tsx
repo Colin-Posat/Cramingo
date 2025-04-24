@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User as UserIcon, 
-  BookOpen as BookOpenIcon,
   School as SchoolIcon,
   Mail as MailIcon,
   Heart as HeartIcon,
@@ -11,11 +10,12 @@ import {
   AlertCircle as AlertCircleIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { API_BASE_URL } from '../../config/api';
+import { useAuth } from '../../context/AuthContext'; // Import the auth context hook
 
 interface UserProfile {
   username: string;
-  totalLikes: number; // Changed from 'likes' to 'totalLikes' to match backend
+  totalLikes: number;
   university: string;
   fieldOfStudy: string;
   email?: string;
@@ -23,9 +23,12 @@ interface UserProfile {
 }
 
 const ProfilePage: React.FC = () => {
+  // Use the auth context instead of local state for user authentication
+  const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
+  
   const [userProfile, setUserProfile] = useState<UserProfile>({
     username: '',
-    totalLikes: 0, // Changed from 'likes' to 'totalLikes'
+    totalLikes: 0,
     university: '',
     fieldOfStudy: ''
   });
@@ -40,42 +43,30 @@ const ProfilePage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         
-        // Get user data from localStorage first
-        const storedUser = localStorage.getItem('user');
-        if (!storedUser) {
+        // Check if user is authenticated through the auth context
+        if (!isAuthenticated || !user) {
           setError('Not authenticated. Please log in to view your profile.');
           setIsLoading(false);
           return;
         }
 
-        // Parse stored user data
-        const userData = JSON.parse(storedUser);
-        if (!userData) {
-          setError('Invalid user data. Please log in again.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Set initial profile data from localStorage as a fallback
-        const localStorageUsername = userData.username?.trim() || 'Anonymous User';
-        
-        // Set initial profile from localStorage
+        // Set initial profile data from auth context
         setUserProfile({
-          username: localStorageUsername,
-          totalLikes: userData.totalLikes ?? 0, // Changed from 'likes' to 'totalLikes'
-          university: userData.university || 'Not specified',
-          fieldOfStudy: userData.fieldOfStudy || 'Not specified',
-          email: userData.email,
-          uid: userData.uid
+          username: user.username?.trim() || 'Anonymous User',
+          totalLikes: user.likes ?? 0, // Note: AuthContext uses 'likes' while this component uses 'totalLikes'
+          university: user.university || 'Not specified',
+          fieldOfStudy: user.fieldOfStudy || 'Not specified',
+          email: user.email,
+          uid: user.uid
         });
         
-        setProfileDataSource('localStorage');
+        setProfileDataSource('authContext');
         
         // Try to fetch the latest profile data from Firestore
         try {
           // Fetch the user document by ID if available
-          if (userData.uid) {
-            const userDocResponse = await fetch(`${API_BASE_URL}/user/${userData.uid}`, {
+          if (user.uid) {
+            const userDocResponse = await fetch(`${API_BASE_URL}/user/${user.uid}`, {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include'
@@ -85,7 +76,7 @@ const ProfilePage: React.FC = () => {
               const userDocData = await userDocResponse.json();
               
               // Also fetch the total likes count from the dedicated endpoint
-              const totalLikesResponse = await fetch(`${API_BASE_URL}/user/${userData.uid}/total-likes`, {
+              const totalLikesResponse = await fetch(`${API_BASE_URL}/user/${user.uid}/total-likes`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include'
@@ -97,18 +88,18 @@ const ProfilePage: React.FC = () => {
                 userDocData.totalLikes = likesData.totalLikes;
               }
               
-              updateProfileData(userDocData, 'User document', userData);
+              updateProfileData(userDocData, 'User document');
             } else {
               // Try fallback API if user document fetch fails
-              await fetchFromFallbackAPI(userData, localStorageUsername);
+              await fetchFromFallbackAPI();
             }
           } else {
             // No user ID available, try fallback API
-            await fetchFromFallbackAPI(userData, localStorageUsername);
+            await fetchFromFallbackAPI();
           }
         } catch (apiError) {
           console.error('API fetch error:', apiError);
-          // Continue using localStorage data
+          // Continue using auth context data
         } finally {
           setIsLoading(false);
         }
@@ -120,7 +111,7 @@ const ProfilePage: React.FC = () => {
     };
 
     // Fetch data from fallback API
-    const fetchFromFallbackAPI = async (userData: any, localStorageUsername: string) => {
+    const fetchFromFallbackAPI = async () => {
       try {
         const fallbackResponse = await fetch(`${API_BASE_URL}/user/profile`, {
           method: 'GET',
@@ -132,7 +123,7 @@ const ProfilePage: React.FC = () => {
           const fallbackData = await fallbackResponse.json();
           
           // Try to get user document by ID if available
-          const firebaseUserId = userData.uid || fallbackData.uid;
+          const firebaseUserId = user?.uid || fallbackData.uid;
           if (firebaseUserId) {
             try {
               const userDocResponse = await fetch(`${API_BASE_URL}/user/${firebaseUserId}`, {
@@ -160,19 +151,19 @@ const ProfilePage: React.FC = () => {
                   console.error('Error fetching total likes:', likesError);
                 }
                 
-                updateProfileData(userDocData, 'User document', userData, fallbackData);
+                updateProfileData(userDocData, 'User document', fallbackData);
               } else {
                 // Use fallback API data
-                updateProfileData(fallbackData, 'Fallback API', userData);
+                updateProfileData(fallbackData, 'Fallback API');
               }
             } catch (userDocError) {
               console.error('Error fetching user document:', userDocError);
               // Use fallback API data
-              updateProfileData(fallbackData, 'Fallback API', userData);
+              updateProfileData(fallbackData, 'Fallback API');
             }
           } else {
             // No user ID available, use fallback data
-            updateProfileData(fallbackData, 'Fallback API', userData);
+            updateProfileData(fallbackData, 'Fallback API');
           }
         }
       } catch (error) {
@@ -183,21 +174,20 @@ const ProfilePage: React.FC = () => {
     // Helper function to update profile data
     const updateProfileData = (
       newData: any, 
-      source: string, 
-      userData: any, 
+      source: string,
       fallbackData?: any
     ) => {
       // Determine the best username from available sources
       const updatedUsername = newData.username?.trim() || 
                              fallbackData?.username?.trim() || 
-                             userData.username?.trim() || 
+                             user?.username?.trim() || 
                              'Anonymous User';
       
       // Update profile with the new data
       setUserProfile(prev => ({
         ...prev,
         username: updatedUsername,
-        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? prev.totalLikes, // Changed to totalLikes
+        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? prev.totalLikes,
         university: newData.university || fallbackData?.university || prev.university,
         fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || prev.fieldOfStudy,
         email: newData.email || fallbackData?.email || prev.email,
@@ -205,30 +195,21 @@ const ProfilePage: React.FC = () => {
       }));
       
       setProfileDataSource(source);
-      
-      // Update localStorage with the latest data
-      const updatedUserData = {
-        ...userData,
-        username: updatedUsername,
-        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? userData.totalLikes, // Changed to totalLikes
-        university: newData.university || fallbackData?.university || userData.university,
-        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || userData.fieldOfStudy,
-        email: newData.email || fallbackData?.email || userData.email,
-        uid: newData.uid || fallbackData?.uid || userData.uid
-      };
-      
-      localStorage.setItem('user', JSON.stringify(updatedUserData));
     };
 
-    fetchUserProfile();
-  }, []);
+    // Only fetch when auth is not loading anymore
+    if (!authLoading) {
+      fetchUserProfile();
+    }
+  }, [user, isAuthenticated, authLoading]);
 
   const handleEditProfile = () => {
     navigate('/edit-profile');
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('user');
+  const handleSignOut = async () => {
+    // Use the logout function from auth context
+    await logout();
     navigate('/login');
   };
 
@@ -237,8 +218,8 @@ const ProfilePage: React.FC = () => {
     window.location.reload();
   };
 
-  // Loading state
-  if (isLoading && !userProfile.username) {
+  // Loading state while auth is loading or we're fetching profile
+  if ((authLoading || isLoading) && !userProfile.username) {
     return (
       <div className="min-h-screen bg-gray-100">
         <NavBar />
@@ -248,6 +229,32 @@ const ProfilePage: React.FC = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74] mb-4"></div>
               <p className="text-lg text-[#004a74]">Loading your profile...</p>
               <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated state
+  if (!isAuthenticated && !authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <NavBar />
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <AlertCircleIcon className="h-8 w-8 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+              <p className="text-gray-600 mb-6">You need to be logged in to view your profile.</p>
+              <button 
+                onClick={() => navigate('/login')} 
+                className="px-6 py-3 bg-[#004a74] text-white font-medium rounded-xl hover:bg-[#00659f] transition-all"
+              >
+                Go to Login
+              </button>
             </div>
           </div>
         </div>

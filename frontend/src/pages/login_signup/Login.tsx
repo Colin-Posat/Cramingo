@@ -1,14 +1,22 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { API_BASE_URL } from '../../config/api'; // Adjust path as needed
+import { useAuth } from '../../context/AuthContext'; // Import the auth context
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { login, error: authError, loading: authLoading, isAuthenticated } = useAuth(); // Use the auth context
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/created-sets");
+    }
+  }, [isAuthenticated, navigate]);
 
   // Memoize particle background props to prevent unnecessary re-renders
   const particleProps = useMemo(() => ({
@@ -41,29 +49,14 @@ const Login: React.FC = () => {
     }
 
     try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/created-sets");;
-      } else {
-        setError(data.message || "Login failed. Please try again.");
-      }
+      // Use the login function from AuthContext instead of direct fetch
+      await login(email, password);
+      // No need to navigate - the useEffect will handle this when isAuthenticated becomes true
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Connection error. Please try again.");
-    } finally {
-      setLoading(false);
+      // The error handling is done in the context, but we can add additional error handling here if needed
+      setError(authError || "Login failed. Please try again.");
     }
-  }, [email, password, navigate]);
+  }, [email, password, login, authError]);
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen w-screen overflow-hidden relative bg-gradient-to-br from-[#004a74] to-[#001f3f]">
@@ -104,9 +97,9 @@ const Login: React.FC = () => {
           Welcome Back
         </h1>
         
-        {error && (
+        {(error || authError) && (
           <p className="text-[#e53935] text-sm my-2 p-2 bg-[rgba(229,57,53,0.1)] rounded-md w-full">
-            {error}
+            {error || authError}
           </p>
         )}
 
@@ -133,10 +126,10 @@ const Login: React.FC = () => {
           />
           <button
             type="submit"
-            disabled={loading}
+            disabled={authLoading}
             className="mt-7 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Processing..." : "Log In"}
+            {authLoading ? "Processing..." : "Log In"}
           </button>
         </form>
         
