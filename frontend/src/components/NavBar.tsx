@@ -80,12 +80,14 @@ const NavBar: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 bg-[#004a74] text-white z-50 h-16 shadow-lg">
         {/* Desktop */}
         <div className="hidden md:flex items-center justify-between h-full px-0 w-full">
-          <Link to="/created-sets" className="transition-transform hover:scale-105 ml-5">
-            <img 
-              src="/images/fliply_logo.png" 
-              alt="Fliply Logo" 
-              className="h-9 w-auto"
-            />
+          <Link to="/created-sets" className="transition-transform  ml-6">
+            <div className="flex items-center justify-center bg-gray-200 bg-opacity-20 rounded-full h-11 w-12">
+              <img 
+                src="/images/fliply_logo.png" 
+                alt="Fliply Logo" 
+                className="h-9 w-auto"
+              />
+            </div>
           </Link>
           
           <div className="flex items-center justify-center">
@@ -127,11 +129,13 @@ const NavBar: React.FC = () => {
         {/* Mobile */}
         <div className="md:hidden flex items-center justify-between h-full px-4">
           <Link to="/created-sets" className="flex items-center">
-            <img 
-              src="/images/fliply_logo.png" 
-              alt="Fliply Logo" 
-              className="h-8 w-auto"
-            />
+            <div className="flex items-center justify-center bg-gray-200 bg-opacity-20 rounded-full h-10 w-10">
+              <img 
+                src="/images/fliply_logo.png" 
+                alt="Fliply Logo" 
+                className="h-8 w-auto"
+              />
+            </div>
           </Link>
           <div className="flex items-center">
             <button 

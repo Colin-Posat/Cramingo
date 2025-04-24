@@ -87,6 +87,58 @@ html, body, #root, .App {
     overflow-y: auto !important;
 }
 
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
 
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 74, 116, 0.4); /* Using your theme color with transparency */
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 74, 116, 0.7);
+}
+
+/* Hide scrollbar when not scrolling but keep functionality */
+::-webkit-scrollbar {
+  width: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+body:hover::-webkit-scrollbar,
+div:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 74, 116, 0.4) transparent;
+}
+
+/* Only show scrollbar when needed - apply to relevant containers */
+.overflow-auto-if-needed {
+  overflow: auto;
+}
+
+/* For containers that should only show vertical scrollbar when needed */
+.overflow-y-auto-if-needed {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* For containers that should only show horizontal scrollbar when needed */
+.overflow-x-auto-if-needed {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 
 

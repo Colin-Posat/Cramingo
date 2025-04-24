@@ -260,7 +260,7 @@ const CreatedSets: React.FC = () => {
   // Render loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white overflow-auto-if-needed">
         <NavBar />
         <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="flex flex-col items-center">
