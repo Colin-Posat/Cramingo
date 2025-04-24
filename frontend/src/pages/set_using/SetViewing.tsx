@@ -66,6 +66,7 @@ const SetViewingPage: React.FC = () => {
   // Extract navigation state to check if we came from search results
   const fromSearch = location.state?.fromSearch || false;
   const searchQuery = location.state?.searchQuery || '';
+  const fromPopularSets = location.state?.fromPopularSets || false;
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -187,6 +188,9 @@ const SetViewingPage: React.FC = () => {
     if (fromSearch) {
       return `Back to Search Results`;
     }
+    if (fromPopularSets) {
+      return `Back to Search Sets`;
+    }
     return flashcardSet?.isDerived ? "Back to Saved Sets" : "Back to Created Sets";
   };
   
@@ -194,6 +198,9 @@ const SetViewingPage: React.FC = () => {
   const getBackLinkPath = () => {
     if (fromSearch) {
       return `/search-results?q=${encodeURIComponent(searchQuery)}`;
+    }
+    if (fromPopularSets) {
+      return '/search-sets'; // Path to the search sets page
     }
     return flashcardSet?.isDerived ? "/saved-sets" : "/created-sets";
   };

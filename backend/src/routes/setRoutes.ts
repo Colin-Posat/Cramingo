@@ -12,7 +12,9 @@ import {
   // Like functionality
   likeSet,
   unlikeSet,
-  checkLikeStatus
+  checkLikeStatus,
+  // New top popular sets functionality
+  getTopPopularSets
 } from "../controllers/setController";
 
 const router = express.Router();
@@ -31,6 +33,9 @@ router.get("/saved/:userId", getSavedSets);
 
 // Search for public sets by class code
 router.get('/search', getSetsByClassCode);
+
+// Get top 5 most popular sets
+router.get('/popular', getTopPopularSets);
 
 // Get a specific flashcard set by ID
 router.get("/:id", getSetById);

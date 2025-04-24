@@ -807,3 +807,106 @@ export const checkLikeStatus = async (req: Request, res: Response): Promise<void
     });
   }
 };
+
+export const getTopPopularSets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Query for public sets ordered by likes
+    const setsSnapshot = await db.collection("flashcardSets")
+      .where("isPublic", "==", true)
+      .where("isDerived", "==", false) // Only original sets, not saved ones
+      .orderBy("likes", "desc")
+      .limit(5)
+      .get();
+    
+    if (setsSnapshot.empty) {
+      // No sets found, return empty array
+      res.status(200).json([]);
+      return;
+    }
+    
+    // Define a type for the Firestore document data (same as in getSetsByClassCode)
+    interface FlashcardSetData {
+      id: string;
+      title: string;
+      classCode: string;
+      description?: string;
+      flashcards: Array<{
+        question: string; 
+        answer: string;
+        questionImage?: string;
+        answerImage?: string;
+        hasQuestionImage?: boolean;
+        hasAnswerImage?: boolean;
+      }>;
+      isPublic: boolean;
+      icon?: string;
+      createdAt: any; // Firestore timestamp
+      userId: string;
+      numCards: number;
+      likes?: number;
+      [key: string]: any; // Allow for additional fields
+    }
+    
+    // Get all sets data including userId with proper typing
+    const setsData = setsSnapshot.docs.map(doc => {
+      const data = doc.data() as Partial<FlashcardSetData>;
+      return {
+        id: doc.id,
+        ...data
+      } as FlashcardSetData;
+    });
+    
+    // Create a map of userIds to avoid duplicates
+    const userIdMap: { [key: string]: boolean } = {};
+    setsData.forEach(set => {
+      // Only add to map if userId exists and is a string
+      if (set.userId && typeof set.userId === 'string') {
+        userIdMap[set.userId] = true;
+      }
+    });
+    
+    // Convert map to array
+    const userIds = Object.keys(userIdMap);
+    
+    // Fetch user information for each unique userId
+    const userInfoMap: { [userId: string]: string | null } = {};
+    
+    // Use a for loop instead of Promise.all for better compatibility
+    for (let i = 0; i < userIds.length; i++) {
+      const userId = userIds[i];
+      try {
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data() || {};
+          userInfoMap[userId] = userData.username || userData.displayName || null;
+        } else {
+          userInfoMap[userId] = null;
+        }
+      } catch (error) {
+        console.error(`Error fetching user info for ${userId}:`, error);
+        userInfoMap[userId] = null;
+      }
+    }
+    
+    // Add username to each set
+    const setsWithUserInfo = setsData.map(set => {
+      // Handle case where userId might be undefined
+      const userId = set.userId || '';
+      const shortUserId = userId.length > 6 ? userId.substring(0, 6) : userId;
+      
+      return {
+        ...set,
+        createdBy: userId && userInfoMap[userId] ? userInfoMap[userId] : `User ${shortUserId}`
+      };
+    });
+    
+    console.log(`Found ${setsWithUserInfo.length} top popular sets`);
+    res.status(200).json(setsWithUserInfo);
+  } catch (error) {
+    console.error("Error getting top popular sets:", error);
+    res.status(500).json({ 
+      message: "Failed to get top popular sets",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};

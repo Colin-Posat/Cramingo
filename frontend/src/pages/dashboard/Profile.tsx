@@ -240,7 +240,7 @@ const ProfilePage: React.FC = () => {
   // Loading state
   if (isLoading && !userProfile.username) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-100">
         <NavBar />
         <div className="container mx-auto px-4 pt-24 pb-12">
           <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
@@ -290,7 +290,7 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <NavBar />
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
