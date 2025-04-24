@@ -81,7 +81,7 @@ const NavBar: React.FC = () => {
         {/* Desktop */}
         <div className="hidden md:flex items-center justify-between h-full px-0 w-full">
           <Link to="/created-sets" className="transition-transform  ml-6">
-            <div className="flex items-center justify-center bg-gray-200 bg-opacity-20 rounded-full h-11 w-12">
+            <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-full h-11 w-12">
               <img 
                 src="/images/fliply_logo.png" 
                 alt="Fliply Logo" 
