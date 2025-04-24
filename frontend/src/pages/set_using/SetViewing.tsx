@@ -70,15 +70,15 @@ const SetViewingPage: React.FC = () => {
   const searchQuery = location.state?.searchQuery || '';
   const fromPopularSets = location.state?.fromPopularSets || false;
 
-  // Check like status
   useEffect(() => {
     if (!user?.uid || !setId) return;
-
+  
     const checkLikeStatus = async () => {
       try {
         const timestamp = new Date().getTime();
+        // Updated to match the new router path
         const response = await fetch(
-          `${API_BASE_URL}/sets/like-status?setId=${setId}&userId=${user.uid}&_t=${timestamp}`,
+          `${API_BASE_URL}/likes/status?setId=${setId}&userId=${user.uid}&_t=${timestamp}`,
           {
             credentials: 'include',
             headers: {
@@ -96,9 +96,29 @@ const SetViewingPage: React.FC = () => {
         console.error('Error checking like status:', err);
       }
     };
-
+  
+    // Get the likes count separately
+    const fetchLikesCount = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/likes/count?setId=${setId}`,
+          { credentials: 'include' }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setLikesCount(data.likesCount);
+          setFlashcardSet(prev => prev ? { ...prev, likes: data.likesCount } : prev);
+        }
+      } catch (err) {
+        console.error('Error fetching likes count:', err);
+      }
+    };
+  
     checkLikeStatus();
+    fetchLikesCount();
   }, [user, setId]);
+
+  
 
   // Fetch flashcard set
   useEffect(() => {
@@ -192,9 +212,10 @@ const SetViewingPage: React.FC = () => {
     if (!user?.uid || !setId || isLiking) return;
     setIsLiking(true);
     try {
+      // Updated URLs to match the new router paths
       const endpoint = hasLiked
-        ? `${API_BASE_URL}/sets/unlike`
-        : `${API_BASE_URL}/sets/like`;
+        ? `${API_BASE_URL}/likes/unlike`
+        : `${API_BASE_URL}/likes/like`;
       const res = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
@@ -206,7 +227,13 @@ const SetViewingPage: React.FC = () => {
       setHasLiked(!hasLiked);
       setLikesCount(data.likesCount);
       setFlashcardSet(prev => prev ? { ...prev, likes: data.likesCount } : prev);
-      localStorage.setItem(`set_${setId}_liked`, (!hasLiked).toString());
+      
+      // Update localStorage to remember user preference
+      if (!hasLiked) {
+        localStorage.setItem(`set_${setId}_liked`, 'true');
+      } else {
+        localStorage.removeItem(`set_${setId}_liked`);
+      }
     } catch (err) {
       console.error('Error toggling like:', err);
       alert('Failed to update like status.');
@@ -271,6 +298,26 @@ const SetViewingPage: React.FC = () => {
       alert('Failed to unsave the set.');
     } finally {
       setIsUnsaving(false);
+    }
+  };
+
+  // Refresh likes count
+  const refreshLikesCount = async () => {
+    if (!setId) return;
+    
+    try {
+      // Updated to match new route definitions
+      const response = await fetch(`${API_BASE_URL}/likes/count?setId=${setId}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLikesCount(data.likesCount);
+        setFlashcardSet(prev => prev ? { ...prev, likes: data.likesCount } : prev);
+      }
+    } catch (err) {
+      console.error('Error refreshing likes count:', err);
     }
   };
 
@@ -422,7 +469,10 @@ const SetViewingPage: React.FC = () => {
                 </div>
               </div>
               <button 
-                onClick={() => setShowInfo(false)}
+                onClick={() => {
+                  setShowInfo(false);
+                  localStorage.setItem('hideViewerInfoTips', 'true');
+                }}
                 className="text-[#004a74] hover:bg-[#004a74]/10 p-1 rounded-full"
               >
                 ✕

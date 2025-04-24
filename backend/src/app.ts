@@ -10,6 +10,7 @@ import fileRoutes from './routes/fileRoutes';
 import semanticRouter from './routes/semanticAnswerRoutes';
 import imageUploadRoutes from './routes/ImageUploadRoutes'; 
 import feedbackRoutes from './routes/feedbackRoutes';
+import likeRoutes from './routes/likeRoutes'
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -35,6 +36,7 @@ app.use(
 app.use(express.json());
 
 // Route registrations
+app.use('/api/likes', likeRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/sets", setsRoutes);

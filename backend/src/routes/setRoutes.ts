@@ -9,11 +9,6 @@ import {
   deleteSet,
   saveSet,
   unsaveSet,
-  // Like functionality
-  likeSet,
-  unlikeSet,
-  checkLikeStatus,
-  // New top popular sets functionality
   getTopPopularSets
 } from "../controllers/setController";
 
@@ -31,11 +26,11 @@ router.get("/user/:userId", getUserSets);
 // Get saved sets for a specific user
 router.get("/saved/:userId", getSavedSets);
 
+router.get('/popular', getTopPopularSets);
+
+
 // Search for public sets by class code
 router.get('/search', getSetsByClassCode);
-
-// Get top 5 most popular sets
-router.get('/popular', getTopPopularSets);
 
 // Get a specific flashcard set by ID
 router.get("/:id", getSetById);
@@ -49,13 +44,6 @@ router.post("/save", saveSet);
 // Unsave (remove) a saved flashcard set
 router.post("/unsave", unsaveSet);
 
-// Like a flashcard set
-router.post("/like", likeSet);
-
-// Unlike a flashcard set
-router.post("/unlike", unlikeSet);
-
-// Check if a user has liked a set
-router.get("/like-status", checkLikeStatus);
+router.get('/popular', getTopPopularSets);
 
 export default router;
