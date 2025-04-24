@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   BookIcon,
@@ -19,12 +19,18 @@ const NavBar: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState("");
+
+  // Update active tab when location changes
+  useEffect(() => {
+    setActiveTab(location.pathname);
+  }, [location]);
 
   const navItems = [
     { to: "/created-sets", icon: BookIcon, label: "Created Sets" },
-    { to: "/saved-sets",   icon: BookmarkIcon, label: "Saved Sets" },
-    { to: "/search-sets",  icon: SearchIcon, label: "Search Sets" },
-    { to: "/profile",      icon: UserIcon, label: "Profile" },
+    { to: "/saved-sets", icon: BookmarkIcon, label: "Saved Sets" },
+    { to: "/search-sets", icon: SearchIcon, label: "Search Sets" },
+    { to: "/profile", icon: UserIcon, label: "Profile" },
   ];
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -70,106 +76,137 @@ const NavBar: React.FC = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-[#004a74] text-white z-50 h-16">
-      {/* Desktop */}
-      <div className="hidden md:flex items-center justify-between h-full px-3">
-        <div className="w-24 flex items-center">
-          <Link to="/created-sets">
+    <>
+      <nav className="fixed top-0 left-0 right-0 bg-[#004a74] text-white z-50 h-16 shadow-lg">
+        {/* Desktop */}
+        <div className="hidden md:flex items-center justify-between h-full px-0 w-full">
+          <Link to="/created-sets" className="transition-transform hover:scale-105 ml-5">
             <img 
               src="/images/fliply_logo.png" 
               alt="Fliply Logo" 
-              className="ml-3 h-9 w-auto"
+              className="h-9 w-auto"
             />
           </Link>
-        </div>
-        {/* Main change: Added whitespace-nowrap to prevent items from wrapping */}
-        <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
-          {navItems.map(item => {
-            const isActive = location.pathname === item.to;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
-                  isActive
-                    ? "bg-[#00659f] font-semibold"
-                    : "hover:bg-[#00659f]"
-                }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="whitespace-nowrap">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-        <div className="w-24 flex justify-end">
+          
+          <div className="flex items-center justify-center">
+            {navItems.map(item => {
+              const isActive = activeTab === item.to;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`relative px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:text-white group 
+                    mx-2 md:mx-3 lg:mx-4 xl:mx-5 2xl:mx-6`}
+                  onClick={() => setActiveTab(item.to)}
+                >
+                  <div className={`absolute inset-0 ${isActive ? 'opacity-100 group-hover:opacity-100' : 'opacity-0'} bg-white bg-opacity-10 rounded-md backdrop-blur-sm group-hover:opacity-10 transition-opacity`}></div>
+                  <div className="z-10 flex items-center gap-2">
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-200'} transition-colors group-hover:text-white`} />
+                    <span className={`${isActive ? 'font-medium' : ''} transition-all whitespace-nowrap`}>
+                      {item.label}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"></div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+          
           <button
             onClick={toggleFeedback}
-            className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-[#00659f] transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#00659f] transition-all duration-200 mr-5"
             aria-label="Give Feedback"
           >
             <MessageCircleQuestionIcon className="w-6 h-6" />
           </button>
         </div>
-      </div>
 
-      {/* Mobile */}
-      <div className="md:hidden flex items-center justify-between h-full px-4">
-        <Link to="/created-sets" className="flex items-center">
-          <img 
-            src="/images/fliply_logo.png" 
-            alt="Fliply Logo" 
-            className="h-8 w-auto"
-          />
-        </Link>
-        <div className="flex items-center">
-          <button onClick={toggleFeedback} className="p-2 mr-2" aria-label="Give Feedback">
-            <MessageCircleQuestionIcon className="w-7 h-7" />
-          </button>
-          <button onClick={toggleMenu} className="p-2">
-            {isMenuOpen
-              ? <XIcon className="w-6 h-6" />
-              : <MenuIcon className="w-6 h-6" />}
-          </button>
+        {/* Mobile */}
+        <div className="md:hidden flex items-center justify-between h-full px-4">
+          <Link to="/created-sets" className="flex items-center">
+            <img 
+              src="/images/fliply_logo.png" 
+              alt="Fliply Logo" 
+              className="h-8 w-auto"
+            />
+          </Link>
+          <div className="flex items-center">
+            <button 
+              onClick={toggleFeedback} 
+              className="p-2 mr-2 hover:bg-[#00659f] rounded-full transition-colors" 
+              aria-label="Give Feedback"
+            >
+              <MessageCircleQuestionIcon className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={toggleMenu} 
+              className="p-2 hover:bg-[#00659f] rounded-full transition-colors"
+            >
+              {isMenuOpen
+                ? <XIcon className="w-6 h-6" />
+                : <MenuIcon className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-[#004a74] shadow-lg">
+      {/* Mobile Menu - Slide in from right */}
+      <div 
+        className={`md:hidden fixed top-16 right-0 w-64 h-screen bg-gradient-to-b from-[#004a74] to-[#00659f] z-40 shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col py-3">
           {navItems.map(item => {
-            const isActive = location.pathname === item.to;
+            const isActive = activeTab === item.to;
             const Icon = item.icon;
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                onClick={() => setIsMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-[#00659f] hover:bg-medium-blue ${
-                  isActive ? "bg-[#00659f] font-semibold" : ""
+                onClick={() => {
+                  setActiveTab(item.to);
+                  setIsMenuOpen(false);
+                }}
+                className={`flex items-center gap-3 px-5 py-3 hover:bg-white hover:bg-opacity-10 transition-colors ${
+                  isActive ? 'border-l-4 border-white' : 'border-l-4 border-transparent'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {item.label}
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-200'}`} />
+                <span className={`text-white ${isActive ? 'font-medium' : ''}`}>{item.label}</span>
               </Link>
             );
           })}
         </div>
+      </div>
+
+      {/* Backdrop for mobile menu */}
+      {isMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsMenuOpen(false)}
+        ></div>
       )}
 
       {/* Feedback Modal */}
       {isFeedbackOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white text-gray-800 rounded-lg shadow-lg w-full max-w-md overflow-hidden">
-            <div className="bg-[#004a74] text-white px-4 py-3 flex justify-between items-center">
-              <h3 className="font-medium">Submit Feedback or Question</h3>
-              <button onClick={toggleFeedback} className="text-white hover:text-gray-200">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white text-gray-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden transform transition-all animate-fadeIn">
+            <div className="bg-[#004a74] text-white px-5 py-4 flex justify-between items-center">
+              <h3 className="font-medium text-lg">Submit Feedback or Question</h3>
+              <button 
+                onClick={toggleFeedback} 
+                className="text-white hover:text-gray-200 transition-colors rounded-full hover:bg-white hover:bg-opacity-10 p-1"
+              >
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitFeedback} className="p-4">
+            <div className="p-5">
+              <form onSubmit={handleSubmitFeedback}>
               {/* Email Input */}
               <div className="mb-4">
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -180,7 +217,7 @@ const NavBar: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#004a74] focus:border-[#004a74]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#004a74] focus:border-[#004a74] transition-colors"
                   placeholder="you@example.com"
                   disabled={isSubmitting}
                 />
@@ -195,8 +232,8 @@ const NavBar: React.FC = () => {
                   id="feedback"
                   value={feedback}
                   onChange={e => setFeedback(e.target.value)}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#004a74] focus:border-[#004a74]"
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#004a74] focus:border-[#004a74] transition-colors"
                   placeholder="Please provide your feedback here..."
                   required
                   disabled={isSubmitting}
@@ -204,13 +241,20 @@ const NavBar: React.FC = () => {
               </div>
 
               {submitSuccess === true && (
-                <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
-                  Thank you! Your feedback has been submitted.
+                <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center gap-2 animate-fadeIn">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Thank you! Your feedback has been submitted.</span>
                 </div>
               )}
+              
               {submitSuccess === false && (
-                <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
-                  There was an error submitting your feedback. Please try again.
+                <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md flex items-center gap-2 animate-fadeIn">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>There was an error submitting your feedback. Please try again.</span>
                 </div>
               )}
 
@@ -218,14 +262,14 @@ const NavBar: React.FC = () => {
                 <button
                   type="button"
                   onClick={toggleFeedback}
-                  className="mr-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                  className="mr-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004a74]"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#004a74] hover:bg-[#00659f] focus:outline-none ${
+                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#004a74] hover:bg-[#00659f] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004a74] ${
                     isSubmitting ? 'opacity-75 cursor-not-allowed' : ''
                   }`}
                   disabled={isSubmitting}
@@ -234,11 +278,23 @@ const NavBar: React.FC = () => {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
-    </nav>
+
+      {/* Space for fixed navbar is handled by your page layout */}
+    </>
   );
 };
+
+// Add this to your CSS or tailwind.config.js
+// @keyframes fadeIn {
+//   from { opacity: 0; }
+//   to { opacity: 1; }
+// }
+// .animate-fadeIn {
+//   animation: fadeIn 0.3s ease-in-out;
+// }
 
 export default NavBar;

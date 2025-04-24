@@ -316,19 +316,14 @@ const SavedSets: React.FC = () => {
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Header with Title (left) and Search Button (right) */}
-      <div className="fixed top-20 left-0 right-0 flex justify-between items-center px-6 z-10">
-        {/* "Your Saved Sets" Title on the left */}
-        <h1 className="select-none text-2xl font-bold text-[#004a74] bg-blue-50 py-4 px-6 rounded-xl shadow-md">
-          Your Saved Sets
-        </h1>
-        
-        {/* Search Button on the right */}
-        <button 
+      {/* Header with Search Button in top left */}
+      <div className="fixed top-20 left-0 right-0 px-6 z-10">
+        {/* Search Button on the left */}
+        <button
           onClick={goToSearch}
-          className="bg-[#004a74] text-white font-bold 
-            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-            transition-all flex items-center justify-center gap-3 
+          className="bg-[#004a74] text-white font-bold
+            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98]
+            transition-all flex items-center justify-center gap-3
             shadow-md text-xl"
         >
           <SearchIcon className="w-5 h-5" />

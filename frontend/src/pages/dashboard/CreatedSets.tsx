@@ -277,19 +277,14 @@ const CreatedSets: React.FC = () => {
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Header with Title (left) and Create Button (right) */}
-      <div className="fixed top-20 left-0 right-0 flex justify-between items-center px-6 z-10">
-        {/* "Your Created Sets" Title on the left */}
-        <h1 className="select-none text-2xl font-bold text-[#004a74] bg-blue-50 py-4 px-6 rounded-xl shadow-md">
-          Your Created Sets
-        </h1>
-        
-        {/* Create Set Button on the right */}
-        <button 
+      {/* Header with Create Button (left) */}
+      <div className="fixed top-20 left-0 right-0 flex justify-start items-center px-6 z-10">
+        {/* Create Set Button on the left */}
+        <button
           onClick={handleCreateSet}
-          className="bg-[#004a74] text-white font-bold 
-            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-            transition-all flex items-center justify-center gap-3 
+          className="bg-[#004a74] text-white font-bold
+            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98]
+            transition-all flex items-center justify-center gap-3
             shadow-md text-xl"
         >
           <PlusIcon className="w-5 h-5" />
