@@ -135,7 +135,7 @@ const SearchSetsPage: React.FC = () => {
       <div className="container mx-auto px-4 pt-20 pb-16">
         <div className="max-w-4xl mx-auto">
           {/* Card with subtle shadow and elegant border */}
-          <div className="bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl">
+          <div className="bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl overflow-hidden">
             {/* Flat header with solid color */}
             <div className="bg-[#004a74] text-white p-8">              
               <h1 className="text-3xl font-bold mb-2 tracking-tight">Find Flashcard Sets</h1>
