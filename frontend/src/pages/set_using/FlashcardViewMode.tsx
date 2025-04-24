@@ -53,13 +53,26 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     setShowAnswer(false);
   }, [propFlashcards, flashcardSet.flashcards]);
 
-  // Add keyboard event listener for spacebar
+  // Add keyboard event listener for spacebar, left arrow, and right arrow
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Flip card on spacebar press if no image is expanded and not currently shuffling
-      if (event.code === 'Space' && !expandedImage && !isShuffling) {
+      // Don't handle keyboard navigation if image is expanded or currently shuffling
+      if (expandedImage || isShuffling) return;
+      
+      // Flip card on spacebar press
+      if (event.code === 'Space') {
         event.preventDefault(); // Prevent page scroll on spacebar
         toggleCardSide();
+      }
+      // Go to previous card on left arrow
+      else if (event.code === 'ArrowLeft' && currentIndex > 0) {
+        event.preventDefault();
+        goToPrevCard();
+      }
+      // Go to next card on right arrow
+      else if (event.code === 'ArrowRight' && currentIndex < localFlashcards.length - 1) {
+        event.preventDefault();
+        goToNextCard();
       }
     };
 
@@ -69,7 +82,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [expandedImage, isShuffling, showAnswer]); // Added showAnswer to dependencies to ensure listener is updated
+  }, [expandedImage, isShuffling, showAnswer, currentIndex, localFlashcards.length]); // Added dependencies
 
   const fetchFlashcardSet = async () => {
     try {
@@ -219,7 +232,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     );
   };
 
-  // Modified FlashcardElement with click-to-flip and explicit flip button
+  // Modified FlashcardElement with keyboard navigation hint
   const FlashcardElement = () => (
     <div className="flex flex-col items-center w-full">
       {/* Image expanded modal */}
@@ -230,7 +243,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
           <span>Card {currentIndex + 1} of {totalCards}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Press spacebar to flip</span>
+            <span className="text-xs text-gray-500">Press spacebar to flip • Arrow keys to navigate</span>
             <button 
               onClick={shuffleCards} 
               disabled={totalCards <= 1 || isShuffling} 

@@ -280,20 +280,7 @@ const EditProfile: React.FC = () => {
      <p className="text-red-500 text-xs mt-1">{usernameError}</p>
    )}
  </div>
-            {/* Field of Study */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Field of Study
-              </label>
-              <input
-                type="text"
-                name="fieldOfStudy"
-                value={profile.fieldOfStudy}
-                onChange={handleChange}
-                placeholder="Your field of study"
-                className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004a74]/20"
-              />
-            </div>
+
             {/* Action buttons */}
             <div className="pt-4 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row gap-3">

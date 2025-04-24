@@ -73,8 +73,17 @@ const NavBar: React.FC = () => {
     <nav className="fixed top-0 left-0 right-0 bg-[#004a74] text-white z-50 h-16">
       {/* Desktop */}
       <div className="hidden md:flex items-center justify-between h-full px-3">
-        <div className="w-24" />
-        <div className="flex items-center justify-center gap-4">
+        <div className="w-24 flex items-center">
+          <Link to="/created-sets">
+            <img 
+              src="/images/fliply_logo.png" 
+              alt="Fliply Logo" 
+              className="ml-3 h-9 w-auto"
+            />
+          </Link>
+        </div>
+        {/* Main change: Added whitespace-nowrap to prevent items from wrapping */}
+        <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
           {navItems.map(item => {
             const isActive = location.pathname === item.to;
             const Icon = item.icon;
@@ -82,14 +91,14 @@ const NavBar: React.FC = () => {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-[#00659f] font-semibold"
                     : "hover:bg-[#00659f]"
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {item.label}
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="whitespace-nowrap">{item.label}</span>
               </Link>
             );
           })}
@@ -107,7 +116,13 @@ const NavBar: React.FC = () => {
 
       {/* Mobile */}
       <div className="md:hidden flex items-center justify-between h-full px-4">
-        <Link to="/" className="text-xl font-bold" />
+        <Link to="/created-sets" className="flex items-center">
+          <img 
+            src="/images/fliply_logo.png" 
+            alt="Fliply Logo" 
+            className="h-8 w-auto"
+          />
+        </Link>
         <div className="flex items-center">
           <button onClick={toggleFeedback} className="p-2 mr-2" aria-label="Give Feedback">
             <MessageCircleQuestionIcon className="w-7 h-7" />

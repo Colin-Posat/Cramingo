@@ -8,7 +8,7 @@ import {
   BookIcon,
   UsersIcon,
   TrashIcon,
-  HeartIcon  // Added HeartIcon import
+  HeartIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
@@ -29,7 +29,7 @@ type FlashcardSet = {
   originalCreatorUsername?: string;
   isDerived?: boolean;
   savedByUsername?: string;
-  likes?: number;  // Added likes property to type
+  likes?: number;
   createdAt: { 
     seconds: number, 
     nanoseconds: number 
@@ -316,17 +316,25 @@ const SavedSets: React.FC = () => {
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Search Button - Top Left */}
-      <button 
-        onClick={goToSearch}
-        className="fixed top-20 left-6 bg-[#004a74] text-white font-bold 
-          py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
-          transition-all flex items-center justify-center gap-3 
-          shadow-md z-10 text-xl"
-      >
-        <SearchIcon className="w-5 h-5" />
-        <span>Find Sets</span>
-      </button>
+      {/* Header with Title (left) and Search Button (right) */}
+      <div className="fixed top-20 left-0 right-0 flex justify-between items-center px-6 z-10">
+        {/* "Your Saved Sets" Title on the left */}
+        <h1 className="select-none text-2xl font-bold text-[#004a74] bg-blue-50 py-4 px-6 rounded-xl shadow-md">
+          Your Saved Sets
+        </h1>
+        
+        {/* Search Button on the right */}
+        <button 
+          onClick={goToSearch}
+          className="bg-[#004a74] text-white font-bold 
+            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] 
+            transition-all flex items-center justify-center gap-3 
+            shadow-md text-xl"
+        >
+          <SearchIcon className="w-5 h-5" />
+          <span>Find Sets</span>
+        </button>
+      </div>
 
       {/* Sets Container */}
       <div className="pt-32 px-6 pb-6">
@@ -400,8 +408,8 @@ const SavedSets: React.FC = () => {
                         
                         {/* Likes count with singular/plural handling */}
                         <div className="flex items-center">
-                          <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
-                          <span className="text-sm font-semibold text-rose-500">
+                        <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
+                          <span className="text-sm font-semibold text-[#004a74]">
                             {set.likes || 0} {(set.likes === 1) ? 'like' : 'likes'}
                           </span>
                         </div>
