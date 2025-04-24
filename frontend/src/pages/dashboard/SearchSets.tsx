@@ -49,7 +49,7 @@ const SearchSetsPage: React.FC = () => {
     if (value.length > 0) {
       const filteredResults = allClassCodes
         .filter(code => code.toUpperCase().startsWith(value))
-        .slice(0, 5);
+        .slice(0, 4); // Changed from 5 to 4 rows
       setAutocompleteResults(filteredResults);
     } else {
       setAutocompleteResults([]);
@@ -135,7 +135,7 @@ const SearchSetsPage: React.FC = () => {
       <div className="container mx-auto px-4 pt-20 pb-16">
         <div className="max-w-4xl mx-auto">
           {/* Card with subtle shadow and elegant border */}
-          <div className="bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-2xl">
+          <div className="bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl">
             {/* Flat header with solid color */}
             <div className="bg-[#004a74] text-white p-8">              
               <h1 className="text-3xl font-bold mb-2 tracking-tight">Find Flashcard Sets</h1>
@@ -183,11 +183,12 @@ const SearchSetsPage: React.FC = () => {
                 {autocompleteResults.length > 0 && (
                   <ul 
                     ref={autocompleteRef}
-                    className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg"
+                    className="absolute left-0 right-0 z-[1000] mt-1 bg-white border border-gray-100 rounded-xl shadow-lg"
                     style={{
-                      maxHeight: '240px',
+                      maxHeight: '196px', // Adjusted to fit 4 rows (~49px per row)
                       overflowY: 'auto',
-                      overscrollBehavior: 'contain'
+                      overscrollBehavior: 'contain',
+                      position: 'absolute'
                     }}
                     role="listbox"
                     aria-label="Suggested class codes"
@@ -201,12 +202,7 @@ const SearchSetsPage: React.FC = () => {
                         onMouseDown={() => handleAutocompleteSelect(code)}
                         role="option"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#004a74] bg-[#e3f3ff] p-1 rounded flex-shrink-0 w-6 h-6 flex items-center justify-center text-sm font-bold">
-                            {code.substring(0, 1)}
-                          </span>
-                          {code}
-                        </div>
+                        {code}
                       </li>
                     ))}
                   </ul>
