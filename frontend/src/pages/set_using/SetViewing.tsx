@@ -139,7 +139,20 @@ const SetViewingPage: React.FC = () => {
           );
           if (savedRes.ok) {
             const savedSets: FlashcardSet[] = await savedRes.json();
-            const isSaved = savedSets.some(s =>
+            const isSaved = savedSets.some(s => 
+              s.originalSetId === data.id && s.userId === user.uid
+            );
+            setIsSavedByCurrentUser(isSaved);
+          }
+        } else {
+          // Check if the user has saved this set (even if not derived)
+          const savedRes = await fetch(
+            `${API_BASE_URL}/sets/saved/${user.uid}`,
+            { credentials: 'include' }
+          );
+          if (savedRes.ok) {
+            const savedSets: FlashcardSet[] = await savedRes.json();
+            const isSaved = savedSets.some(s => 
               s.originalSetId === data.id && s.userId === user.uid
             );
             setIsSavedByCurrentUser(isSaved);
@@ -300,7 +313,7 @@ const SetViewingPage: React.FC = () => {
             <ChevronLeftIcon className="w-4 h-4 mr-1" /> {getBackLinkText()}
           </button>
           
-          {/* Conditionally render Edit, Save, or Unsave button */}
+          {/* Conditionally render Edit or Unsave button */}
           {isCreator ? (
             <button 
               onClick={handleEditSet}
