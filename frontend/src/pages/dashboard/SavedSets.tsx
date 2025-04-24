@@ -7,7 +7,7 @@ import {
   AlertCircleIcon,
   BookIcon,
   UsersIcon,
-  TrashIcon,
+  BookmarkX,
   HeartIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
@@ -403,7 +403,7 @@ const SavedSets: React.FC = () => {
                       className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
                       aria-label="Unsave set"
                     >
-                      <TrashIcon className="w-5 h-5" />
+                      <BookmarkX className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
