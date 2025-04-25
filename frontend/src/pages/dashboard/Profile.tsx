@@ -7,11 +7,12 @@ import {
   Heart as HeartIcon,
   Edit as EditIcon,
   LogOut as LogOutIcon,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  RefreshCw as RefreshIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
-import { useAuth } from '../../context/AuthContext'; // Import the auth context hook
+import { useAuth } from '../../context/AuthContext';
 
 interface UserProfile {
   username: string;
@@ -23,7 +24,6 @@ interface UserProfile {
 }
 
 const ProfilePage: React.FC = () => {
-  // Use the auth context instead of local state for user authentication
   const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
   
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -33,171 +33,133 @@ const ProfilePage: React.FC = () => {
     fieldOfStudy: ''
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileDataSource, setProfileDataSource] = useState<string>('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Function to force sync total likes with the backend
+  const syncTotalLikes = async () => {
+    if (!userProfile.uid) return;
+    
+    try {
+      setIsSyncing(true);
+      
+      // Call the sync endpoint to recalculate likes based on actual flashcard sets
+      const response = await fetch(`${API_BASE_URL}/user/${userProfile.uid}/sync-likes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
         
-        // Check if user is authenticated through the auth context
-        if (!isAuthenticated || !user) {
-          setError('Not authenticated. Please log in to view your profile.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Set initial profile data from auth context
-        setUserProfile({
-          username: user.username?.trim() || 'Anonymous User',
-          totalLikes: user.likes ?? 0, // Note: AuthContext uses 'likes' while this component uses 'totalLikes'
-          university: user.university || 'Not specified',
-          fieldOfStudy: user.fieldOfStudy || 'Not specified',
-          email: user.email,
-          uid: user.uid
-        });
+        // Update the local state with the accurate likes count
+        setUserProfile(prev => ({
+          ...prev,
+          totalLikes: data.totalLikes
+        }));
         
-        setProfileDataSource('authContext');
-        
-        // Try to fetch the latest profile data from Firestore
-        try {
-          // Fetch the user document by ID if available
-          if (user.uid) {
-            const userDocResponse = await fetch(`${API_BASE_URL}/user/${user.uid}`, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include'
-            });
-            
-            if (userDocResponse.ok) {
-              const userDocData = await userDocResponse.json();
-              
-              // Also fetch the total likes count from the dedicated endpoint
-              const totalLikesResponse = await fetch(`${API_BASE_URL}/user/${user.uid}/total-likes`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-              
-              if (totalLikesResponse.ok) {
-                const likesData = await totalLikesResponse.json();
-                // Update user doc data with the dedicated likes count
-                userDocData.totalLikes = likesData.totalLikes;
-              }
-              
-              updateProfileData(userDocData, 'User document');
-            } else {
-              // Try fallback API if user document fetch fails
-              await fetchFromFallbackAPI();
-            }
-          } else {
-            // No user ID available, try fallback API
-            await fetchFromFallbackAPI();
-          }
-        } catch (apiError) {
-          console.error('API fetch error:', apiError);
-          // Continue using auth context data
-        } finally {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error processing user profile:', error);
-        setError('Failed to load profile. Please try again later.');
-        setIsLoading(false);
+        console.log(`Likes synced successfully. Total likes: ${data.totalLikes}`);
+      } else {
+        console.error('Failed to sync likes. Server returned:', response.status);
       }
-    };
+    } catch (error) {
+      console.error('Error syncing likes:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
-    // Fetch data from fallback API
-    const fetchFromFallbackAPI = async () => {
+  // Fetch the user profile data
+  const fetchUserProfile = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Check if user is authenticated
+      if (!isAuthenticated || !user) {
+        setError('Not authenticated. Please log in to view your profile.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Set initial profile data from auth context
+      setUserProfile({
+        username: user.username?.trim() || 'Anonymous User',
+        // Initialize totalLikes to 0 rather than potentially incorrect value
+        totalLikes: 0,
+        university: user.university || 'Not specified',
+        fieldOfStudy: user.fieldOfStudy || 'Not specified',
+        email: user.email,
+        uid: user.uid
+      });
+      
+      // If no user ID, we can't fetch accurate data
+      if (!user.uid) {
+        setIsLoading(false);
+        return;
+      }
+      
+      // Always sync likes first to ensure accuracy
+      await syncTotalLikes();
+      
+      // Then fetch from dedicated total-likes endpoint as a backup
       try {
-        const fallbackResponse = await fetch(`${API_BASE_URL}/user/profile`, {
+        const totalLikesResponse = await fetch(`${API_BASE_URL}/user/${user.uid}/total-likes`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include'
         });
-
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          
-          // Try to get user document by ID if available
-          const firebaseUserId = user?.uid || fallbackData.uid;
-          if (firebaseUserId) {
-            try {
-              const userDocResponse = await fetch(`${API_BASE_URL}/user/${firebaseUserId}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-              
-              if (userDocResponse.ok) {
-                const userDocData = await userDocResponse.json();
-                
-                // Also try to fetch total likes from dedicated endpoint
-                try {
-                  const totalLikesResponse = await fetch(`${API_BASE_URL}/user/${firebaseUserId}/total-likes`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include'
-                  });
-                  
-                  if (totalLikesResponse.ok) {
-                    const likesData = await totalLikesResponse.json();
-                    userDocData.totalLikes = likesData.totalLikes;
-                  }
-                } catch (likesError) {
-                  console.error('Error fetching total likes:', likesError);
-                }
-                
-                updateProfileData(userDocData, 'User document', fallbackData);
-              } else {
-                // Use fallback API data
-                updateProfileData(fallbackData, 'Fallback API');
-              }
-            } catch (userDocError) {
-              console.error('Error fetching user document:', userDocError);
-              // Use fallback API data
-              updateProfileData(fallbackData, 'Fallback API');
-            }
-          } else {
-            // No user ID available, use fallback data
-            updateProfileData(fallbackData, 'Fallback API');
-          }
+        
+        if (totalLikesResponse.ok) {
+          const likesData = await totalLikesResponse.json();
+          setUserProfile(prev => ({
+            ...prev,
+            totalLikes: likesData.totalLikes || 0
+          }));
+          setProfileDataSource('Total likes endpoint');
         }
-      } catch (error) {
-        console.error('Error in fallback API:', error);
+      } catch (likesError) {
+        console.error('Error fetching total likes:', likesError);
+        // Already synced above, no need to do it again
       }
-    };
-
-    // Helper function to update profile data
-    const updateProfileData = (
-      newData: any, 
-      source: string,
-      fallbackData?: any
-    ) => {
-      // Determine the best username from available sources
-      const updatedUsername = newData.username?.trim() || 
-                             fallbackData?.username?.trim() || 
-                             user?.username?.trim() || 
-                             'Anonymous User';
       
-      // Update profile with the new data
-      setUserProfile(prev => ({
-        ...prev,
-        username: updatedUsername,
-        totalLikes: newData.totalLikes ?? fallbackData?.totalLikes ?? prev.totalLikes,
-        university: newData.university || fallbackData?.university || prev.university,
-        fieldOfStudy: newData.fieldOfStudy || fallbackData?.fieldOfStudy || prev.fieldOfStudy,
-        email: newData.email || fallbackData?.email || prev.email,
-        uid: newData.uid || fallbackData?.uid || prev.uid
-      }));
+      // Fetch user document for other profile data
+      try {
+        const userDocResponse = await fetch(`${API_BASE_URL}/user/${user.uid}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        
+        if (userDocResponse.ok) {
+          const userData = await userDocResponse.json();
+          
+          // Update other profile fields but keep the already fetched likes count
+          setUserProfile(prev => ({
+            ...prev,
+            username: userData.username?.trim() || prev.username,
+            university: userData.university || prev.university,
+            fieldOfStudy: userData.fieldOfStudy || prev.fieldOfStudy,
+            email: userData.email || prev.email
+          }));
+        }
+      } catch (userDocError) {
+        console.error('Error fetching user document:', userDocError);
+      }
       
-      setProfileDataSource(source);
-    };
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error processing user profile:', error);
+      setError('Failed to load profile. Please try again later.');
+      setIsLoading(false);
+    }
+  };
 
-    // Only fetch when auth is not loading anymore
+  // Fetch profile when component mounts or auth status changes
+  useEffect(() => {
     if (!authLoading) {
       fetchUserProfile();
     }
@@ -208,17 +170,15 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSignOut = async () => {
-    // Use the logout function from auth context
     await logout();
     navigate('/login');
   };
 
   const handleRefresh = () => {
-    setIsLoading(true);
-    window.location.reload();
+    fetchUserProfile();
   };
 
-  // Loading state while auth is loading or we're fetching profile
+  // Loading state
   if ((authLoading || isLoading) && !userProfile.username) {
     return (
       <div className="min-h-screen bg-gray-100">
@@ -312,6 +272,9 @@ const ProfilePage: React.FC = () => {
                 <HeartIcon className="h-5 w-5 text-pink-200" />
                 <span className="font-bold">{userProfile.totalLikes}</span>
                 <span className="text-sm opacity-80">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</span>
+                {isSyncing && (
+                  <RefreshIcon className="h-4 w-4 ml-2 animate-spin" />
+                )}
               </div>
             </div>
           </div>
@@ -372,9 +335,15 @@ const ProfilePage: React.FC = () => {
               <button 
                 onClick={handleRefresh}
                 className="ml-2 text-[#004a74] hover:underline"
+                disabled={isLoading}
               >
                 Refresh
               </button>
+            </div>
+            
+            {/* Debug info - you can remove this in production */}
+            <div className="mt-2 text-center text-xs text-gray-400">
+              Data source: {profileDataSource || 'Synchronized count'}
             </div>
           </div>
         </div>
