@@ -68,10 +68,9 @@ const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) =>
         { symbol: 'ŷ', name: 'unit-y' },
         { symbol: 'ẑ', name: 'unit-z' },
         { symbol: 'r̂', name: 'unit-r' },
+        { symbol: 'ρ̂', name: 'unit-rho' },  // Added unit vector for rho
         { symbol: 'θ̂', name: 'unit-theta' },
         { symbol: 'φ̂', name: 'unit-phi' },
-        { symbol: 'n̂', name: 'unit-normal' },
-        { symbol: 'v̂', name: 'unit-velocity' },
         { symbol: '⃗', name: 'vector-arrow' }
       ]
     },
@@ -126,6 +125,12 @@ const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) =>
         { symbol: 'sin', name: 'sin' },
         { symbol: 'cos', name: 'cos' },
         { symbol: 'tan', name: 'tan' },
+        { symbol: 'arcsin', name: 'arcsin' },  // Added inverse trig function
+        { symbol: 'arccos', name: 'arccos' },  // Added inverse trig function
+        { symbol: 'arctan', name: 'arctan' },  // Added inverse trig function
+        { symbol: 'sin⁻¹', name: 'sin-inverse' }, // Alternative notation
+        { symbol: 'cos⁻¹', name: 'cos-inverse' }, // Alternative notation
+        { symbol: 'tan⁻¹', name: 'tan-inverse' }, // Alternative notation
         { symbol: 'ln', name: 'ln' },
         { symbol: 'log', name: 'log' },
         { symbol: 'lim', name: 'lim' },
@@ -277,26 +282,31 @@ interface EquationEditorProps {
   initialValue?: string;
 }
 
-// Helper function to convert notation to super/subscripts and handle integral bounds
+// Enhanced formatMathNotation function with improved integral handling
 const formatMathNotation = (text: string): string => {
   let result = text;
   
-  // Convert superscripts (^)
-  const caretRegex = /([^\^])\^(\d|{([^}]+)})/g;
-  result = result.replace(caretRegex, (match, base, exponent) => {
+  // Convert superscripts (^) - Keep this part unchanged
+  const caretRegex = /([^\^])\^([a-zA-Z0-9]|{([^}]+)})/g;
+  result = result.replace(caretRegex, (match, base, exponent, bracedExponent) => {
     // If the exponent is enclosed in curly braces, extract it
-    const actualExponent = exponent.startsWith('{') ? exponent.slice(1, -1) : exponent;
+    const actualExponent = bracedExponent !== undefined ? bracedExponent : exponent;
     
-    // Convert each digit or character to its superscript equivalent if possible
+    // Map for converting characters to their superscript equivalents
     const superscriptMap: Record<string, string> = {
       '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
       '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
       '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
       'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ',
       'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ',
-      'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'q', 'r': 'ʳ',
+      'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'ᑫ', 'r': 'ʳ',
       's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ',
-      'y': 'ʸ', 'z': 'ᶻ'
+      'y': 'ʸ', 'z': 'ᶻ',
+      'A': 'ᴬ', 'B': 'ᴮ', 'C': 'ᶜ', 'D': 'ᴰ', 'E': 'ᴱ', 'F': 'ᶠ',
+      'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ', 'K': 'ᴷ', 'L': 'ᴸ',
+      'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'Q': 'Q', 'R': 'ᴿ',
+      'S': 'ˢ', 'T': 'ᵀ', 'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ', 'X': 'ˣ',
+      'Y': 'ʸ', 'Z': 'ᶻ'
     };
     
     let superscript = '';
@@ -307,13 +317,13 @@ const formatMathNotation = (text: string): string => {
     return base + superscript;
   });
   
-  // Convert subscripts (_)
-  const underscoreRegex = /([^_])_(\d|{([^}]+)})/g;
-  result = result.replace(underscoreRegex, (match, base, subscript) => {
+  // Convert subscripts (_) - Keep this part unchanged
+  const underscoreRegex = /([^_])_([a-zA-Z0-9]|{([^}]+)})/g;
+  result = result.replace(underscoreRegex, (match, base, subscript, bracedSubscript) => {
     // If the subscript is enclosed in curly braces, extract it
-    const actualSubscript = subscript.startsWith('{') ? subscript.slice(1, -1) : subscript;
+    const actualSubscript = bracedSubscript !== undefined ? bracedSubscript : subscript;
     
-    // Convert each digit or character to its subscript equivalent if possible
+    // Map for converting characters to their subscript equivalents
     const subscriptMap: Record<string, string> = {
       '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', 
       '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
@@ -332,50 +342,90 @@ const formatMathNotation = (text: string): string => {
     return base + subscriptText;
   });
   
-  // Handle integral bounds using \int_{lower}^{upper}
-  const integralRegex = /\\int(_\{([^}]+)\})?\^?\{?([^}]+)?\}?/g;
-  result = result.replace(integralRegex, (match, lowerBoundFull, lowerBound, upperBound) => {
-    let formatted = '∫';
+  // IMPROVED: Handle integral bounds using \int_{lower}^{upper} with better styling
+  // First, handle different integral types
+  result = result.replace(/\\(int|iint|iiint|oint|oiint|oiiint)/g, (match, type) => {
+    const integralMap: Record<string, string> = {
+      'int': '∫',
+      'iint': '∬',
+      'iiint': '∭',
+      'oint': '∮',
+      'oiint': '∯',
+      'oiiint': '∰'
+    };
+    return integralMap[type] || '∫';
+  });
+  
+  // Now handle bounds with better styling
+  // This regex captures integral symbol with potential bounds
+  const integralRegex = /(∫|∬|∭|∮|∯|∰)(?:_\{([^}]+)\})?(?:\^{([^}]+)})?/g;
+  
+  result = result.replace(integralRegex, (match, integral, lowerBound, upperBound) => {
+    // Start with the integral symbol
+    let formatted = integral;
     
-    // Add upper bound if present
-    if (upperBound) {
-      let upperText = '';
-      for (const char of upperBound) {
-        const superscriptMap: Record<string, string> = {
-          '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-          '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
-          'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ',
-          'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ',
-          'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'q', 'r': 'ʳ',
-          's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ',
-          'y': 'ʸ', 'z': 'ᶻ'
-        };
-        upperText += superscriptMap[char] || char;
+    // Function to convert text to superscript or subscript
+    const convertToScript = (text: string, isSuper: boolean): string => {
+      // Define map types properly to avoid TypeScript errors
+      type ScriptMap = {[key: string]: string};
+      
+      // Superscript map
+      const superscriptMap: ScriptMap = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+        'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ',
+        'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ',
+        'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'ᑫ', 'r': 'ʳ',
+        's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ',
+        'y': 'ʸ', 'z': 'ᶻ',
+        'A': 'ᴬ', 'B': 'ᴮ', 'C': 'ᶜ', 'D': 'ᴰ', 'E': 'ᴱ', 'F': 'ᶠ',
+        'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ', 'K': 'ᴷ', 'L': 'ᴸ',
+        'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'Q': 'Q', 'R': 'ᴿ',
+        'S': 'ˢ', 'T': 'ᵀ', 'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ', 'X': 'ˣ',
+        'Y': 'ʸ', 'Z': 'ᶻ',
+        ' ': ' ', ',': ',' // Preserve spaces and commas
+      };
+      
+      // Subscript map
+      const subscriptMap: ScriptMap = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', 
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+        'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 
+        'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 
+        'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 
+        'v': 'ᵥ', 'x': 'ₓ',
+        ' ': ' ', ',': ',' // Preserve spaces and commas
+      };
+      
+      // Choose the appropriate map
+      const mapper = isSuper ? superscriptMap : subscriptMap;
+      
+      let result = '';
+      for (const char of text) {
+        // Convert to lowercase for lookup and provide a fallback
+        const lowerChar = char.toLowerCase();
+        result += mapper[lowerChar] !== undefined ? mapper[lowerChar] : char;
       }
-      formatted = formatted + upperText;
+      return result;
+    };
+    
+    // If we have upper bound, add it with proper spacing
+    if (upperBound) {
+      formatted = formatted + ' ' + convertToScript(upperBound, true);
     }
     
-    // Add lower bound if present
+    // If we have lower bound, add it with proper spacing
     if (lowerBound) {
-      let lowerText = '';
-      for (const char of lowerBound) {
-        const subscriptMap: Record<string, string> = {
-          '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', 
-          '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
-          '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
-          'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 
-          'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 
-          'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 
-          'v': 'ᵥ', 'x': 'ₓ'
-        };
-        lowerText += subscriptMap[char] || char;
-      }
-      formatted = formatted + lowerText;
+      formatted = formatted + ' ' + convertToScript(lowerBound, false);
     }
     
     return formatted;
   });
+  
+  // Special case for common integral expressions like dx, dy, etc.
+  result = result.replace(/\b(d[a-zA-Z])\b/g, '$1');
   
   return result;
 };
@@ -491,17 +541,28 @@ const EquationEditor: React.FC<EquationEditorProps> = ({
       
       {/* Quick Reference - simplified */}
       <div className="mt-3 p-3 border border-gray-200 rounded-lg bg-blue-50 text-sm">
-        <h4 className="font-bold text-[#004a74] mb-1">Quick Reference:</h4>
-        <div>
-          <span className="font-bold">Basic Notation:</span>
-          <ul className="list-disc pl-5 space-y-1 text-gray-700">
-            <li><span className="font-mono">x^2</span> → x² (superscript)</li>
-            <li><span className="font-mono">x_2</span> → x₂ (subscript)</li>
-            <li><span className="font-mono">\int_{0}^{1}</span> → ∫₀¹ (integral with bounds)</li>
-          </ul>
-        </div>
+  <h4 className="font-bold text-[#004a74] mb-1">Quick Reference:</h4>
+  <div>
+    <span className="font-bold">Basic Notation:</span>
+    <div className="flex">
+      <div className="w-1/2">
+        <ul className="list-disc pl-5 space-y-1 text-gray-700">
+          <li><span className="font-mono">x^2</span> → x² (superscript)</li>
+          <li><span className="font-mono">x_2</span> → x₂ (subscript)</li>
+          <li><span className="font-mono">\int_{0}^{1}</span> → ∫₀¹ (integral with bounds)</li>
+        </ul>
+      </div>
+      <div className="w-1/2">
+        <ul className="list-disc pl-5 space-y-1 text-gray-700">
+          <li><span className="font-mono">x_2</span> → x₂ (single-character subscript)</li>
+          <li><span className="font-mono">x_{'{'+'10'+'}'}</span> → x₁₀ (multi-character subscript needs curly braces)</li>
+          <li><span className="font-mono">x_{'{'}"i"+1{'}'}</span> → xᵢ₊₁ (expressions as subscript need curly braces)</li>
+        </ul>
       </div>
     </div>
+  </div>
+</div>
+</div>
   );
 };
 
