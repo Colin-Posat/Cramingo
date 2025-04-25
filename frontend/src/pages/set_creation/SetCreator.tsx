@@ -674,11 +674,14 @@ const SetCreator: React.FC = () => {
                     
                   </div>
                   <button 
-                    onClick={() => setShowInfoTips(false)}
-                    className="text-[#004a74] hover:bg-blue-100 p-1 rounded-full h-6 w-6 flex items-center justify-center"
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </button>
+                  onClick={() => {
+                    setShowInfoTips(false);
+                    localStorage.setItem('hideCreatorInfoTips', 'true');
+                  }}
+                  className="text-[#004a74] hover:bg-blue-100 p-1 rounded-full h-6 w-6 flex items-center justify-center"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
                 </div>
               </div>
             )}
