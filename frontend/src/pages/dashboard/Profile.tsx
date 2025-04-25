@@ -343,7 +343,7 @@ const ProfilePage: React.FC = () => {
             
             {/* Debug info - you can remove this in production */}
             <div className="mt-2 text-center text-xs text-gray-400">
-              Data source: {profileDataSource || 'Synchronized count'}
+
             </div>
           </div>
         </div>
