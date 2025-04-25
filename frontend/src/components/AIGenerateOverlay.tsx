@@ -8,7 +8,9 @@ import {
   FileText as FileTextIcon,
   Trash2 as TrashIcon,
   CheckCircle as CheckCircleIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Minus as MinusIcon,
+  Plus as PlusIcon
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 import { useAuth } from '../context/AuthContext'; // Import useAuth hook
@@ -27,6 +29,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [flashcardCount, setFlashcardCount] = useState<number>(10); // Default count
+  const [useAutoCount, setUseAutoCount] = useState<boolean>(false); // Auto count option
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
@@ -36,6 +40,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   
   const MIN_CHARACTERS = 100;
   const MAX_CHARACTERS = 30000;
+  const MIN_FLASHCARDS = 5;
+  const MAX_FLASHCARDS = 30;
 
   // Auto-focus the textarea when there's no file uploaded
   useEffect(() => {
@@ -249,6 +255,13 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     }
   };
 
+  // Handle flashcard count change
+  const handleFlashcardCountChange = (newCount: number) => {
+    if (newCount >= MIN_FLASHCARDS && newCount <= MAX_FLASHCARDS) {
+      setFlashcardCount(newCount);
+    }
+  };
+
   const generateFlashcardsWithAI = async () => {
     if (!inputNotes.trim()) {
       setNotesError("Please provide some notes or upload a PDF to generate flashcards");
@@ -282,7 +295,9 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
           'Authorization': authHeader
         },
         body: JSON.stringify({
-          notes: inputNotes.trim()
+          notes: inputNotes.trim(),
+          count: flashcardCount,
+          autoCount: useAutoCount
         })
       });
 
@@ -308,10 +323,12 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
         return;
       }
 
-      // Limit to 20 flashcards
-      const limitedFlashcards = generatedFlashcards.slice(0, 20);
+      // Show message from backend if any
+      if (data.message) {
+        setNotesSuccess(data.message);
+      }
 
-      onGenerate(limitedFlashcards);
+      onGenerate(generatedFlashcards);
     } catch (error) {
       console.error('Error generating flashcards:', error);
       setNotesError(
@@ -360,7 +377,9 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     
     return {
       disabled: false,
-      text: "Generate Flashcards",
+      text: useAutoCount 
+        ? "Generate Flashcards (Auto Count)" 
+        : `Generate ${flashcardCount} Flashcards`,
       icon: <SparklesIcon className="w-6 h-6" />
     };
   };
@@ -513,7 +532,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
               </label>
               <div className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center">
                 <InfoIcon className="w-3 h-3 mr-1 text-gray-500" />
-                <span>Your notes need min: {MIN_CHARACTERS} characters</span>
+                <span>Min: {MIN_CHARACTERS} characters</span>
               </div>
             </div>
             <textarea
@@ -559,6 +578,87 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
               </div>
             </div>
           </div>
+          
+          {/* Flashcard Count Selector */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Number of Flashcards
+              </label>
+              <span className="text-xs text-gray-500">{MIN_FLASHCARDS}-{MAX_FLASHCARDS} cards</span>
+            </div>
+            
+            {/* Count selector */}
+            <div className={`transition-opacity duration-150 ${useAutoCount ? 'opacity-50' : 'opacity-100'}`}>
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => handleFlashcardCountChange(flashcardCount - 1)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full 
+                    ${(flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
+                      'text-gray-400 bg-gray-100 cursor-not-allowed' : 
+                      'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+                  disabled={flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount}
+                  aria-label="Decrease flashcard count"
+                >
+                  <MinusIcon className="w-4 h-4" />
+                </button>
+                
+                <div className="flex-1">
+                  <input
+                    type="range"
+                    min={MIN_FLASHCARDS}
+                    max={MAX_FLASHCARDS}
+                    value={flashcardCount}
+                    onChange={(e) => setFlashcardCount(parseInt(e.target.value, 10))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#004a74]"
+                    disabled={isGenerating || isParsing || useAutoCount}
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1 px-1">
+                    <span>{MIN_FLASHCARDS}</span>
+                    <span>{MAX_FLASHCARDS}</span>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => handleFlashcardCountChange(flashcardCount + 1)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full
+                    ${(flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
+                      'text-gray-400 bg-gray-100 cursor-not-allowed' : 
+                      'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+                  disabled={flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount}
+                  aria-label="Increase flashcard count"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+                
+                <div className="w-12 h-8 flex items-center justify-center bg-[#004a74]/10 text-[#004a74] font-medium rounded">
+                  {flashcardCount}
+                </div>
+              </div>
+            </div>
+            
+            {/* Auto Count Checkbox */}
+            <div className="flex items-center mt-3">
+              <input
+                id="autoCountCheckbox"
+                type="checkbox"
+                checked={useAutoCount}
+                onChange={(e) => setUseAutoCount(e.target.checked)}
+                disabled={isGenerating || isParsing}
+                className="h-4 w-4 rounded border-gray-300 text-[#004a74] focus:ring-[#004a74]"
+              />
+              <label htmlFor="autoCountCheckbox" className="ml-2 text-sm text-gray-700 cursor-pointer">
+                Choose for me based on text length
+              </label>
+              {useAutoCount && (
+                <div className="ml-2 px-2 py-0.5 bg-[#004a74]/10 text-[#004a74] text-xs rounded-full">
+                  Auto
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Generate Button */}
           <button 
@@ -581,6 +681,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
                 <h3 className="font-medium text-[#004a74]">How AI Generation Works</h3>
                 <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
                   <li>Upload a PDF document or paste your notes ({MIN_CHARACTERS}-{MAX_CHARACTERS} characters)</li>
+                  <li>Specify the number of flashcards or let AI choose based on content length</li>
                   <li>Our AI will analyze the content and generate relevant flashcards</li>
                   <li>You can edit the generated flashcards before saving</li>
                   <li>Works best with lecture notes, textbook chapters, and study guides</li>

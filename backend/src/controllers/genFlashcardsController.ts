@@ -16,12 +16,43 @@ export const generateFlashcards = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized: User not authenticated' });
     }
     
-    const { notes } = req.body;
+    const { notes, count, autoCount } = req.body;
     
     if (!notes || notes.trim().length === 0) {
       return res.status(400).json({ message: 'No notes provided' });
     }
 
+    const MIN_ALLOWED_FLASHCARDS = 5;
+    const MAX_ALLOWED_FLASHCARDS = 30;
+
+    // Determine target count based on input
+    let targetCount = 0;
+    
+    // If autoCount is true, calculate based on text length
+    if (autoCount === true) {
+      const wordCount = notes.trim().split(/\s+/).length;
+      // Auto count calculation logic
+      if (wordCount < 200) {
+        targetCount = 5;
+      } else if (wordCount < 500) {
+        targetCount = 8;
+      } else if (wordCount < 1000) {
+        targetCount = 12;
+      } else if (wordCount < 2000) {
+        targetCount = 16;
+      } else if (wordCount < 3000) {
+        targetCount = 20;
+      } else {
+        targetCount = 25;
+      }
+    } else {
+      // If not autoCount, use the provided count with validation
+      const requestedCount = count ? parseInt(count, 10) : 0;
+      targetCount = requestedCount > 0 && requestedCount <= 50 ? requestedCount : 10; // Default to 10 if invalid
+    }
+
+    targetCount = Math.min(targetCount, MAX_ALLOWED_FLASHCARDS);
+    
     // First, check if the input is valid educational content that can be turned into flashcards
     const validationCheck = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -83,10 +114,7 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     - Keep answers extremely concise (1-2 sentences maximum)
     - Use bullet points for multi-part answers
     - Remove unnecessary words and focus only on essential information
-    - Adapt the number of flashcards based on the length of the provided notes:
-      * Short notes (under 500 words): 5-8 flashcards
-      * Medium notes (500-1000 words): 8-12 flashcards
-      * Long notes (1000+ words): 12-20 flashcards
+    - Generate EXACTLY the specified number of flashcards requested
     - ALWAYS provide proper context when mentioning specialized concepts, rules, or formulas
       * For scientific concepts, include relevant equations or conditions
       * For historical events, include approximate dates or time periods
@@ -106,10 +134,12 @@ export const generateFlashcards = async (req: Request, res: Response) => {
         },
         {
           role: "user",
-          content: `Generate flashcards from the following study notes:
+          content: `Generate EXACTLY ${targetCount} flashcards from the following study notes:
     ${notes}
     
-    IMPORTANT: Whenever you reference specialized concepts, rules, or terminology, 
+    IMPORTANT: 
+    - Generate EXACTLY ${targetCount} flashcards, no more and no less
+    - Whenever you reference specialized concepts, rules, or terminology, 
     ALWAYS include proper context and explanation.
     
     For example:
@@ -117,10 +147,6 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     - Instead of just "This shows cognitive dissonance", say "This shows cognitive dissonance (psychological stress from holding contradictory beliefs)"
     - Instead of just "This uses PCR technique", say "This uses PCR (Polymerase Chain Reaction) technique to amplify DNA sequences"
     - Instead of just "During the Renaissance period", say "During the Renaissance period (14th-17th centuries in Europe)"
-    
-    Consider the length of the provided notes and create an appropriate number of flashcards:
-    - Aim for approximately 1 flashcard per 100 words of study material
-    - Prioritize the most important concepts if notes are lengthy
     
     FORMATTING REQUIREMENTS:
     - Questions must be under 15 words whenever possible
@@ -133,7 +159,7 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     - Critical formulas (in their most compact form)
     - Key relationships between concepts (expressed concisely)
     
-    Respond ONLY with a JSON array of flashcard objects. Ensure each has a 'question' and 'answer' key.`
+    Respond ONLY with a JSON array of EXACTLY ${targetCount} flashcard objects. Ensure each has a 'question' and 'answer' key.`
         }
       ]
     });
@@ -182,7 +208,21 @@ export const generateFlashcards = async (req: Request, res: Response) => {
       });
     }
     
-    res.json({ flashcards: validFlashcards });
+    // Prepare response message
+    let responseMessage = null;
+    if (validFlashcards.length !== targetCount) {
+      responseMessage = `Generated ${validFlashcards.length} flashcards.`;
+      
+      if (autoCount === true) {
+        responseMessage = `Automatically generated ${validFlashcards.length} flashcards based on content length.`;
+      }
+    }
+    
+    res.json({ 
+      flashcards: validFlashcards,
+      message: responseMessage,
+      autoGenerated: autoCount === true
+    });
   } catch (error) {
     console.error('Error generating flashcards:', error);
     res.status(500).json({
