@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X as XIcon,
   Terminal as TerminalIcon,
@@ -15,6 +15,66 @@ interface EquationKeypadProps {
 const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) => {
   // Categories for organizing symbols
   const categories = [
+    {
+      name: 'Operators',
+      symbols: [
+        { symbol: '÷', name: 'divide' },
+        { symbol: '×', name: 'multiply' },
+        { symbol: '±', name: 'plus-minus' },
+        { symbol: '∑', name: 'sum' },
+        { symbol: '∏', name: 'product' },
+        { symbol: '√', name: 'sqrt' },
+        { symbol: '∛', name: 'cube-root' },
+        { symbol: '∫', name: 'integral' },
+        { symbol: '∬', name: 'double-integral' },
+        { symbol: '∮', name: 'contour-integral' },
+        { symbol: '∇', name: 'nabla' },
+        { symbol: '∂', name: 'partial' },
+        { symbol: '∞', name: 'infinity' }
+      ]
+    },
+    {
+      name: 'Variables',
+      symbols: [
+        { symbol: '𝑎', name: 'italic-a' },
+        { symbol: '𝑏', name: 'italic-b' },
+        { symbol: '𝑐', name: 'italic-c' },
+        { symbol: '𝑑', name: 'italic-d' },
+        { symbol: '𝑒', name: 'italic-e' },
+        { symbol: '𝑓', name: 'italic-f' },
+        { symbol: '𝑔', name: 'italic-g' },
+        { symbol: '𝑚', name: 'italic-m' },
+        { symbol: '𝑛', name: 'italic-n' },
+        { symbol: '𝑝', name: 'italic-p' },
+        { symbol: '𝑞', name: 'italic-q' },
+        { symbol: '𝑟', name: 'italic-r' },
+        { symbol: '𝑠', name: 'italic-s' },
+        { symbol: '𝑡', name: 'italic-t' },
+        { symbol: '𝑢', name: 'italic-u' },
+        { symbol: '𝑣', name: 'italic-v' },
+        { symbol: '𝑤', name: 'italic-w' },
+        { symbol: '𝑥', name: 'italic-x' },
+        { symbol: '𝑦', name: 'italic-y' },
+        { symbol: '𝑧', name: 'italic-z' }
+      ]
+    },
+    {
+      name: 'Unit Vectors',
+      symbols: [
+        { symbol: 'î', name: 'unit-i' },
+        { symbol: 'ĵ', name: 'unit-j' },
+        { symbol: 'k̂', name: 'unit-k' },
+        { symbol: 'x̂', name: 'unit-x' },
+        { symbol: 'ŷ', name: 'unit-y' },
+        { symbol: 'ẑ', name: 'unit-z' },
+        { symbol: 'r̂', name: 'unit-r' },
+        { symbol: 'θ̂', name: 'unit-theta' },
+        { symbol: 'φ̂', name: 'unit-phi' },
+        { symbol: 'n̂', name: 'unit-normal' },
+        { symbol: 'v̂', name: 'unit-velocity' },
+        { symbol: '⃗', name: 'vector-arrow' }
+      ]
+    },
     { 
       name: 'Greek', 
       symbols: [
@@ -41,24 +101,6 @@ const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) =>
         { symbol: 'Φ', name: 'Phi' },
         { symbol: 'ω', name: 'omega' },
         { symbol: 'Ω', name: 'Omega' }
-      ]
-    },
-    {
-      name: 'Operators',
-      symbols: [
-        { symbol: '÷', name: 'divide' },
-        { symbol: '×', name: 'multiply' },
-        { symbol: '±', name: 'plus-minus' },
-        { symbol: '∑', name: 'sum' },
-        { symbol: '∏', name: 'product' },
-        { symbol: '√', name: 'sqrt' },
-        { symbol: '∛', name: 'cube-root' },
-        { symbol: '∫', name: 'integral' },
-        { symbol: '∬', name: 'double-integral' },
-        { symbol: '∮', name: 'contour-integral' },
-        { symbol: '∇', name: 'nabla' },
-        { symbol: '∂', name: 'partial' },
-        { symbol: '∞', name: 'infinity' }
       ]
     },
     {
@@ -109,11 +151,62 @@ const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) =>
         { symbol: '…', name: 'dots' },
         { symbol: '°', name: 'degree' }
       ]
+    },
+    {
+      name: 'Superscript',
+      symbols: [
+        { symbol: '²', name: 'squared' },
+        { symbol: '³', name: 'cubed' },
+        { symbol: '⁴', name: 'to-fourth' },
+        { symbol: '⁵', name: 'to-fifth' },
+        { symbol: '⁶', name: 'to-sixth' },
+        { symbol: '⁷', name: 'to-seventh' },
+        { symbol: '⁸', name: 'to-eighth' },
+        { symbol: '⁹', name: 'to-ninth' },
+        { symbol: '⁰', name: 'to-zero' },
+        { symbol: '⁻', name: 'negative' },
+        { symbol: '⁺', name: 'positive' },
+        { symbol: 'ⁿ', name: 'to-n' },
+      ]
+    },
+    {
+      name: 'Subscript',
+      symbols: [
+        { symbol: '₀', name: 'sub-0' },
+        { symbol: '₁', name: 'sub-1' },
+        { symbol: '₂', name: 'sub-2' },
+        { symbol: '₃', name: 'sub-3' },
+        { symbol: '₄', name: 'sub-4' },
+        { symbol: '₅', name: 'sub-5' },
+        { symbol: '₆', name: 'sub-6' },
+        { symbol: '₇', name: 'sub-7' },
+        { symbol: '₈', name: 'sub-8' },
+        { symbol: '₉', name: 'sub-9' },
+        { symbol: 'ₓ', name: 'sub-x' },
+        { symbol: 'ᵢ', name: 'sub-i' },
+      ]
+    },
+    {
+      name: 'Integrals',
+      symbols: [
+        { symbol: '∫', name: 'integral' },
+        { symbol: '∬', name: 'double-integral' },
+        { symbol: '∭', name: 'triple-integral' },
+        { symbol: '∮', name: 'contour-integral' },
+        { symbol: '∯', name: 'surface-integral' },
+        { symbol: '∰', name: 'volume-integral' },
+        { symbol: '\\int_{0}^{1}', name: 'bounded-integral' },
+        { symbol: 'dx', name: 'dx' },
+        { symbol: 'dy', name: 'dy' },
+        { symbol: 'dz', name: 'dz' },
+        { symbol: 'dt', name: 'dt' },
+        { symbol: 'dθ', name: 'dtheta' },
+      ]
     }
   ];
 
   // State for active category
-  const [activeCategory, setActiveCategory] = useState('Greek');
+  const [activeCategory, setActiveCategory] = useState('Operators');
 
   // Get symbols for the active category
   const activeSymbols = categories.find(cat => cat.name === activeCategory)?.symbols || [];
@@ -130,13 +223,13 @@ const EquationKeypad: React.FC<EquationKeypadProps> = ({ onInsert, onClose }) =>
         </button>
       </div>
 
-      {/* Category tabs - Centered with flex */}
-      <div className="flex justify-center overflow-x-auto mb-4 pb-2 scrollbar-thin">
+      {/* Category tabs - Centered with flex, no overflow */}
+      <div className="flex flex-wrap justify-center mb-4">
         {categories.map(category => (
           <button
             key={category.name}
             onClick={() => setActiveCategory(category.name)}
-            className={`px-3 py-1 mx-1 whitespace-nowrap rounded-md text-sm font-medium ${
+            className={`px-2 py-1 m-1 whitespace-nowrap rounded-md text-xs font-medium ${
               activeCategory === category.name
                 ? 'bg-[#004a74] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -184,6 +277,109 @@ interface EquationEditorProps {
   initialValue?: string;
 }
 
+// Helper function to convert notation to super/subscripts and handle integral bounds
+const formatMathNotation = (text: string): string => {
+  let result = text;
+  
+  // Convert superscripts (^)
+  const caretRegex = /([^\^])\^(\d|{([^}]+)})/g;
+  result = result.replace(caretRegex, (match, base, exponent) => {
+    // If the exponent is enclosed in curly braces, extract it
+    const actualExponent = exponent.startsWith('{') ? exponent.slice(1, -1) : exponent;
+    
+    // Convert each digit or character to its superscript equivalent if possible
+    const superscriptMap: Record<string, string> = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+      '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+      'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ',
+      'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ',
+      'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'q', 'r': 'ʳ',
+      's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ',
+      'y': 'ʸ', 'z': 'ᶻ'
+    };
+    
+    let superscript = '';
+    for (const char of actualExponent) {
+      superscript += superscriptMap[char] || char;
+    }
+    
+    return base + superscript;
+  });
+  
+  // Convert subscripts (_)
+  const underscoreRegex = /([^_])_(\d|{([^}]+)})/g;
+  result = result.replace(underscoreRegex, (match, base, subscript) => {
+    // If the subscript is enclosed in curly braces, extract it
+    const actualSubscript = subscript.startsWith('{') ? subscript.slice(1, -1) : subscript;
+    
+    // Convert each digit or character to its subscript equivalent if possible
+    const subscriptMap: Record<string, string> = {
+      '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', 
+      '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+      '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+      'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 
+      'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 
+      'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 
+      'v': 'ᵥ', 'x': 'ₓ'
+    };
+    
+    let subscriptText = '';
+    for (const char of actualSubscript) {
+      subscriptText += subscriptMap[char] || char;
+    }
+    
+    return base + subscriptText;
+  });
+  
+  // Handle integral bounds using \int_{lower}^{upper}
+  const integralRegex = /\\int(_\{([^}]+)\})?\^?\{?([^}]+)?\}?/g;
+  result = result.replace(integralRegex, (match, lowerBoundFull, lowerBound, upperBound) => {
+    let formatted = '∫';
+    
+    // Add upper bound if present
+    if (upperBound) {
+      let upperText = '';
+      for (const char of upperBound) {
+        const superscriptMap: Record<string, string> = {
+          '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+          '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+          'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ',
+          'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ',
+          'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'q': 'q', 'r': 'ʳ',
+          's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ',
+          'y': 'ʸ', 'z': 'ᶻ'
+        };
+        upperText += superscriptMap[char] || char;
+      }
+      formatted = formatted + upperText;
+    }
+    
+    // Add lower bound if present
+    if (lowerBound) {
+      let lowerText = '';
+      for (const char of lowerBound) {
+        const subscriptMap: Record<string, string> = {
+          '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', 
+          '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+          '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+          'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 
+          'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 
+          'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 
+          'v': 'ᵥ', 'x': 'ₓ'
+        };
+        lowerText += subscriptMap[char] || char;
+      }
+      formatted = formatted + lowerText;
+    }
+    
+    return formatted;
+  });
+  
+  return result;
+};
+
 // Main Equation Editor component
 const EquationEditor: React.FC<EquationEditorProps> = ({ 
   onSave, 
@@ -191,8 +387,14 @@ const EquationEditor: React.FC<EquationEditorProps> = ({
   initialValue = '' 
 }) => {
   const [equation, setEquation] = useState(initialValue);
+  const [previewEquation, setPreviewEquation] = useState('');
   const [showKeypad, setShowKeypad] = useState(true);
   const editorRef = useRef<HTMLDivElement>(null);
+  
+  // Update the preview whenever the equation changes
+  useEffect(() => {
+    setPreviewEquation(formatMathNotation(equation));
+  }, [equation]);
   
   // Handle direct text input
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -239,9 +441,19 @@ const EquationEditor: React.FC<EquationEditorProps> = ({
         id="equation-input"
         value={equation}
         onChange={handleInput}
-        placeholder="Type or insert math equation here..."
+        placeholder="Type or insert math equation here (e.g., x^2 + y_1 = z)"
         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004a74]/20 focus:outline-none min-h-[100px] font-mono"
       />
+      
+      {/* Preview section with title */}
+      <div className="mt-2">
+        <div className="text-sm font-medium text-gray-600 mb-1">Preview:</div>
+        <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[50px]">
+          <div className="font-mono text-gray-800 whitespace-pre-wrap">
+            {previewEquation}
+          </div>
+        </div>
+      </div>
       
       <div className="mt-3 flex justify-between items-center">
         <button
@@ -260,7 +472,7 @@ const EquationEditor: React.FC<EquationEditorProps> = ({
             Cancel
           </button>
           <button
-            onClick={() => onSave(equation)}
+            onClick={() => onSave(previewEquation)} // Save the formatted equation with superscripts
             className="px-3 py-1 text-sm bg-[#004a74] text-white rounded-md hover:bg-[#00659f] flex items-center gap-1"
           >
             <SaveIcon className="w-4 h-4" />
@@ -276,6 +488,19 @@ const EquationEditor: React.FC<EquationEditorProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Quick Reference - simplified */}
+      <div className="mt-3 p-3 border border-gray-200 rounded-lg bg-blue-50 text-sm">
+        <h4 className="font-bold text-[#004a74] mb-1">Quick Reference:</h4>
+        <div>
+          <span className="font-bold">Basic Notation:</span>
+          <ul className="list-disc pl-5 space-y-1 text-gray-700">
+            <li><span className="font-mono">x^2</span> → x² (superscript)</li>
+            <li><span className="font-mono">x_2</span> → x₂ (subscript)</li>
+            <li><span className="font-mono">\int_{0}^{1}</span> → ∫₀¹ (integral with bounds)</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 };
