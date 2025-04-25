@@ -186,47 +186,53 @@ export const getSavedSets = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Query for sets associated with the user that ARE derived/saved
-    const setsSnapshot = await db.collection("flashcardSets")
+    // Query for saved set references for this user
+    const savedSetsSnapshot = await db.collection("userSavedSets")
       .where("userId", "==", userId)
-      .where("isDerived", "==", true) // <-- Key change: Only get saved sets
-      .orderBy("createdAt", "desc") // Order by when they were saved
+      .orderBy("savedAt", "desc")
       .get();
 
-    if (setsSnapshot.empty) {
+    if (savedSetsSnapshot.empty) {
       res.status(200).json([]);
       return;
     }
 
-    // Create an array to store the sets with additional information
+    // Extract setIds from the saved sets
+    const setIds = savedSetsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return data.setId;
+    });
+
+    // Get the actual flashcard sets
     const sets = [];
-    
-    // Process each set
-    for (const doc of setsSnapshot.docs) {
-      const setData = doc.data();
-      
-      // If we already have savedByUsername from the save operation, use it
-      let username = setData.savedByUsername || null;
-      
-      // If username isn't already in the document, fetch it from users collection
-      if (!username && setData.userId) {
-        try {
-          const userDoc = await db.collection("users").doc(setData.userId).get();
-          if (userDoc.exists) {
-            const userData = userDoc.data() || {};
-            username = userData.username || userData.displayName || null;
+    for (const setId of setIds) {
+      const setDoc = await db.collection("flashcardSets").doc(setId).get();
+      if (setDoc.exists) {
+        const setData = setDoc.data() || {};
+        
+        // Get username of creator
+        let creatorUsername = null;
+        if (setData.userId) {
+          try {
+            const userDoc = await db.collection("users").doc(setData.userId).get();
+            if (userDoc.exists) {
+              const userData = userDoc.data() || {};
+              creatorUsername = userData.username || userData.displayName || null;
+            }
+          } catch (error) {
+            console.error(`Error fetching user info for ${setData.userId}:`, error);
           }
-        } catch (userError) {
-          console.error(`Error fetching user info for ${setData.userId}:`, userError);
         }
+        
+        // Add to our results with the username
+        sets.push({
+          id: setDoc.id,
+          ...setData,
+          createdBy: creatorUsername || `User ${setData.userId?.substring(0, 6) || 'unknown'}`,
+          // Add savedAt timestamp from userSavedSets
+          savedAt: savedSetsSnapshot.docs.find(doc => doc.data().setId === setId)?.data()?.savedAt || null
+        });
       }
-      
-      // Add the set with username to our results
-      sets.push({
-        id: doc.id,
-        ...setData,
-        savedByUsername: username // Add or update username
-      });
     }
 
     console.log(`Found ${sets.length} saved sets for user ${userId}`);
@@ -243,10 +249,7 @@ export const getSavedSets = async (req: Request, res: Response): Promise<void> =
 // Get a specific flashcard set by ID
 export const getSetById = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get the set ID from the URL parameter
     const setId = req.params.id;
-    
-    // Get the document
     const docSnapshot = await db.collection("flashcardSets").doc(setId).get();
     
     if (!docSnapshot.exists) {
@@ -254,10 +257,26 @@ export const getSetById = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     
-    // Return the set data
+    const setData = docSnapshot.data() || {};
+    
+    // If this is a saved/derived set, fetch the original set's likes
+    if (setData.isDerived && setData.originalSetId) {
+      try {
+        const originalSetDoc = await db.collection("flashcardSets").doc(setData.originalSetId).get();
+        if (originalSetDoc.exists) {
+          const originalData = originalSetDoc.data() || {};
+          // Either replace the likes completely, or add an originalLikes field
+          setData.originalLikes = originalData.likes || 0;
+          // Optionally: setData.likes = originalData.likes || 0;
+        }
+      } catch (error) {
+        console.error("Error fetching original set likes:", error);
+      }
+    }
+    
     res.status(200).json({
       id: docSnapshot.id,
-      ...docSnapshot.data()
+      ...setData
     });
   } catch (error) {
     console.error("Error getting flashcard set:", error);
@@ -267,7 +286,6 @@ export const getSetById = async (req: Request, res: Response): Promise<void> => 
     });
   }
 };
-
 // Delete a flashcard set
 export const deleteSet = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -510,82 +528,43 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
 // Save an existing flashcard set to user's collection
 export const saveSet = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { originalSetId, userId } = req.body;
+    const { setId, userId } = req.body;
 
-    if (!originalSetId || !userId) {
-      res.status(400).json({ message: "Original set ID and user ID are required" });
+    if (!setId || !userId) {
+      res.status(400).json({ message: "Set ID and user ID are required" });
       return;
     }
 
-    const originalSetDoc = await db.collection("flashcardSets").doc(originalSetId).get();
+    // Check if the set exists
+    const setDoc = await db.collection("flashcardSets").doc(setId).get();
 
-    if (!originalSetDoc.exists) {
-      res.status(404).json({ message: "Original set not found" });
+    if (!setDoc.exists) {
+      res.status(404).json({ message: "Set not found" });
       return;
     }
 
-    const originalSetData = originalSetDoc.data();
-
-    if (!originalSetData) {
-      res.status(500).json({ message: "Error retrieving set data" });
-      return;
-    }
-
-    // Check if user already saved this specific set
-    const existingSavedQuery = await db.collection("flashcardSets")
-        .where("userId", "==", userId)
-        .where("originalSetId", "==", originalSetId)
-        .limit(1)
-        .get();
-
-    if (!existingSavedQuery.empty) {
-         res.status(409).json({ message: "You have already saved this set" });
-         return;
-    }
-
-    // Fetch the current user's info (the one saving the set)
-    const userDoc = await db.collection("users").doc(userId).get();
-    let savedByUsername = null;
+    // Check if this user has already saved this set
+    const userSaveDoc = await db.collection("userSavedSets").where("setId", "==", setId).where("userId", "==", userId).limit(1).get();
     
-    if (userDoc.exists) {
-      const userData = userDoc.data() || {};
-      savedByUsername = userData.username || userData.displayName || null;
+    if (!userSaveDoc.empty) {
+      res.status(409).json({ message: "You have already saved this set" });
+      return;
     }
 
-    // Fetch the original creator's username
-    let originalCreatorUsername = null;
-    if (originalSetData.userId) {
-      try {
-        const originalCreatorDoc = await db.collection("users").doc(originalSetData.userId).get();
-        if (originalCreatorDoc.exists) {
-          const creatorData = originalCreatorDoc.data() || {};
-          originalCreatorUsername = creatorData.username || creatorData.displayName || null;
-        }
-      } catch (error) {
-        console.error(`Error fetching original creator info for ${originalSetData.userId}:`, error);
-      }
-    }
-
-    const newSetId = db.collection("flashcardSets").doc().id;
-
-    await db.collection("flashcardSets").doc(newSetId).set({
-      ...originalSetData,
-      id: newSetId, // Use the new ID
-      userId: userId, // Assign to the saving user
-      originalSetId: originalSetId, // Link to the original
-      createdAt: admin.firestore.FieldValue.serverTimestamp(), // New creation time for this copy
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(), // Set initial update time
-      isDerived: true, // Mark as saved/derived
-      savedByUsername: savedByUsername, // Who saved it
-      originalCreatorUsername: originalCreatorUsername, // Add the username of original creator
-      originalCreatorId: originalSetData.userId, // Add the ID of original creator
-      likes: 0 // Reset likes count for the saved copy
+    // Create a record in userSavedSets collection instead of duplicating the set
+    const saveId = db.collection("userSavedSets").doc().id;
+    
+    await db.collection("userSavedSets").doc(saveId).set({
+      id: saveId,
+      setId: setId,
+      userId: userId,
+      savedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    console.log(`User ${userId} (${savedByUsername || 'unknown username'}) successfully saved set ${originalSetId} created by ${originalCreatorUsername || 'unknown creator'} as new set ${newSetId}`);
+    console.log(`User ${userId} successfully saved set ${setId}`);
     res.status(201).json({
       message: "Set saved successfully",
-      id: newSetId
+      id: setId
     });
   } catch (error) {
     console.error("Error saving set:", error);
@@ -606,35 +585,21 @@ export const unsaveSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Get the set document to verify it's a saved set (isDerived === true)
-    const setDoc = await db.collection("flashcardSets").doc(setId).get();
+    // Find the saved set record
+    const savedSetQuery = await db.collection("userSavedSets")
+      .where("setId", "==", setId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
 
-    if (!setDoc.exists) {
-      res.status(404).json({ message: "Set not found" });
+    if (savedSetQuery.empty) {
+      res.status(404).json({ message: "You have not saved this set" });
       return;
     }
 
-    const setData = setDoc.data();
-
-    if (!setData) {
-      res.status(500).json({ message: "Error retrieving set data" });
-      return;
-    }
-
-    // Check if this is indeed a saved set
-    if (!setData.isDerived) {
-      res.status(400).json({ message: "This operation is only valid for saved sets" });
-      return;
-    }
-
-    // Check if the current user is the one who saved this set
-    if (setData.userId !== userId) {
-      res.status(403).json({ message: "You do not have permission to unsave this set" });
-      return;
-    }
-
-    // Delete the saved set
-    await db.collection("flashcardSets").doc(setId).delete();
+    // Delete the saved set record
+    const savedSetDoc = savedSetQuery.docs[0];
+    await db.collection("userSavedSets").doc(savedSetDoc.id).delete();
 
     console.log(`User ${userId} successfully unsaved set ${setId}`);
     res.status(200).json({
@@ -749,6 +714,38 @@ export const getTopPopularSets = async (req: Request, res: Response): Promise<vo
     console.error("Error getting top popular sets:", error);
     res.status(500).json({ 
       message: "Failed to get top popular sets",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};
+
+// Check if a user has saved a specific set
+export const checkSavedStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, setId } = req.query;
+
+    if (!userId || !setId) {
+      res.status(400).json({ message: "User ID and Set ID are required" });
+      return;
+    }
+
+    // Query for saved set record
+    const savedSetQuery = await db.collection("userSavedSets")
+      .where("setId", "==", setId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
+
+    const isSaved = !savedSetQuery.empty;
+
+    res.status(200).json({
+      isSaved,
+      setId
+    });
+  } catch (error) {
+    console.error("Error checking saved status:", error);
+    res.status(500).json({
+      message: "Failed to check saved status",
       error: error instanceof Error ? error.message : "Unknown error"
     });
   }

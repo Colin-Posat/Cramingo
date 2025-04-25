@@ -10,14 +10,144 @@ import {
   ClipboardList as ClipboardListIcon,
   Info as InfoIcon,
   X as XIcon,
-  Heart as HeartIcon
+  Heart as HeartIcon,
+  CheckCircle,
+  ChevronRight,
+  Bookmark
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
-// Type definitions
+// Save Success Animation Component (included directly to avoid creating separate file)
+interface SaveSuccessNotificationProps {
+  show: boolean;
+  onClose: () => void;
+  navigateToSavedSets: () => void;
+}
 
+const EnhancedSaveSuccessNotification: React.FC<SaveSuccessNotificationProps> = ({ 
+  show, 
+  onClose, 
+  navigateToSavedSets 
+}) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  
+  useEffect(() => {
+    if (show) {
+      setIsVisible(true);
+      setProgress(0);
+      
+      // Animated progress bar
+      const duration = 3000; // 3 seconds
+      const interval = 30; // Update every 30ms
+      const steps = duration / interval;
+      let currentStep = 0;
+      
+      const progressTimer = setInterval(() => {
+        currentStep++;
+        setProgress(Math.min((currentStep / steps) * 100, 100));
+        
+        if (currentStep >= steps) {
+          clearInterval(progressTimer);
+          // Auto-close after progress completes
+          setTimeout(() => {
+            handleClose();
+          }, 500);
+        }
+      }, interval);
+      
+      return () => clearInterval(progressTimer);
+    }
+  }, [show]);
+  
+  const handleClose = () => {
+    setIsExiting(true);
+    // Wait for exit animation to complete
+    setTimeout(() => {
+      setIsVisible(false);
+      setIsExiting(false);
+      if (onClose) onClose();
+    }, 500);
+  };
+  
+  if (!isVisible) return null;
+  
+  return (
+    <div 
+      className="fixed top-0 left-0 w-full h-full flex items-center justify-center z-50 transition-all duration-300"
+      style={{ backgroundColor: isExiting ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,0.4)' }}
+      onClick={handleClose}
+    >
+      <div 
+        className={`bg-white rounded-xl shadow-xl p-8 max-w-md transform transition-all duration-500 ${isExiting ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
+        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the modal
+      >
+        <div className="flex flex-col items-center">
+          <div className="w-24 h-24 mb-4 relative">
+            {/* Outer ring pulse */}
+            <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-20"></div>
+            
+            {/* Middle ring pulse (slower) */}
+            <div className="absolute inset-2 rounded-full bg-green-200 animate-ping opacity-40" style={{ animationDuration: '2s' }}></div>
+            
+            {/* Check mark with bookmark */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <CheckCircle size={80} className="text-green-500" />
+                <Bookmark 
+                  size={28} 
+                  className="absolute text-[#004a74] fill-[#004a74] animate-bounce" 
+                  style={{ top: '10px', right: '-12px', animationDuration: '1.5s' }}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">Set Saved Successfully!</h3>
+          <p className="text-gray-600 text-center mb-6">
+            This flashcard set has been added to your saved sets.
+          </p>
+          
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-6 overflow-hidden">
+            <div 
+              className="bg-green-500 h-full rounded-full transition-all duration-100 ease-linear"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          
+          <div className="flex gap-3">
+            <button 
+              onClick={handleClose}
+              className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+            >
+              <XIcon size={16} />
+              Close
+            </button>
+            
+            <button 
+              onClick={() => {
+                handleClose();
+                setTimeout(() => {
+                  if (navigateToSavedSets) navigateToSavedSets();
+                }, 300);
+              }}
+              className="px-5 py-2 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors flex items-center gap-2"
+            >
+              View Saved Sets
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Type definitions
 type Flashcard = {
   question: string;
   answer: string;
@@ -59,6 +189,7 @@ const SetViewingPage: React.FC = () => {
   });
   const [isSavedByCurrentUser, setIsSavedByCurrentUser] = useState(false);
   const [isUnsaving, setIsUnsaving] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   // Likes state
   const [hasLiked, setHasLiked] = useState(false);
@@ -118,65 +249,45 @@ const SetViewingPage: React.FC = () => {
     fetchLikesCount();
   }, [user, setId]);
 
-  
-
   // Fetch flashcard set
   useEffect(() => {
     const fetchFlashcardSet = async () => {
       setLoading(true);
       setError(null);
-
+  
       if (!user?.uid) {
         setError('User not authenticated. Please log in to view flashcard sets.');
         setLoading(false);
         return;
       }
-
+  
       if (!setId) {
         setError('No flashcard set ID provided. Please select a valid set.');
         setLoading(false);
         return;
       }
-
+  
       try {
+        // Fetch the flashcard set
         const response = await fetch(`${API_BASE_URL}/sets/${setId}`, {
           credentials: 'include'
         });
         if (!response.ok) throw new Error(`Server returned ${response.status}`);
         const text = await response.text();
         const data: FlashcardSet = JSON.parse(text);
-
+  
         setFlashcardSet(data);
         setLikesCount(data.likes || 0);
-
-        // Check saved status
-        if (data.isDerived && data.userId === user.uid) {
-          setIsSavedByCurrentUser(true);
-        } else if (data.originalSetId) {
-          const savedRes = await fetch(
-            `${API_BASE_URL}/sets/saved/${user.uid}`,
-            { credentials: 'include' }
-          );
-          if (savedRes.ok) {
-            const savedSets: FlashcardSet[] = await savedRes.json();
-            const isSaved = savedSets.some(s => 
-              s.originalSetId === data.id && s.userId === user.uid
-            );
-            setIsSavedByCurrentUser(isSaved);
-          }
-        } else {
-          // Check if the user has saved this set (even if not derived)
-          const savedRes = await fetch(
-            `${API_BASE_URL}/sets/saved/${user.uid}`,
-            { credentials: 'include' }
-          );
-          if (savedRes.ok) {
-            const savedSets: FlashcardSet[] = await savedRes.json();
-            const isSaved = savedSets.some(s => 
-              s.originalSetId === data.id && s.userId === user.uid
-            );
-            setIsSavedByCurrentUser(isSaved);
-          }
+  
+        // Check saved status using our new endpoint
+        const savedStatusRes = await fetch(
+          `${API_BASE_URL}/sets/saved-status?userId=${user.uid}&setId=${setId}`,
+          { credentials: 'include' }
+        );
+        
+        if (savedStatusRes.ok) {
+          const savedStatusData = await savedStatusRes.json();
+          setIsSavedByCurrentUser(savedStatusData.isSaved);
         }
       } catch (err) {
         console.error('Fetch error:', err);
@@ -185,22 +296,40 @@ const SetViewingPage: React.FC = () => {
         setLoading(false);
       }
     };
-
+  
     fetchFlashcardSet();
   }, [setId, user]);
 
   // Back link helpers
-  const getBackLinkText = () => {
-    if (fromSearch) return 'Back to Search Results';
-    if (fromPopularSets) return 'Back to Search Sets';
-    return flashcardSet?.isDerived ? 'Back to Saved Sets' : 'Back to Created Sets';
-  };
+// Back link helpers
+const getBackLinkText = () => {
+  // Keep original navigation for search results and popular sets
+  if (fromSearch) return 'Back to Search Results';
+  if (fromPopularSets) return 'Back to Search Sets';
+  
+  // For other cases, display "Back to Saved Sets" if the user has saved this set
+  if (isSavedByCurrentUser) {
+    return 'Back to Saved Sets';
+  }
+  
+  // Original fallback logic
+  return flashcardSet?.isDerived ? 'Back to Saved Sets' : 'Back to Created Sets';
+};
 
-  const getBackLinkPath = () => {
-    if (fromSearch) return `/search-results?q=${encodeURIComponent(searchQuery)}`;
-    if (fromPopularSets) return '/search-sets';
-    return flashcardSet?.isDerived ? '/saved-sets' : '/created-sets';
-  };
+// Similarly, update the getBackLinkPath function
+const getBackLinkPath = () => {
+  // Keep original navigation for search results and popular sets
+  if (fromSearch) return `/search-results?q=${encodeURIComponent(searchQuery)}`;
+  if (fromPopularSets) return '/search-sets';
+  
+  // For other cases, link to saved sets if the user has saved this set
+  if (isSavedByCurrentUser) {
+    return '/saved-sets';
+  }
+  
+  // Original fallback logic
+  return flashcardSet?.isDerived ? '/saved-sets' : '/created-sets';
+};
 
   // Actions
   const handleEditSet = () => {
@@ -246,18 +375,22 @@ const SetViewingPage: React.FC = () => {
     if (!user?.uid) return;
     setLoading(true);
     try {
+      // Update API endpoint to match the new implementation
       const res = await fetch(`${API_BASE_URL}/sets/save`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ originalSetId: flashcardSet?.id, userId: user.uid })
+        body: JSON.stringify({ 
+          setId: flashcardSet?.id, // Changed from originalSetId to setId
+          userId: user.uid 
+        })
       });
+      
       if (!res.ok) throw new Error('Save failed');
-      const saved = await res.json();
+      const data = await res.json();
       setIsSavedByCurrentUser(true);
-      if (saved.id !== setId) {
-        navigate(`/study/${saved.id}`, { state: { fromSearch, searchQuery } });
-      }
+      // Show animation instead of alert
+      setShowSaveSuccess(true);
     } catch (err) {
       console.error('Error saving set:', err);
       alert('Failed to save the set.');
@@ -270,28 +403,23 @@ const SetViewingPage: React.FC = () => {
     if (!user?.uid) return;
     setIsUnsaving(true);
     try {
-      if (flashcardSet?.isDerived) {
-        const res = await fetch(`${API_BASE_URL}/sets/unsave`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ setId: flashcardSet.id, userId: user.uid })
-        });
-        if (!res.ok) throw new Error('Unsave failed');
+      const res = await fetch(`${API_BASE_URL}/sets/unsave`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          setId: flashcardSet?.id, 
+          userId: user.uid 
+        })
+      });
+      
+      if (!res.ok) throw new Error('Unsave failed');
+      setIsSavedByCurrentUser(false);
+      
+      // If we're viewing a saved set in the saved sets page,
+      // navigate back to saved sets list
+      if (location.pathname.includes('/saved-sets')) {
         navigate('/saved-sets');
-      } else {
-        const savedRes = await fetch(`${API_BASE_URL}/sets/saved/${user.uid}`, { credentials: 'include' });
-        const savedSets: FlashcardSet[] = await savedRes.json();
-        const savedCopy = savedSets.find(s => s.originalSetId === flashcardSet?.id && s.userId === user.uid);
-        if (!savedCopy) throw new Error('No saved copy found');
-        const res = await fetch(`${API_BASE_URL}/sets/unsave`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ setId: savedCopy.id, userId: user.uid })
-        });
-        if (!res.ok) throw new Error('Unsave failed');
-        setIsSavedByCurrentUser(false);
       }
     } catch (err) {
       console.error('Error unsaving:', err);
@@ -555,7 +683,7 @@ const SetViewingPage: React.FC = () => {
                             className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
                             onClick={() => {
                               if (!card.questionImage) return; // Type safety check
-                              
+                                          
                               // Create a modal or lightbox effect
                               const modal = document.createElement('div');
                               modal.style.position = 'fixed';

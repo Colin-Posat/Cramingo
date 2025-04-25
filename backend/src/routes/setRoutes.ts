@@ -9,7 +9,8 @@ import {
   deleteSet,
   saveSet,
   unsaveSet,
-  getTopPopularSets
+  getTopPopularSets,
+  checkSavedStatus // Added the new function
 } from "../controllers/setController";
 
 const router = express.Router();
@@ -26,11 +27,14 @@ router.get("/user/:userId", getUserSets);
 // Get saved sets for a specific user
 router.get("/saved/:userId", getSavedSets);
 
+// Get top popular sets
 router.get('/popular', getTopPopularSets);
-
 
 // Search for public sets by class code
 router.get('/search', getSetsByClassCode);
+
+// Check if a user has saved a specific set
+router.get('/saved-status', checkSavedStatus); // New route
 
 // Get a specific flashcard set by ID
 router.get("/:id", getSetById);
@@ -43,7 +47,5 @@ router.post("/save", saveSet);
 
 // Unsave (remove) a saved flashcard set
 router.post("/unsave", unsaveSet);
-
-router.get('/popular', getTopPopularSets);
 
 export default router;

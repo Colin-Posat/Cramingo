@@ -31,6 +31,7 @@ type FlashcardSet = {
   isDerived?: boolean;
   savedByUsername?: string;
   likes?: number;
+  popularity?: number; // Added popularity for backward compatibility
   createdAt: { 
     seconds: number, 
     nanoseconds: number 
@@ -54,32 +55,31 @@ const SavedSets: React.FC = () => {
     if (authLoading) {
       return; // Wait for auth to finish loading
     }
-
+  
     // Check if user is authenticated
     if (!isAuthenticated || !user) {
       console.error('No user found, redirecting to login');
       navigate('/login');
       return;
     }
-
+  
     const fetchSavedSets = async () => {
       try {
         setLoading(true);
         setError(null);
         
         // Use environment variable or fallback
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://fliply-backend.onrender.com/api';
         
         console.log('Fetching saved sets for user:', user.uid);
-
-        const response = await fetch(`${apiUrl}/sets/saved/${user.uid}`, {
+  
+        const response = await fetch(`${API_BASE_URL}/sets/saved/${user.uid}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
           credentials: 'include' // Include cookies for authentication
         });
-
+  
         console.log('Response status:', response.status);
         
         // First try to get the response as text to see what's happening
@@ -92,7 +92,8 @@ const SavedSets: React.FC = () => {
           data = JSON.parse(responseText);
           console.log('Parsed data:', data);
           
-          // Update state with the parsed data
+          // The data structure should already include the likes count from the original set
+          // since we're no longer creating copies with separate like counts
           setSets(Array.isArray(data) ? data : []);
           
           // Show helper only if no sets and first visit
@@ -114,9 +115,9 @@ const SavedSets: React.FC = () => {
         setLoading(false);
       }
     };
-
+  
     fetchSavedSets();
-  }, [user, authLoading, isAuthenticated, navigate]); // Added dependencies
+  }, [user, authLoading, isAuthenticated, navigate]);
 
   // Close helper popup
   const closeHelper = () => {
@@ -147,7 +148,7 @@ const SavedSets: React.FC = () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://fliply-backend.onrender.com/api';
       
-      const response = await fetch(`${apiUrl}/sets/unsave`, {
+      const response = await fetch(`${API_BASE_URL}/sets/unsave`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -369,11 +370,11 @@ const SavedSets: React.FC = () => {
                           </span>
                         </div>
                         
-                        {/* Likes count with singular/plural handling */}
+                        {/* Likes count - matching the format in the first file exactly */}
                         <div className="flex items-center">
-                        <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
+                          <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
                           <span className="text-sm font-semibold text-[#004a74]">
-                            {set.likes || 0} {(set.likes === 1) ? 'like' : 'likes'}
+                            {set.likes || 0} {set.likes === 1 ? 'like' : 'likes'}
                           </span>
                         </div>
                       </div>
