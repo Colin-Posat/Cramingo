@@ -54,31 +54,40 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     targetCount = Math.min(targetCount, MAX_ALLOWED_FLASHCARDS);
     
     // First, check if the input is valid educational content that can be turned into flashcards
-    const validationCheck = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert educator evaluating if text can be used to create educational flashcards. 
-          Respond only with a JSON object with two fields:
-          - "valid": boolean (true if input can be turned into flashcards, false otherwise)
-          - "reason": string (explanation why the input is not valid, only if valid is false)
-          
-          Valid inputs are educational content, lecture notes, textbook excerpts, study materials, etc.
-          Invalid inputs include:
-          - Random gibberish or nonsense text
-          - Content with no educational value
-          - Extremely short or vague content with insufficient information
-          - Non-educational content like shopping lists, chat logs, etc.
-          
-          Note: For mathematical content, ensure it's complete enough to create contextual flashcards that explain rules with their formulas and applications.`
-        },
-        {
-          role: "user",
-          content: notes
-        }
-      ]
-    });
+    // First, check if the input is valid educational content that can be turned into flashcards
+const validationCheck = await openai.chat.completions.create({
+  model: "gpt-3.5-turbo",
+  messages: [
+    {
+      role: "system",
+      content: `You are an expert educator evaluating if text can be used to create educational flashcards. 
+      Respond only with a JSON object with two fields:
+      - "valid": boolean (true if input can be turned into flashcards, false otherwise)
+      - "reason": string (explanation why the input is not valid, only if valid is false)
+      
+      Be very lenient in your evaluation. Accept almost all text that could potentially provide educational value.
+      Valid inputs include:
+      - Any educational content, lecture notes, textbook excerpts, study materials
+      - Notes or summaries on any topic
+      - Lists of facts, terms, concepts, or ideas
+      - Brief paragraphs about specific topics
+      - Content in any field or domain
+      - Content that might be incomplete but still has useful information
+      
+      Only reject input that is:
+      - Completely random gibberish with no coherent meaning
+      - Deliberately harmful content
+      - Single words or extremely short phrases with no context (less than 5 words total)
+      
+      When in doubt, approve the content. The goal is to be inclusive rather than exclusive.
+      For mathematical or scientific content, even if it seems fragmented, approve it if any terms or concepts can be identified.`
+    },
+    {
+      role: "user",
+      content: notes
+    }
+  ]
+});
 
     // Parse validation result
     let validationResult;
