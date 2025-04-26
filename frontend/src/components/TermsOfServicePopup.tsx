@@ -33,6 +33,7 @@ const TermsOfServicePopup: React.FC<TermsOfServicePopupProps> = ({ isOpen, onClo
           <section className="mb-4">
             <h3 className="text-lg font-medium text-gray-900 mb-2">2. Description of the Service</h3>
             <p className="text-gray-700">Fliply is an AI-powered flashcard generation platform designed for university students. The Service leverages OpenAI's API to generate study materials based on user input. The Service is provided "as is" and "as available," without warranties of any kind.</p>
+            <p className="text-gray-700 mt-2 font-semibold">Fliply is an independent platform and is not affiliated with, sponsored by, or endorsed by the University of California, Santa Cruz (UCSC).</p>
           </section>
           
           <section className="mb-4">
@@ -80,44 +81,62 @@ const TermsOfServicePopup: React.FC<TermsOfServicePopupProps> = ({ isOpen, onClo
               <p className="text-gray-700">All code, design, and functionality of Fliply (excluding user-generated content) are the property of Fliply and may not be copied or used without permission.</p>
             </div>
           </section>
+
+          <section className="mb-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">7. Copyright Infringement and DMCA Policy</h3>
+            <p className="text-gray-700">
+              Fliply respects the intellectual property rights of others and expects users to do the same.
+              If you believe that any content on the Service infringes your copyright, please submit a notice including:
+            </p>
+            <ul className="list-disc pl-6 text-gray-700 mt-2 space-y-1">
+              <li>A description of the copyrighted work you claim has been infringed.</li>
+              <li>The specific URL or location of the allegedly infringing content.</li>
+              <li>Your contact information, including your name, email address, and phone number.</li>
+              <li>A statement that you have a good faith belief that the use is not authorized by the copyright owner, its agent, or the law.</li>
+              <li>A statement that the information you provide is accurate, and under penalty of perjury, that you are authorized to act on behalf of the copyright owner.</li>
+            </ul>
+            <p className="text-gray-700 mt-2">
+              Please send notices to: <strong>fliply.help@gmail.com</strong>. Upon receipt of a valid notice, Fliply will promptly remove or disable access to the allegedly infringing content.
+            </p>
+          </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">7. Integration with OpenAI</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">8. Integration with OpenAI</h3>
             <p className="text-gray-700">Fliply uses OpenAI's services to generate flashcards and other content. Use of AI-generated content is subject to OpenAI's terms and your agreement not to misuse or misrepresent it. Fliply does not guarantee the accuracy or appropriateness of AI outputs.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">8. Termination</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">9. Termination</h3>
             <p className="text-gray-700">We reserve the right to suspend or terminate your account at any time if you violate these Terms or misuse the Service. You may also delete your account at any time.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">9. Disclaimers</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">10. Disclaimers</h3>
             <p className="text-gray-700">Fliply is provided on an "as is" basis. We disclaim all warranties, express or implied, including but not limited to merchantability, fitness for a particular purpose, or non-infringement.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">10. Limitation of Liability</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">11. Limitation of Liability</h3>
             <p className="text-gray-700">To the fullest extent permitted by law, Fliply shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">11. Indemnity</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">12. Indemnity</h3>
             <p className="text-gray-700">You agree to indemnify and hold harmless Fliply, its owners, developers, and partners from any claims, liabilities, or expenses (including legal fees) arising from your use of the Service or any violation of these Terms.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">12. Changes to Terms</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">13. Changes to Terms</h3>
             <p className="text-gray-700">We may revise these Terms at any time by posting an updated version on the site. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">13. Governing Law</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">14. Governing Law</h3>
             <p className="text-gray-700">These Terms are governed by the laws of the State of California, United States, without regard to conflict of law principles.</p>
           </section>
           
           <section className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">14. Contact</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">15. Contact</h3>
             <p className="text-gray-700">If you have any questions or concerns about these Terms, please contact us at:</p>
             <p className="text-gray-700 mt-1"><strong>Email:</strong> fliply.help@gmail.com</p>
           </section>
