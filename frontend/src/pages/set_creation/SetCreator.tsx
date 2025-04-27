@@ -812,7 +812,7 @@ const SetCreator: React.FC = () => {
             </h3>
 
             <div className="space-y-6">
-              {flashcards.map((card, index) => (
+            {flashcards.map((card, index) => (
                 <div 
                   key={index} 
                   className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
@@ -835,59 +835,89 @@ const SetCreator: React.FC = () => {
                         Question
                       </h3>
                       
-                      {/* Question Text Input */}
-                      <textarea 
-                        value={card.question}
-                        onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
-                        placeholder="Enter your question here"
-                        className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
-                          focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
-                      />
-                      
-                      {/* Question Action Buttons (Image & Equation) */}
-                      <div className="mt-2 flex gap-3">
-                        {card.hasQuestionImage && card.questionImage ? (
-                          <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
-                            <img 
-                              src={card.questionImage} 
-                              alt="Question" 
-                              className="w-full h-auto max-h-[150px] object-contain" 
-                            />
-                            <button 
-                              onClick={() => removeImage(index, 'question')}
-                              className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            {/* Add Image Button */}
-                            <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
-                              <ImageIcon className="w-4 h-4" />
-                              <span className="text-sm">Add image</span>
-                              <input 
-                                type="file" 
-                                accept="image/*"
-                                className="hidden"
-                                disabled={imageUploading}
-                                onChange={(e) => handleImageUpload(e, index, 'question')}
-                                ref={el => {
-                                  if (el) fileInputRefs.current[index * 2] = el;
-                                }}
-                              />
-                            </label>
+                      {/* Question Drop Zone */}
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                          
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            const file = e.dataTransfer.files[0];
                             
-                            {/* Add Equation Button */}
-                            <button
-                              onClick={() => openEquationEditor(index, 'question')}
-                              className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
-                            >
-                              <CalculatorIcon className="w-4 h-4" />
-                              <span className="text-sm">Add equation</span>
-                            </button>
-                          </div>
-                        )}
+                            // Create a synthetic event object to reuse handleImageUpload
+                            const syntheticEvent = {
+                              target: {
+                                files: e.dataTransfer.files
+                              }
+                            } as unknown as React.ChangeEvent<HTMLInputElement>;
+                            
+                            handleImageUpload(syntheticEvent, index, 'question');
+                          }
+                        }}
+                        className="relative rounded-lg transition-all"
+                      >
+                        {/* Question Text Input */}
+                        <textarea 
+                          value={card.question}
+                          onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
+                          placeholder="Enter your question or drag & drop an image here"
+                          className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
+                            focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
+                        />
+                        
+                        {/* Question Action Buttons (Image & Equation) */}
+                        <div className="mt-2 flex gap-3">
+                          {card.hasQuestionImage && card.questionImage ? (
+                            <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
+                              <img 
+                                src={card.questionImage} 
+                                alt="Question" 
+                                className="w-full h-auto max-h-[150px] object-contain" 
+                              />
+                              <button 
+                                onClick={() => removeImage(index, 'question')}
+                                className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              {/* Add Image Button */}
+                              <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                                <ImageIcon className="w-4 h-4" />
+                                <span className="text-sm">Add image</span>
+                                <input 
+                                  type="file" 
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={imageUploading}
+                                  onChange={(e) => handleImageUpload(e, index, 'question')}
+                                  ref={el => {
+                                    if (el) fileInputRefs.current[index * 2] = el;
+                                  }}
+                                />
+                              </label>
+                              
+                              {/* Add Equation Button */}
+                              <button
+                                onClick={() => openEquationEditor(index, 'question')}
+                                className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
+                              >
+                                <CalculatorIcon className="w-4 h-4" />
+                                <span className="text-sm">Add equation</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -898,59 +928,89 @@ const SetCreator: React.FC = () => {
                         Answer
                       </h3>
                       
-                      {/* Answer Text Input */}
-                      <textarea 
-                        value={card.answer}
-                        onChange={(e) => updateFlashcard(index, 'answer', e.target.value)}
-                        placeholder="Enter your answer here"
-                        className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
-                          focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
-                      />
-                      
-                      {/* Answer Action Buttons (Image & Equation) */}
-                      <div className="mt-2 flex gap-3">
-                        {card.hasAnswerImage && card.answerImage ? (
-                          <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
-                            <img 
-                              src={card.answerImage} 
-                              alt="Answer" 
-                              className="w-full h-auto max-h-[150px] object-contain" 
-                            />
-                            <button 
-                              onClick={() => removeImage(index, 'answer')}
-                              className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            {/* Add Image Button */}
-                            <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
-                              <ImageIcon className="w-4 h-4" />
-                              <span className="text-sm">Add image</span>
-                              <input 
-                                type="file" 
-                                accept="image/*"
-                                className="hidden"
-                                disabled={imageUploading}
-                                onChange={(e) => handleImageUpload(e, index, 'answer')}
-                                ref={el => {
-                                  if (el) fileInputRefs.current[index * 2 + 1] = el;
-                                }}
-                              />
-                            </label>
+                      {/* Answer Drop Zone */}
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('border-[#004a74]', 'border-2', 'border-dashed', 'bg-blue-50');
+                          
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            const file = e.dataTransfer.files[0];
                             
-                            {/* Add Equation Button */}
-                            <button
-                              onClick={() => openEquationEditor(index, 'answer')}
-                              className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
-                            >
-                              <CalculatorIcon className="w-4 h-4" />
-                              <span className="text-sm">Add equation</span>
-                            </button>
-                          </div>
-                        )}
+                            // Create a synthetic event object to reuse handleImageUpload
+                            const syntheticEvent = {
+                              target: {
+                                files: e.dataTransfer.files
+                              }
+                            } as unknown as React.ChangeEvent<HTMLInputElement>;
+                            
+                            handleImageUpload(syntheticEvent, index, 'answer');
+                          }
+                        }}
+                        className="relative rounded-lg transition-all"
+                      >
+                        {/* Answer Text Input */}
+                        <textarea 
+                          value={card.answer}
+                          onChange={(e) => updateFlashcard(index, 'answer', e.target.value)}
+                          placeholder="Enter your answer or drag & drop an image here"
+                          className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
+                            focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
+                        />
+                        
+                        {/* Answer Action Buttons (Image & Equation) */}
+                        <div className="mt-2 flex gap-3">
+                          {card.hasAnswerImage && card.answerImage ? (
+                            <div className="relative border rounded-lg overflow-hidden mb-2 flex-1">
+                              <img 
+                                src={card.answerImage} 
+                                alt="Answer" 
+                                className="w-full h-auto max-h-[150px] object-contain" 
+                              />
+                              <button 
+                                onClick={() => removeImage(index, 'answer')}
+                                className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              {/* Add Image Button */}
+                              <label className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]">
+                                <ImageIcon className="w-4 h-4" />
+                                <span className="text-sm">Add image</span>
+                                <input 
+                                  type="file" 
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={imageUploading}
+                                  onChange={(e) => handleImageUpload(e, index, 'answer')}
+                                  ref={el => {
+                                    if (el) fileInputRefs.current[index * 2 + 1] = el;
+                                  }}
+                                />
+                              </label>
+                              
+                              {/* Add Equation Button */}
+                              <button
+                                onClick={() => openEquationEditor(index, 'answer')}
+                                className="inline-flex items-center gap-1 text-[#004a74] cursor-pointer mt-1 hover:text-[#00659f]"
+                              >
+                                <CalculatorIcon className="w-4 h-4" />
+                                <span className="text-sm">Add equation</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
