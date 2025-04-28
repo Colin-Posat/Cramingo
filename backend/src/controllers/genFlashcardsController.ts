@@ -129,6 +129,13 @@ const validationCheck = await openai.chat.completions.create({
       * For historical events, include approximate dates or time periods
       * For processes or methods, include key steps or components
       * For relationships between concepts, clearly specify how they connect
+      * - For problems requiring calculations or specific data:
+  * Always include all necessary information in the question to solve the problem
+  * For physics problems, include relevant measurements, units, and conditions
+  * For math problems, include all variables and constraints needed to work out the solution
+  * For chemistry problems, include concentrations, temperatures, or other relevant parameters
+  * Never separate crucial data from the question that would be needed to arrive at the answer
+      
     
     Output Format: 
     Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
@@ -157,6 +164,13 @@ const validationCheck = await openai.chat.completions.create({
     - Instead of just "This uses PCR technique", say "This uses PCR (Polymerase Chain Reaction) technique to amplify DNA sequences"
     - Instead of just "During the Renaissance period", say "During the Renaissance period (14th-17th centuries in Europe)"
     
+    - When creating flashcards for problems with calculations or specific data:
+  * Instead of "Calculate the force", say "Calculate the force when a 5kg object accelerates at 2m/s²"
+  * Instead of "Find the concentration", say "Find the concentration when 20g of NaCl is dissolved in 500mL of water"
+  * Instead of "What is the derivative?", say "What is the derivative of f(x) = 3x² + 2x - 5?"
+  * Instead of "Calculate the economic growth", say "Calculate the economic growth rate when GDP increases from $2.1T to $2.3T in one year"
+  * NEVER omit data from the question that would be needed to understand or calculate the answer
+
     FORMATTING REQUIREMENTS:
     - Questions must be under 15 words whenever possible
     - Answers must be under 20 words whenever possible
