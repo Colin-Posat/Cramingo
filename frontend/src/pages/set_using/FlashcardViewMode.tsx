@@ -140,6 +140,17 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     setExpandedImage(null);
   };
 
+  // Helper function to preserve text formatting
+  const formatText = (text: string) => {
+    // Split text by new lines
+    return text.split('\n').map((line, i) => (
+      <React.Fragment key={i}>
+        {line}
+        {i < text.split('\n').length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+
   // Loading state
   if (isStandalone) {
     if (loading) {
@@ -261,7 +272,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Flashcard with Flip Animation - Now with image support */}
+      {/* Flashcard with Flip Animation - Now with image support and text formatting */}
       <div className="w-full max-w-7xl h-96 mb-6 mx-auto [perspective:1000px]">
         <div 
           key={currentCard.id} 
@@ -301,10 +312,10 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
                 </div>
               )}
               
-              {/* Question Text */}
-              <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
+              {/* Question Text - Using pre-wrap to preserve formatting */}
+              <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full">
                 {currentCard.question}
-              </p>
+              </div>
             </div>
           </div>
 
@@ -341,10 +352,10 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
                 </div>
               )}
               
-              {/* Answer Text */}
-              <p className="text-xl md:text-2xl text-center text-gray-800 break-words">
+              {/* Answer Text - Using pre-wrap to preserve formatting */}
+              <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full">
                 {currentCard.answer}
-              </p>
+              </div>
             </div>
           </div>
         </div>
