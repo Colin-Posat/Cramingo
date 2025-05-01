@@ -8,7 +8,10 @@ import {
   BookIcon,
   UsersIcon,
   BookmarkX,
-  HeartIcon
+  HeartIcon,
+  CheckCircleIcon,
+  BookOpenIcon,
+  FolderIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
@@ -67,8 +70,6 @@ const SavedSets: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Use environment variable or fallback
         
         console.log('Fetching saved sets for user:', user.uid);
   
@@ -175,66 +176,66 @@ const SavedSets: React.FC = () => {
     }
   };
 
-  // Format date with Firestore Timestamp handling
-  const formatDate = (dateValue: any) => {
-    if (!dateValue) return '';
+  // Format date with robust handling for different date formats
+  const formatDate = (dateValue: any): string => {
+    if (!dateValue) return 'Recently saved';
     
     try {
-      // For Firestore Timestamp objects - standard format
-      if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
-        console.log('Firestore Timestamp detected:', dateValue);
-        // Convert Firestore timestamp to milliseconds
-        const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
-        const date = new Date(milliseconds);
+      // Handle Firestore timestamp objects
+      if (typeof dateValue === 'object') {
+        // Standard format
+        if ('seconds' in dateValue && 'nanoseconds' in dateValue) {
+          const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
+          return formatDateFromMillis(milliseconds);
+        }
         
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(date);
-      }
-      
-      // For Firestore Timestamp objects with underscore prefix - serialized format
-      if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
-        console.log('Serialized Firestore Timestamp detected:', dateValue);
-        // Convert Firestore timestamp to milliseconds
-        const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
-        const date = new Date(milliseconds);
+        // Serialized format
+        if ('_seconds' in dateValue && '_nanoseconds' in dateValue) {
+          const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
+          return formatDateFromMillis(milliseconds);
+        }
         
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(date);
-      }
-      
-      // Regular Date objects
-      if (dateValue instanceof Date) {
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(dateValue);
-      }
-      
-      // String or number handling for ISO dates or timestamps
-      if (typeof dateValue === 'string' || typeof dateValue === 'number') {
-        const date = new Date(dateValue);
-        if (!isNaN(date.getTime())) {
-          return new Intl.DateTimeFormat('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }).format(date);
+        // Regular Date objects
+        if (dateValue instanceof Date) {
+          return formatDateFromDate(dateValue);
         }
       }
       
-      console.log('Could not format date value:', dateValue);
+      // Handle string or number input
+      if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return formatDateFromDate(date);
+        }
+        
+        // Try to parse numeric strings as Unix timestamps
+        if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
+          const timestamp = parseInt(dateValue);
+          return formatDateFromMillis(timestamp);
+        }
+      }
+      
       return 'Recently saved'; // Fallback text
     } catch (e) {
       console.error('Error formatting date:', e);
       return 'Recently saved';
     }
+  };
+  
+  // Helper functions for date formatting
+  const formatDateFromMillis = (milliseconds: number): string => {
+    const date = new Date(milliseconds);
+    return formatDateFromDate(date);
+  };
+  
+  const formatDateFromDate = (date: Date): string => {
+    if (isNaN(date.getTime())) return 'Recently saved';
+    
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date);
   };
 
   // Helper to get the most appropriate creator display name
@@ -263,227 +264,379 @@ const SavedSets: React.FC = () => {
     return 'Public set';
   };
 
+  // Render card component for a single saved flashcard set
+const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
+  // Calculate card count
+  const cardCount = set.numCards || set.flashcards?.length || 0;
+  const likeCount = set.likes || 0;
+  
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-md 
+      transform-gpu hover:scale-[1.02] hover:-translate-y-1
+      hover:shadow-xl
+      transition-all duration-300 ease-out relative overflow-hidden 
+      cursor-pointer group border border-gray-200
+      hover:border-[#004a74]/50 flex flex-col w-full min-h-[250px]"
+      onClick={() => handleSetClick(set.id)}
+    >
+      {/* Card Header with Status Badge */}
+      <div className="bg-gradient-to-r from-blue-50 to-blue-50 p-4 flex justify-between items-center border-b">
+        <div className="flex items-center gap-2">
+          <FolderIcon className="w-5 h-5 text-[#004a74]" />
+          <div className="text-sm font-medium text-[#004a74]">Saved Set</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-3 py-1 rounded-full flex items-center gap-1 bg-green-100 text-green-800">
+            <CheckCircleIcon className="w-3 h-3" /> Saved
+          </span>
+        </div>
+      </div>
+      
+      {/* Card content */}
+      <div className="p-5 flex-grow flex flex-col">
+        <div className="flex-grow">
+          <h3 className="text-xl font-bold text-[#004a74] mb-3 line-clamp-2 transition-colors duration-300">
+            {set.title}
+          </h3>
+          
+          {set.classCode && (
+            <div className="px-3 py-2 bg-blue-50 rounded-lg inline-block mb-4">
+              <span className="text-sm font-medium text-[#004a74]">{set.classCode}</span>
+            </div>
+          )}
+          
+          {set.description && (
+            <p className="text-sm text-gray-600 line-clamp-2 mt-1 mb-4">
+              {set.description}
+            </p>
+          )}
+          
+          {/* Stats row */}
+          <div className="flex flex-wrap gap-4 mt-2">
+            {/* Cards count */}
+            <div className="bg-white border border-blue-100 rounded-lg px-3 py-1.5 flex items-center">
+              <BookOpenIcon className="w-4 h-4 mr-2 text-[#004a74]" />
+              <span className="text-sm font-medium text-gray-700">
+                {cardCount} {cardCount === 1 ? 'card' : 'cards'}
+              </span>
+            </div>
+            
+            {/* Likes count */}
+            <div className="bg-white border border-rose-100 rounded-lg px-3 py-1.5 flex items-center">
+              <HeartIcon className={`w-4 h-4 mr-2 ${likeCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}`} />
+              <span className="text-sm font-medium text-gray-700">
+                {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {set.createdAt && (
+          <div className="text-xs text-gray-500 mt-4">
+            Saved: {formatDate(set.createdAt)}
+          </div>
+        )}
+      </div>
+      
+      {/* Action buttons footer */}
+      <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] p-4 flex justify-between items-center 
+        transition-colors duration-300 group-hover:from-[#00395c] group-hover:to-[#0074c2]">
+        <div className="text-white text-sm font-medium flex items-center gap-2">
+          <BookOpenIcon className="w-4 h-4 group-hover:animate-pulse" />
+          <span>Click to study</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="text-white text-xs flex items-center mr-3">
+            <UsersIcon className="w-3 h-3 mr-1" />
+            {getCreatorName(set)}
+          </div>
+          
+          <button 
+            onClick={(e) => confirmUnsave(e, set.id)}
+            className="bg-white/90 text-red-500 p-2 rounded-lg hover:bg-white transition-colors duration-150"
+            aria-label="Unsave set"
+          >
+            <BookmarkX className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
   // --- Render Logic ---
 
-  // 1. Loading State - Check both auth loading and data loading
+  // Loading State - Check both auth loading and data loading
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-white">
         <NavBar />
         <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
-            <p className="mt-4 text-[#004a74] font-medium">Loading your saved sets...</p>
+            <div className="relative">
+              <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
+              <div className="animate-spin relative rounded-full h-16 w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
+            </div>
+            <div className="mt-6 bg-blue-50 px-6 py-3 rounded-lg shadow-sm">
+              <p className="text-[#004a74] font-medium text-lg">Loading your saved sets...</p>
+            </div>
+            <p className="mt-3 text-gray-500 text-sm">This may take a moment</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // Error state component
+  const ErrorState = ({ message }: { message: string }) => (
+    <div className="bg-white border border-red-200 shadow-lg rounded-xl p-6 mb-8 animate-fade-in">
+      <div className="flex items-start gap-4">
+        <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+          <AlertCircleIcon className="w-6 h-6 text-red-500" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Something went wrong</h3>
+          <p className="text-gray-600 mb-4">{message}</p>
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 
+                transition flex items-center gap-2 text-sm font-medium shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 2v6h-6"></path>
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                <path d="M3 22v-6h6"></path>
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+              </svg>
+              Reload Page
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 
+                rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+            >
+              Go to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+// Updated EmptyState component
+const EmptyState = () => (
+  <div className="flex items-center justify-center min-h-[calc(100vh-16rem)] py-8 w-full">
+    <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-12 shadow-xl max-w-lg w-full text-center border border-blue-100">
+      <div className="relative mb-10">
+        <BookmarkIcon className="mx-auto w-28 h-28 text-[#004a74] relative z-10" />
+      </div>
+      <h2 className="text-3xl font-bold text-[#004a74] mb-4">
+        No Saved Sets Yet
+      </h2>
+      <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
+        You haven't saved any flashcard sets yet. Search for sets to find and save your favorites.
+      </p>
+      
+      {/* Get started steps */}
+      <div className="mb-8 text-left">
+        <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
+          <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
+            <SearchIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-md font-semibold text-[#004a74]">Find Sets</h3>
+            <p className="text-sm text-gray-600">Search for sets created by others</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
+          <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
+            <BookmarkIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-md font-semibold text-[#004a74]">Save Sets</h3>
+            <p className="text-sm text-gray-600">Bookmark sets you want to study later</p>
+          </div>
+        </div>
+      </div>
+
+      <button 
+        onClick={goToSearch}
+        className="mx-auto flex items-center justify-center gap-2 bg-[#004a74] text-white font-bold 
+          py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-lg w-full"
+      >
+        <SearchIcon className="w-5 h-5" />
+        <span>Find Sets</span>
+      </button>
+    </div>
+  </div>
+);
+
+  // Helper modal component with better styling
+  const HelperModal = () => (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
+        {/* Top decorative bar */}
+        <div className="h-2 bg-gradient-to-r from-[#004a74] to-[#0080d4]"></div>
+        
+        {/* Close button in corner */}
+        <button 
+          onClick={() => setShowHelper(false)}
+          className="absolute top-4 right-4 bg-gray-100 text-gray-600 p-2 rounded-full 
+            hover:bg-gray-200 transition-colors z-10"
+          aria-label="Close modal"
+        >
+          <XIcon className="w-5 h-5" />
+        </button>
+        
+        <div className="p-10 pt-8 text-center">
+          {/* Header with decorative elements */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center justify-center opacity-10">
+              <BookOpenIcon className="w-48 h-48 text-[#004a74]" />
+            </div>
+            <BookmarkIcon className="mx-auto w-24 h-24 text-[#004a74] mb-4" />
+            <h2 className="text-3xl font-bold text-[#004a74]">
+              Welcome to Your Saved Sets!
+            </h2>
+          </div>
+          
+          {/* Content with step indicators */}
+          <div className="max-w-xl mx-auto mb-8">
+            <div className="bg-blue-50 rounded-xl p-6 mb-6">
+              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
+                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">1</div>
+                <span>Find Flashcard Sets</span>
+              </h3>
+              <p className="text-gray-700">
+                Click "Find Sets" to discover flashcards created by your classmates and instructors.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
+                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">2</div>
+                <span>Save Sets for Later</span>
+              </h3>
+              <p className="text-gray-700">
+                Bookmark sets you want to study, and return to them anytime on this page.
+              </p>
+            </div>
+          </div>
+          
+          {/* Action button */}
+          <button 
+            onClick={() => setShowHelper(false)}
+            className="bg-[#004a74] text-white px-8 py-3 rounded-xl 
+              hover:bg-[#00659f] transition-all flex items-center 
+              justify-center mx-auto gap-2 text-lg font-medium shadow-lg
+              hover:shadow-xl active:scale-[0.98]"
+          >
+            <CheckCircleIcon className="w-5 h-5" />
+            <span>Got it!</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Unsave confirmation modal with better styling
+  const UnsaveModal = () => (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+        {/* Warning bar */}
+        <div className="h-1.5 bg-red-500"></div>
+        
+        <div className="p-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="bg-red-100 p-3 rounded-full">
+              <BookmarkX className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Unsave Flashcard Set?</h2>
+          </div>
+          
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8 rounded-r">
+            <p className="text-gray-700">
+              This set will be removed from your saved collection. You can always find and save it again later.
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <button 
+              onClick={() => setShowUnsaveModal(false)}
+              className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg 
+                hover:bg-gray-50 transition font-medium focus:outline-none focus:ring-2 
+                focus:ring-gray-300 focus:ring-offset-1"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={unsaveSet}
+              className="px-6 py-2.5 bg-red-500 text-white rounded-lg 
+                hover:bg-red-600 transition font-medium shadow-sm hover:shadow
+                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1
+                active:bg-red-700"
+            >
+              Unsave
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Header with Search Button in top left */}
-      <div className="fixed top-20 left-0 right-0 px-6 z-10">
-        {/* Search Button on the left */}
-        <button
-          onClick={goToSearch}
-          className="bg-[#004a74] text-white font-bold
-            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98]
-            transition-all flex items-center justify-center gap-3
-            shadow-md text-xl"
+{/* Header with Search Button in fixed position - Only shown when sets exist */}
+{sets.length > 0 && (
+  <div className="fixed top-16 left-0 right-0 z-10 bg-white shadow-sm border-b border-gray-200 py-4">
+    <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+      <button
+        onClick={goToSearch}
+        className="relative bg-gradient-to-r from-[#004a74] to-[#006da9] text-white font-medium text-[16px] px-4 py-[0.35em] pl-5 h-[2.8em] rounded-lg flex items-center overflow-hidden cursor-pointer border border-[#004a74] shadow-[inset_0_0_1.6em_-0.6em_#002a44] group w-48"
+      >
+        <span className="mr-10">
+          Find Sets
+        </span>
+        <div
+          className="absolute right-[0.3em] bg-white h-[2.2em] w-[2.2em] rounded-[0.7em] flex items-center justify-center transition-all duration-300 group-hover:w-[calc(100%-0.6em)] shadow-[0.1em_0.1em_0.6em_0.2em_#002a44] active:scale-95"
         >
-          <SearchIcon className="w-5 h-5" />
-          <span>Find Sets</span>
-        </button>
+          <SearchIcon className="w-5 h-5 text-[#004a74] transition-transform duration-300 group-hover:scale-110" />
+        </div>
+      </button>
+      
+      <div className="bg-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium ml-auto">
+        {sets.length} {sets.length === 1 ? 'set' : 'sets'}
       </div>
-
-      {/* Sets Container */}
-      <div className="pt-32 px-6 pb-6">
-        
+    </div>
+  </div>
+)}
+      {/* Main Content */}
+      <div className="pt-40 px-4 sm:px-6 pb-16 max-w-7xl mx-auto">
         {/* Error message */}
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
-            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        )}
+        {error && <ErrorState message={error} />}
 
-        {/* Show grid of sets if there are any */}
+        {/* Show grid of sets or empty state */}
         {sets.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {sets.map((set) => (
-              <div
-                key={set.id}
-                className="bg-blue-50 rounded-2xl shadow-lg hover:shadow-2xl
-                  transition-all duration-300 relative overflow-hidden 
-                  cursor-pointer group border-2 border-transparent 
-                  hover:border-[#004a74]/20 flex flex-col w-full min-h-[250px]"
-                onClick={() => handleSetClick(set.id)}
-              >
-                {/* Card Header */}
-                <div className="bg-[#004a74]/10 p-3">
-                  <div className="text-sm font-medium text-[#004a74]">Saved Set</div>
-                </div>
-                
-                {/* Card content */}
-                <div className="p-4 flex-grow flex flex-row">
-                  <div className="flex-grow flex flex-col justify-between h-full">
-                    <div>
-                      <h3 className="text-xl font-bold text-[#004a74] mb-2 line-clamp-2">
-                        {set.title}
-                      </h3>
-                      
-                      <div className="text-sm text-gray-700 font-medium mb-2">
-                        {set.classCode && (
-                          <div className="mb-1">
-                            <span className="text-[#004a74]">Class:</span> {set.classCode}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {set.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-                          {set.description}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="flex justify-between items-end mt-3">
-                      <div className="flex items-center space-x-4">
-                        {/* Cards count with singular/plural handling */}
-                        <div className="flex items-center">
-                          <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
-                          <span className="text-sm font-semibold text-[#004a74]">
-                            {set.numCards || 0} {set.numCards === 1 ? 'card' : 'cards'}
-                          </span>
-                        </div>
-                        
-                        {/* Likes count - matching the format in the first file exactly */}
-                        <div className="flex items-center">
-                          <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
-                          <span className="text-sm font-semibold text-[#004a74]">
-                            {set.likes || 0} {set.likes === 1 ? 'like' : 'likes'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {set.createdAt && (
-                        <div className="text-xs text-gray-500">
-                          Saved: {formatDate(set.createdAt)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Action buttons footer */}
-                <div className="bg-[#004a74] p-4 flex justify-between items-center">
-                  <div className="text-white text-sm font-medium">Click to study</div>
-                  
-                  {/* Add the Unsave button here */}
-                  <div className="flex items-center gap-2">
-                    <div className="text-white text-xs flex items-center mr-3">
-                      <UsersIcon className="w-3 h-3 mr-1" />
-                      {getCreatorName(set)}
-                    </div>
-                    
-                    <button 
-                      onClick={(e) => confirmUnsave(e, set.id)}
-                      className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
-                      aria-label="Unsave set"
-                    >
-                      <BookmarkX className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <FlashcardSetCard key={set.id} set={set} />
             ))}
           </div>
         ) : (
-          // Empty State - Shows when no sets are present
-          <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-            <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
-              <BookmarkIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
-              <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                No Saved Sets Yet
-              </h2>
-              <p className="text-lg text-gray-600 mb-8">
-                You haven't saved any flashcard sets yet. Click the button below to search for sets and save your favorites.
-              </p>
-              <button 
-                onClick={goToSearch}
-                className="mx-auto flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
-              >
-                <SearchIcon className="w-6 h-6" />
-                <span>Find Sets</span>
-              </button>
-            </div>
-          </div>
+          <EmptyState />
         )}
 
-        {/* No Sets Helper */}
-        {showHelper && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="relative bg-white rounded-xl max-w-2xl w-full shadow-2xl">
-              <div className="p-8 text-center">
-                <BookmarkIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
-                <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                  Welcome to Your Saved Sets!
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                  This is where you'll find flashcard sets you've saved from other users. Search for public sets and save them to study later!
-                </p>
-                <button 
-                  onClick={closeHelper}
-                  className="bg-[#004a74] text-white px-8 py-4 rounded-full 
-                    hover:bg-[#00659f] transition-colors flex items-center 
-                    justify-center mx-auto gap-3 text-lg"
-                >
-                  <XIcon className="w-6 h-6" />
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Unsave Confirmation Modal */}
-        {showUnsaveModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl p-8">
-              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Unsave Flashcard Set?</h2>
-              <p className="text-lg text-gray-600 mb-8">
-                Are you sure you want to unsave this flashcard set? You'll no longer have access to it in your saved sets.
-              </p>
-              <div className="flex justify-end gap-4">
-                <button 
-                  onClick={() => setShowUnsaveModal(false)}
-                  className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition text-lg"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={unsaveSet}
-                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-lg"
-                >
-                  Unsave
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modals */}
+        {showHelper && <HelperModal />}
+        {showUnsaveModal && <UnsaveModal />}
       </div>
     </div>
   );

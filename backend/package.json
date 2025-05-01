@@ -15,9 +15,11 @@
   "dependencies": {
     "@types/bad-words": "^3.0.3",
     "bad-words": "^4.0.0",
+    "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "express-session": "^1.18.1",
     "firebase": "11.4.0",
     "firebase-admin": "^13.1.0",
     "multer": "^1.4.5-lts.2",
@@ -27,9 +29,11 @@
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.1",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.15.0",
     "@types/nodemailer": "^6.4.17",

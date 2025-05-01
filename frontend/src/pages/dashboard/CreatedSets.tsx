@@ -8,10 +8,13 @@ import {
   TrashIcon,
   AlertCircleIcon,
   HeartIcon,
-  SearchIcon
+  SearchIcon,
+  CheckCircleIcon,
+  BookOpenIcon,
+  FolderIcon
 } from 'lucide-react';
-import NavBar from '../../components/NavBar'; // Adjust the import path as needed
-import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import NavBar from '../../components/NavBar';
+import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
 // Enhanced type for Flashcard Set
@@ -29,7 +32,7 @@ type FlashcardSet = {
 
 const CreatedSets: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAuthenticated } = useAuth(); // Use the auth context
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [showHelper, setShowHelper] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,9 +43,10 @@ const CreatedSets: React.FC = () => {
   // Fetch created sets when component mounts or user changes
   useEffect(() => {
     const fetchSets = async () => {
-      // Don't fetch if auth is still loading or user is not authenticated
+      // Skip fetch if auth is still loading
       if (authLoading) return;
       
+      // Handle unauthenticated users
       if (!isAuthenticated || !user) {
         setError("User not authenticated");
         setLoading(false);
@@ -53,75 +57,57 @@ const CreatedSets: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const userId = user.uid; // Use user ID from auth context
+        const userId = user.uid;
+        const response = await fetch(`${API_BASE_URL}/sets/user/${userId}`, {
+          credentials: 'include' // Include cookies for authentication
+        });
         
-        console.log('Using userId from auth context:', userId);
+        // First get text response to properly handle different outcomes
+        const responseText = await response.text();
         
-        // First try to get the response as text to see what's happening
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}: ${responseText}`);
+        }
+        
         try {
-          const response = await fetch(`${API_BASE_URL}/sets/user/${userId}`, {
-            credentials: 'include' // Include cookies for authentication
-          });
+          // Parse response as JSON
+          const data = JSON.parse(responseText);
           
-          console.log('Response status:', response.status);
-          console.log('Response headers:', response.headers);
+          // Update state with the parsed data
+          setSets(Array.isArray(data) ? data : []);
           
-          const responseText = await response.text();
-          console.log('Response text:', responseText);
-          
-          // Now try to parse as JSON if possible
-          let data;
-          try {
-            data = JSON.parse(responseText);
-            console.log('Parsed data:', data);
-            
-            // Update state with the parsed data
-            setSets(Array.isArray(data) ? data : []);
-            
-            // Show helper only if no sets and first visit
-            if (Array.isArray(data) && data.length === 0) {
-              const hasSeenHelper = localStorage.getItem('hasSeenCreatedSetsHelper');
-              if (!hasSeenHelper) {
-                setShowHelper(true);
-                localStorage.setItem('hasSeenCreatedSetsHelper', 'true');
-              }
+          // Show helper only if no sets and first visit
+          if (Array.isArray(data) && data.length === 0) {
+            const hasSeenHelper = localStorage.getItem('hasSeenCreatedSetsHelper');
+            if (!hasSeenHelper) {
+              setShowHelper(true);
+              localStorage.setItem('hasSeenCreatedSetsHelper', 'true');
             }
-          } catch (parseError) {
-            console.error('Error parsing response as JSON:', parseError);
-            setError(`Server returned invalid data. Please try again later.`);
           }
-        } catch (fetchError) {
-          console.error('Fetch error:', fetchError);
-          setError(`Failed to connect to server. Please check your connection.`);
+        } catch (parseError) {
+          console.error('Error parsing response as JSON:', parseError);
+          throw new Error('Server returned invalid data');
         }
       } catch (error) {
-        console.error('Error in fetchSets function:', error);
-        setError("An unexpected error occurred. Please try again later.");
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        console.error('Error fetching sets:', errorMessage);
+        setError(`Failed to load your flashcard sets. ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSets();
-  }, [user, authLoading, isAuthenticated]); // Depend on auth context values
+  }, [user, authLoading, isAuthenticated]);
 
-  // Handle create set button click
-  const handleCreateSet = () => {
-    navigate('/set-creator');
-  };
-
-  const handleSearchSets = () => {
-    navigate("/search-sets");
-  };
+  // Navigation handlers
+  const handleCreateSet = () => navigate('/set-creator');
+  const handleSearchSets = () => navigate('/search-sets');
 
   // Handle edit set
   const handleEditSet = (e: React.MouseEvent, set: FlashcardSet) => {
     e.stopPropagation(); // Prevent navigation to set details
-    
-    // Store the set data for editing
     localStorage.setItem("editingFlashcardSet", JSON.stringify(set));
-    
-    // Navigate to the set creator
     navigate('/set-creator');
   };
 
@@ -137,7 +123,7 @@ const CreatedSets: React.FC = () => {
     if (!setToDelete || !user) return;
     
     try {
-      const userId = user.uid; // Use user ID from auth context
+      const userId = user.uid;
       
       const response = await fetch(`${API_BASE_URL}/sets/delete/${setToDelete}?userId=${userId}`, {
         method: 'DELETE',
@@ -147,368 +133,580 @@ const CreatedSets: React.FC = () => {
       if (response.ok) {
         // Remove the deleted set from the state
         setSets(sets.filter(set => set.id !== setToDelete));
-        setShowDeleteModal(false);
-        setSetToDelete(null);
       } else {
-        console.error('Failed to delete set:', await response.text());
-        alert('Failed to delete the set. Please try again.');
+        const errorText = await response.text();
+        throw new Error(`Failed to delete set: ${errorText}`);
       }
     } catch (error) {
-      console.error('Error deleting set:', error);
-      alert('Failed to delete the set. Please check your connection.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error deleting set:', errorMessage);
+      alert('Failed to delete the set. Please try again.');
+    } finally {
+      setShowDeleteModal(false);
+      setSetToDelete(null);
     }
   };
 
-  // Format date with Firestore Timestamp handling
-  const formatDate = (dateValue: any) => {
-    if (!dateValue) return '';
+  // Format date with robust handling for different date formats
+  const formatDate = (dateValue: any): string => {
+    if (!dateValue) return 'Recently created';
     
     try {
-      // For Firestore Timestamp objects - standard format
-      if (typeof dateValue === 'object' && 'seconds' in dateValue && 'nanoseconds' in dateValue) {
-        console.log('Firestore Timestamp detected:', dateValue);
-        // Convert Firestore timestamp to milliseconds
-        const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
-        const date = new Date(milliseconds);
+      // Handle Firestore timestamp objects
+      if (typeof dateValue === 'object') {
+        // Standard format
+        if ('seconds' in dateValue && 'nanoseconds' in dateValue) {
+          const milliseconds = dateValue.seconds * 1000 + dateValue.nanoseconds / 1000000;
+          return formatDateFromMillis(milliseconds);
+        }
         
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(date);
-      }
-      
-      // For Firestore Timestamp objects with underscore prefix - serialized format
-      if (typeof dateValue === 'object' && '_seconds' in dateValue && '_nanoseconds' in dateValue) {
-        console.log('Serialized Firestore Timestamp detected:', dateValue);
-        // Convert Firestore timestamp to milliseconds
-        const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
-        const date = new Date(milliseconds);
+        // Serialized format
+        if ('_seconds' in dateValue && '_nanoseconds' in dateValue) {
+          const milliseconds = dateValue._seconds * 1000 + dateValue._nanoseconds / 1000000;
+          return formatDateFromMillis(milliseconds);
+        }
         
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(date);
+        // Regular Date objects
+        if (dateValue instanceof Date) {
+          return formatDateFromDate(dateValue);
+        }
       }
       
-      // Regular Date objects
-      if (dateValue instanceof Date) {
-        return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }).format(dateValue);
-      }
-      
-      // String or number handling for ISO dates or timestamps
+      // Handle string or number input
       if (typeof dateValue === 'string' || typeof dateValue === 'number') {
         const date = new Date(dateValue);
         if (!isNaN(date.getTime())) {
-          return new Intl.DateTimeFormat('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }).format(date);
+          return formatDateFromDate(date);
         }
         
-        // Try to handle numeric strings (Unix timestamps)
+        // Try to parse numeric strings as Unix timestamps
         if (typeof dateValue === 'string' && /^\d+$/.test(dateValue)) {
           const timestamp = parseInt(dateValue);
-          const timestampDate = new Date(timestamp);
-          if (!isNaN(timestampDate.getTime())) {
-            return new Intl.DateTimeFormat('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }).format(timestampDate);
-          }
+          return formatDateFromMillis(timestamp);
         }
       }
       
-      // Generic object handling with logging to help debugging
-      if (typeof dateValue === 'object') {
-        console.log('Unknown date object format:', dateValue);
-        try {
-          console.log('JSON representation:', JSON.stringify(dateValue));
-          
-          // Try some common properties that might contain date information
-          const possibleDateProps = ['date', 'time', 'timestamp', 'value', '_seconds', '_nanoseconds'];
-          for (const prop of possibleDateProps) {
-            if (prop in dateValue) {
-              console.log(`Found property ${prop}:`, dateValue[prop]);
-            }
-          }
-        } catch (jsonError) {
-          console.log('Failed to stringify date object');
-        }
-      }
-      
-      console.log('Could not format date value:', dateValue);
       return 'Recently created'; // Fallback text
     } catch (e) {
       console.error('Error formatting date:', e);
       return 'Recently created';
     }
   };
-
-  // Close helper
-  const closeHelper = () => {
-    setShowHelper(false);
+  
+  // Helper functions for date formatting
+  const formatDateFromMillis = (milliseconds: number): string => {
+    const date = new Date(milliseconds);
+    return formatDateFromDate(date);
+  };
+  
+  const formatDateFromDate = (date: Date): string => {
+    if (isNaN(date.getTime())) return 'Recently created';
+    
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date);
   };
 
-  // Render loading state for either auth loading or data loading
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-white overflow-auto-if-needed">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
-            <p className="mt-4 text-[#004a74] font-medium">Loading your sets...</p>
+// FlashcardSetCard component with optimized animations and updated delete button
+const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
+  // Calculate card count
+  const cardCount = set.numCards || set.flashcards?.length || 0;
+  const likeCount = set.likes || 0;
+  
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-md
+      transform-gpu hover:scale-[1.02] hover:-translate-y-1
+      hover:shadow-xl
+      transition-all duration-300 ease-out relative overflow-hidden 
+      cursor-pointer group border border-gray-200
+      hover:border-[#004a74]/50 flex flex-col w-full min-h-[250px]"
+      onClick={() => navigate(`/study/${set.id}`)}
+    >
+      {/* Card Header with Status Badge */}
+      <div className={`p-4 flex justify-between items-center border-b ${
+        set.isPublic 
+          ? "bg-gradient-to-r from-green-50 to-blue-50" 
+          : "bg-gradient-to-r from-gray-50 to-blue-50"
+      }`}>
+        <div className="flex items-center gap-2">
+          <FolderIcon className="w-5 h-5 text-[#004a74]" />
+          <div className="text-sm font-medium text-[#004a74]">Flashcard Set</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${
+            set.isPublic 
+              ? "bg-green-100 text-green-800" 
+              : "bg-gray-100 text-gray-700"
+          }`}>
+            {set.isPublic 
+              ? <><CheckCircleIcon className="w-3 h-3" /> Public</> 
+              : <>Private</>
+            }
+          </span>
+        </div>
+      </div>
+      
+      {/* Card content */}
+      <div className="p-5 flex-grow flex flex-col">
+        <div className="flex-grow">
+          <h3 className="text-xl font-bold text-[#004a74] mb-3 line-clamp-2 transition-colors duration-300">
+            {set.title}
+          </h3>
+          
+          <div className="px-3 py-2 bg-blue-50 rounded-lg inline-block mb-4">
+            <span className="text-sm font-medium text-[#004a74]">{set.classCode}</span>
+          </div>
+          
+          {/* Stats row */}
+          <div className="flex flex-wrap gap-4 mt-2">
+            {/* Cards count */}
+            <div className="bg-white border border-blue-100 rounded-lg px-3 py-1.5 flex items-center">
+              <BookOpenIcon className="w-4 h-4 mr-2 text-[#004a74]" />
+              <span className="text-sm font-medium text-gray-700">
+                {cardCount} {cardCount === 1 ? 'card' : 'cards'}
+              </span>
+            </div>
+            
+            {/* Likes count */}
+            <div className="bg-white border border-rose-100 rounded-lg px-3 py-1.5 flex items-center">
+              <HeartIcon className={`w-4 h-4 mr-2 ${likeCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}`} />
+              <span className="text-sm font-medium text-gray-700">
+                {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {set.createdAt && (
+          <div className="text-xs text-gray-500 mt-4">
+            Created: {formatDate(set.createdAt)}
+          </div>
+        )}
+      </div>
+      
+      {/* Action buttons footer */}
+      <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] p-4 flex justify-between items-center 
+        transition-colors duration-300 group-hover:from-[#00395c] group-hover:to-[#0074c2]">
+        <div className="text-white text-sm font-medium flex items-center gap-2">
+          <BookOpenIcon className="w-4 h-4 group-hover:animate-pulse" />
+          <span>Click to study</span>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={(e) => handleEditSet(e, set)}
+            className="bg-white/90 text-[#004a74] p-2 rounded-lg hover:bg-white transition-colors duration-150"
+            aria-label="Edit set"
+          >
+            <Edit3Icon className="w-5 h-5" />
+          </button>
+          
+          {/* Updated Delete Button - Animation only on hover of this button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click event
+              confirmDelete(e, set.id);
+            }}
+            className="group/delete relative flex h-10 w-10 flex-col items-center justify-center overflow-hidden rounded-lg 
+              bg-white/90 hover:bg-white transition-colors duration-150"
+            aria-label="Delete set"
+          >
+            <svg
+              viewBox="0 0 1.625 1.625"
+              className="absolute -top-7 fill-red-500 delay-100 group-hover/delete:top-4 group-hover/delete:animate-[spin_1.4s] group-hover/delete:duration-1000"
+              height="10"
+              width="10"
+            >
+              <path
+                d="M.471 1.024v-.52a.1.1 0 0 0-.098.098v.618c0 .054.044.098.098.098h.487a.1.1 0 0 0 .098-.099h-.39c-.107 0-.195 0-.195-.195"
+              ></path>
+              <path
+                d="M1.219.601h-.163A.1.1 0 0 1 .959.504V.341A.033.033 0 0 0 .926.309h-.26a.1.1 0 0 0-.098.098v.618c0 .054.044.098.098.098h.487a.1.1 0 0 0 .098-.099v-.39a.033.033 0 0 0-.032-.033"
+              ></path>
+              <path
+                d="m1.245.465-.15-.15a.02.02 0 0 0-.016-.006.023.023 0 0 0-.023.022v.108c0 .036.029.065.065.065h.107a.023.023 0 0 0 .023-.023.02.02 0 0 0-.007-.016"
+              ></path>
+            </svg>
+            <svg
+              width="12"
+              fill="none"
+              viewBox="0 0 39 7"
+              className="origin-right duration-500 group-hover/delete:rotate-90"
+            >
+              <line stroke-width="4" stroke="red" y2="5" x2="39" y1="5"></line>
+              <line
+                stroke-width="3"
+                stroke="red"
+                y2="1.5"
+                x2="26.0357"
+                y1="1.5"
+                x1="12"
+              ></line>
+            </svg>
+            <svg width="12" fill="none" viewBox="0 0 33 39">
+              <mask fill="white" id="path-1-inside-1_8_19">
+                <path
+                  d="M0 0H33V35C33 37.2091 31.2091 39 29 39H4C1.79086 39 0 37.2091 0 35V0Z"
+                ></path>
+              </mask>
+              <path
+                mask="url(#path-1-inside-1_8_19)"
+                fill="red"
+                d="M0 0H33H0ZM37 35C37 39.4183 33.4183 43 29 43H4C-0.418278 43 -4 39.4183 -4 35H4H29H37ZM4 43C-0.418278 43 -4 39.4183 -4 35V0H4V35V43ZM37 0V35C37 39.4183 33.4183 43 29 43V35V0H37Z"
+              ></path>
+              <path stroke-width="4" stroke="red" d="M12 6L12 29"></path>
+              <path stroke-width="4" stroke="red" d="M21 6V29"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+  const EmptyState = () => (
+    <div className="flex items-center justify-center min-h-[calc(100vh-32rem)] py-8 w-full">
+      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-12 shadow-xl max-w-lg w-full text-center border border-blue-100">
+        <div className="relative mb-10">
+          <BookIcon className="mx-auto w-28 h-28 text-[#004a74] relative z-10" />
+        </div>
+        <h2 className="text-3xl font-bold text-[#004a74] mb-4">
+          No Flashcard Sets Yet
+        </h2>
+        <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
+          Create your first set to start studying or find existing sets from your classmates.
+        </p>
+        
+        {/* Get started steps */}
+        <div className="mb-8 text-left">
+          <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
+            <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
+              <PlusIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-md font-semibold text-[#004a74]">Create a Set</h3>
+              <p className="text-sm text-gray-600">Make personalized flashcards for your classes</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
+            <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
+              <SearchIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-md font-semibold text-[#004a74]">Find Sets</h3>
+              <p className="text-sm text-gray-600">Search for sets created by others</p>
+            </div>
+          </div>
+        </div>
+  
+        {/* Button group */}
+        <div className="mx-auto flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button
+            onClick={handleCreateSet}
+            className="flex items-center justify-center gap-2 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-lg w-full"
+          >
+            <PlusIcon className="w-5 h-5" />
+            <span>Create Set</span>
+          </button>
+          <button
+            onClick={handleSearchSets}
+            className="flex items-center justify-center gap-2 bg-white text-[#004a74] font-bold py-3 px-6 rounded-xl border-2 border-[#004a74] hover:bg-[#e6f2fa] active:scale-[0.98] transition-all shadow-md text-lg w-full"
+          >
+            <SearchIcon className="w-5 h-5" />
+            <span>Find Sets</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Helper modal component
+  const HelperModal = () => (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
+        {/* Top decorative bar */}
+        <div className="h-2 bg-gradient-to-r from-[#004a74] to-[#0080d4]"></div>
+        
+        {/* Close button in corner */}
+        <button 
+          onClick={() => setShowHelper(false)}
+          className="absolute top-4 right-4 bg-gray-100 text-gray-600 p-2 rounded-full 
+            hover:bg-gray-200 transition-colors z-10"
+          aria-label="Close modal"
+        >
+          <XIcon className="w-5 h-5" />
+        </button>
+        
+        <div className="p-10 pt-8 text-center">
+          {/* Header with decorative elements */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center justify-center opacity-10">
+            </div>
+            <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-4" />
+            <h2 className="text-3xl font-bold text-[#004a74]">
+              Welcome to Your Flashcard Sets!
+            </h2>
+          </div>
+          
+          {/* Content with step indicators */}
+          <div className="max-w-xl mx-auto mb-8">
+            <div className="bg-blue-50 rounded-xl p-6 mb-6">
+              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
+                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">1</div>
+                <span>Create Your Own Sets</span>
+              </h3>
+              <p className="text-gray-700">
+                Click "Create Set" to make your own flashcards for any subject or class.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
+                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">2</div>
+                <span>Find Existing Sets</span>
+              </h3>
+              <p className="text-gray-700">
+                Browse flashcard sets created by others with the "Find Sets" button.
+              </p>
+            </div>
+          </div>
+          
+          {/* Action button */}
+          <button 
+            onClick={() => setShowHelper(false)}
+            className="bg-[#004a74] text-white px-8 py-3 rounded-xl 
+              hover:bg-[#00659f] transition-all flex items-center 
+              justify-center mx-auto gap-2 text-lg font-medium shadow-lg
+              hover:shadow-xl active:scale-[0.98]"
+          >
+            <CheckCircleIcon className="w-5 h-5" />
+            <span>Got it!</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Delete confirmation modal
+  const DeleteModal = () => (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+        {/* Warning bar */}
+        <div className="h-1.5 bg-red-500"></div>
+        
+        <div className="p-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="bg-red-100 p-3 rounded-full">
+              <TrashIcon className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Delete Flashcard Set?</h2>
+          </div>
+          
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8 rounded-r">
+            <p className="text-gray-700">
+              This action cannot be undone. All flashcards in this set will be permanently deleted.
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <button 
+              onClick={() => setShowDeleteModal(false)}
+              className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg 
+                hover:bg-gray-50 transition font-medium focus:outline-none focus:ring-2 
+                focus:ring-gray-300 focus:ring-offset-1"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={deleteSet}
+              className="px-6 py-2.5 bg-red-500 text-white rounded-lg 
+                hover:bg-red-600 transition font-medium shadow-sm hover:shadow
+                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1
+                active:bg-red-700"
+            >
+              Delete Set
+            </button>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Render not authenticated state
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen bg-white overflow-auto-if-needed">
-        <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
-            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Authentication Error</p>
-              <p>You need to be logged in to view your flashcard sets.</p>
-              <button 
-                onClick={() => navigate('/login')}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Log In
-              </button>
+  // Error component with improved UX
+  const ErrorState = ({ message }: { message: string }) => (
+    <div className="bg-white border border-red-200 shadow-lg rounded-xl p-6 mb-8 animate-fade-in">
+      <div className="flex items-start gap-4">
+        <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+          <AlertCircleIcon className="w-6 h-6 text-red-500" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Something went wrong</h3>
+          <p className="text-gray-600 mb-4">{message}</p>
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 
+                transition flex items-center gap-2 text-sm font-medium shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 2v6h-6"></path>
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                <path d="M3 22v-6h6"></path>
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+              </svg>
+              Reload Page
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 
+                rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+            >
+              Go to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Loading state component
+  const LoadingState = () => (
+    <div className="min-h-screen bg-white">
+      <NavBar />
+      <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
+            <div className="animate-spin relative rounded-full h-16 w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
+          </div>
+          <div className="mt-6 bg-blue-50 px-6 py-3 rounded-lg shadow-sm">
+            <p className="text-[#004a74] font-medium text-lg">Loading your flashcard sets...</p>
+          </div>
+          <p className="mt-3 text-gray-500 text-sm">This may take a moment</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Unauthenticated state component
+  const UnauthenticatedState = () => (
+    <div className="min-h-screen bg-white">
+      <NavBar />
+      <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="bg-white shadow-xl rounded-2xl max-w-md w-full overflow-hidden">
+          <div className="h-2 bg-red-500"></div>
+          <div className="p-8">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+                <AlertCircleIcon className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Authentication Required</h2>
+                <p className="text-gray-600 mb-6">
+                  You need to be logged in to view and manage your flashcard sets.
+                </p>
+                <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-6 text-gray-700 text-sm">
+                  <p className="font-medium">Why do I need to log in?</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>To create and save your own flashcard sets</li>
+                    <li>To access your previously created content</li>
+                    <li>To track your study progress</li>
+                  </ul>
+                </div>
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="bg-[#004a74] w-full text-white px-5 py-3 rounded-lg hover:bg-[#00659f] 
+                    transition-all shadow-md font-medium flex items-center justify-center gap-2"
+                >
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Log In
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
+
+  // Main render with conditional rendering
+  if (authLoading || loading) {
+    return <LoadingState />;
+  }
+
+  if (!isAuthenticated || !user) {
+    return <UnauthenticatedState />;
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       {/* Navigation Bar */}
       <NavBar />
 
-      {/* Header with Create Button (left) */}
-      <div className="fixed top-20 left-0 right-0 flex justify-start items-center px-6 z-10">
-        {/* Create Set Button on the left */}
+{/* Header with Create and Search Buttons - Only shown when sets exist */}
+{sets.length > 0 && (
+  <div className="fixed top-16 left-0 right-0 z-10 bg-white shadow-sm border-b border-gray-200 py-4">
+    <div className="max-w-7xl mx-auto px-6 flex items-center">
+      {/* Left-aligned buttons container */}
+      <div className="flex items-center gap-4 flex-1">
         <button
           onClick={handleCreateSet}
-          className="bg-[#004a74] text-white font-bold
-            py-4 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98]
-            transition-all flex items-center justify-center gap-3
-            shadow-md text-xl"
+          className="relative bg-gradient-to-r from-[#004a74] to-[#006da9] text-white font-medium text-[16px] px-4 py-[0.35em] pl-5 h-[2.8em] rounded-lg flex items-center overflow-hidden cursor-pointer shadow-[inset_0_0_1.6em_-0.6em_#003857] group"
         >
-          <PlusIcon className="w-5 h-5" />
-          <span>Create Set</span>
+          <span className="mr-10">
+            Create Set
+          </span>
+          <div
+            className="absolute right-[0.3em] bg-white h-[2.2em] w-[2.2em] rounded-[0.7em] flex items-center justify-center transition-all duration-300 group-hover:w-[calc(100%-0.6em)] shadow-[0.1em_0.1em_0.6em_0.2em_#003857] active:scale-95"
+          >
+            <PlusIcon className="w-5 h-5 text-[#004a74] transition-transform duration-300 group-hover:scale-110" />
+          </div>
+        </button>
+        
+        <button
+          onClick={handleSearchSets}
+          className="relative bg-gradient-to-r from-white to-[#f8fbfe] text-[#004a74] font-medium text-[16px] px-4 py-[0.35em] pl-5 h-[2.8em] rounded-lg flex items-center overflow-hidden cursor-pointer border border-[#004a74] shadow-[inset_0_0_1.6em_-0.6em_#e6f2fa] group"
+        >
+          <span className="mr-10">
+            Find Sets
+          </span>
+          <div
+            className="absolute right-[0.3em] bg-gradient-to-r from-[#004a74] to-[#006da9] h-[2.2em] w-[2.2em] rounded-[0.7em] flex items-center justify-center transition-all duration-300 group-hover:w-[calc(100%-0.6em)] shadow-[0.1em_0.1em_0.6em_0.2em_#e6f2fa] active:scale-95"
+          >
+            <SearchIcon className="w-5 h-5 text-white transition-transform duration-300 group-hover:scale-110" />
+          </div>
         </button>
       </div>
-
-      {/* Sets Container */}
-      <div className="pt-32 px-6 pb-6">
-        
+      
+      {/* Right-aligned counter */}
+      <div className="bg-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium ml-auto">
+        {sets.length} {sets.length === 1 ? 'set' : 'sets'}
+      </div>
+    </div>
+  </div>
+)}
+      {/* Main Content with improved spacing */}
+      <div className="pt-40 px-4 sm:px-6 pb-16 max-w-7xl mx-auto">
         {/* Error message */}
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex items-start">
-            <AlertCircleIcon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-bold">Error</p>
-              <p>{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm hover:bg-red-800 transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        )}
+        {error && <ErrorState message={error} />}
 
-        {/* Show grid of sets if there are any */}
+        {/* Show grid of sets or empty state */}
         {sets.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {sets.map((set) => (
-              <div
-                key={set.id}
-                className="bg-blue-50 rounded-2xl shadow-lg hover:shadow-2xl
-                  transition-all duration-300 relative overflow-hidden 
-                  cursor-pointer group border-2 border-transparent 
-                  hover:border-[#004a74]/20 flex flex-col w-full min-h-[250px]"
-                onClick={() => navigate(`/study/${set.id}`)}
-              >
-                {/* Card Header with Status Badge */}
-                <div className="bg-[#004a74]/10 p-3 flex justify-between items-center">
-                  <div className="text-sm font-medium text-[#004a74]">Flashcard Set</div>
-                  {set.isPublic ? (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
-                      Public
-                    </span>
-                  ) : (
-                    <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
-                      Private
-                    </span>
-                  )}
-                </div>
-                
-                {/* Card content */}
-                <div className="p-4 flex-grow flex flex-row">
-                  <div className="flex-grow flex flex-col justify-between h-full">
-                    <div>
-                      <h3 className="text-xl font-bold text-[#004a74] mb-2 line-clamp-2">
-                        {set.title}
-                      </h3>
-                      
-                      <div className="text-sm text-gray-700 font-medium">
-                        <span className="text-[#004a74]">Class:</span> {set.classCode}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-end mt-3">
-                      <div className="flex items-center space-x-4">
-                        {/* Cards count with singular/plural handling */}
-                        <div className="flex items-center">
-                          <BookIcon className="w-4 h-4 mr-1 text-[#004a74]" />
-                          <span className="text-sm font-semibold text-[#004a74]">
-                            {set.numCards || set.flashcards?.length || 0} {(set.numCards === 1 || (set.flashcards?.length === 1 && !set.numCards)) ? 'card' : 'cards'}
-                          </span>
-                        </div>
-                        
-                        {/* Likes count - Added this section with singular/plural handling */}
-                        <div className="flex items-center">
-                          <HeartIcon className="w-4 h-4 mr-1 text-rose-500 fill-rose-500" />
-                          <span className="text-sm font-semibold text-[#004a74]">
-                            {set.likes || 0} {(set.likes === 1) ? 'like' : 'likes'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {set.createdAt && (
-                        <div className="text-xs text-gray-500">
-                          Created: {formatDate(set.createdAt)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Action buttons footer */}
-                <div className="bg-[#004a74] p-4 flex justify-between items-center mt-auto">
-                  <div className="text-white text-sm font-medium">Click card to study</div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => handleEditSet(e, set)}
-                      className="bg-white text-[#004a74] p-2 rounded-full hover:bg-blue-100 transition"
-                      aria-label="Edit set"
-                    >
-                      <Edit3Icon className="w-5 h-5" />
-                    </button>
-                    <button 
-                      onClick={(e) => confirmDelete(e, set.id)}
-                      className="bg-white text-red-500 p-2 rounded-full hover:bg-red-100 transition"
-                      aria-label="Delete set"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <FlashcardSetCard key={set.id} set={set} />
             ))}
           </div>
         ) : (
-          // Empty State - Shows when no sets are present
-          <div className="flex items-center justify-center h-[calc(100vh-9rem)] w-full">
-          <div className="bg-blue-50 rounded-xl p-10 shadow-lg max-w-lg w-full text-center">
-            <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-8" />
-            <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-              No Flashcard Sets Yet
-            </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              You haven't created any flashcard sets yet. Get started by creating your first flashcard set or explore existing ones.
-            </p>
-            {/* Button group */}
-            <div className="mx-auto flex items-center justify-center gap-4">
-              <button
-                onClick={handleCreateSet}
-                className="flex items-center justify-center gap-3 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-xl"
-              >
-                <PlusIcon className="w-6 h-6" />
-                <span>Create Set</span>
-              </button>
-              <button
-                onClick={handleSearchSets}
-                className="flex items-center justify-center gap-3 bg-white text-[#004a74] font-bold py-3 px-6 rounded-xl border-2 border-[#004a74] hover:bg-[#e6f2fa] active:scale-[0.98] transition-all shadow-md text-xl"
-              >
-                <SearchIcon className="w-6 h-6" />
-                <span>Find Sets</span>
-              </button>
-            </div>
-          </div>
-        </div>
+          <EmptyState />
         )}
 
-        {/* No Sets Helper */}
-        {showHelper && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="relative bg-white rounded-xl max-w-2xl w-full shadow-2xl">
-              <div className="p-8 text-center">
-                <BookIcon className="mx-auto w-20 h-20 text-[#004a74] mb-6" />
-                <h2 className="text-3xl font-bold text-[#004a74] mb-6">
-                  Welcome to Your Flashcard Sets!
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                  It looks like you don't have any flashcard sets yet. Click "Create Set" to get started! Or click "Search Sets" at the top to find sets for your class!
-                </p>
-                <button 
-                  onClick={closeHelper}
-                  className="bg-[#004a74] text-white px-8 py-4 rounded-full 
-                    hover:bg-[#00659f] transition-colors flex items-center 
-                    justify-center mx-auto gap-3 text-lg"
-                >
-                  <XIcon className="w-6 h-6" />
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl p-8">
-              <h2 className="text-2xl font-bold text-[#004a74] mb-6">Delete Flashcard Set?</h2>
-              <p className="text-lg text-gray-600 mb-8">
-                Are you sure you want to delete this flashcard set? This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-4">
-                <button 
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition text-lg"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={deleteSet}
-                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-lg"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modals */}
+        {showHelper && <HelperModal />}
+        {showDeleteModal && <DeleteModal />}
       </div>
     </div>
   );

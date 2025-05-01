@@ -11,6 +11,7 @@ import semanticRouter from './routes/semanticAnswerRoutes';
 import imageUploadRoutes from './routes/ImageUploadRoutes'; 
 import feedbackRoutes from './routes/feedbackRoutes';
 import likeRoutes from './routes/likeRoutes'
+import logRoutes from './routes/logRoutes'
 
 import { signupInit, completeSignup } from "./controllers/authController";
 
@@ -46,7 +47,7 @@ app.use('/api/ai', genFlashcardsRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/semantic-answer', semanticRouter);
 app.use('/api/uploads', imageUploadRoutes); // Add this new route
-
+app.use('/api/logRoutes', logRoutes);
 // Direct route definitions for auth
 app.post("/api/auth/signup-init", signupInit);
 app.post("/api/auth/complete-signup", completeSignup);

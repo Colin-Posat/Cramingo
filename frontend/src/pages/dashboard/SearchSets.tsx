@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  BookIcon, 
+  SearchIcon,
+  BookOpenIcon,
+  FolderIcon,
+  CheckCircleIcon
+} from 'lucide-react';
 import NavBar from '../../components/NavBar';
-import PopularSets from '../../components/PopularSets'; // Import the new component
+import PopularSets from '../../components/PopularSets';
 
 const SearchSetsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -49,7 +56,7 @@ const SearchSetsPage: React.FC = () => {
     if (value.length > 0) {
       const filteredResults = allClassCodes
         .filter(code => code.toUpperCase().startsWith(value))
-        .slice(0, 4); // Changed from 5 to 4 rows
+        .slice(0, 4);
       setAutocompleteResults(filteredResults);
     } else {
       setAutocompleteResults([]);
@@ -127,26 +134,66 @@ const SearchSetsPage: React.FC = () => {
     navigate('/set-creator');
   }, [navigate]);
 
-  return (
+  // Loading state component - matching CreatedSets style
+  const LoadingState = () => (
     <div className="min-h-screen bg-white">
       <NavBar />
+      <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
+            <div className="animate-spin relative rounded-full h-16 w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
+          </div>
+          <div className="mt-6 bg-blue-50 px-6 py-3 rounded-lg shadow-sm">
+            <p className="text-[#004a74] font-medium text-lg">Loading class codes...</p>
+          </div>
+          <p className="mt-3 text-gray-500 text-sm">This may take a moment</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isLoadingCodes) {
+    return <LoadingState />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <NavBar />
       
-      {/* Hero section with background pattern */}
-      <div className="container mx-auto px-4 pt-20 pb-16">
+      {/* Main content area with matching padding/styling to CreatedSets */}
+      <div className="pt-24 px-4 sm:px-6 pb-16 max-w-7xl mx-auto">
         <div className="max-w-4xl mx-auto">
-          {/* Card with subtle shadow and elegant border */}
-          <div className="bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl overflow-hidden">
-            {/* Flat header with solid color */}
-            <div className="bg-[#004a74] text-white p-8">              
-              <h1 className="text-3xl font-bold mb-2 tracking-tight">Find Flashcard Sets</h1>
-              <p className="text-blue-100 font-light">Discover study materials created by your classmates</p>
+          {/* Card with styling that matches the CreatedSets cards */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 
+            transform-gpu hover:scale-[1.01] hover:border-[#004a74]/30
+            transition-all duration-300 overflow-hidden mb-10">
+            
+            {/* Card Header - matching header styles from CreatedSets */}
+            <div className="p-4 flex justify-between items-center bg-gradient-to-r from-blue-50 to-blue-50 border-b">
+              <div className="flex items-center gap-2">
+                <FolderIcon className="w-5 h-5 text-[#004a74]" />
+                <div className="text-sm font-medium text-[#004a74]">Find Flashcards</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-3 py-1 rounded-full flex items-center gap-1 bg-green-100 text-green-800">
+                  <CheckCircleIcon className="w-3 h-3" /> Search by Class Code
+                </span>
+              </div>
             </div>
             
-            {/* Content area with increased padding for better spacing */}
+            {/* Content area with increased padding */}
             <div className="p-8">
-              {/* Error message with smooth animation */}
+              <h1 className="text-3xl font-bold mb-6 tracking-tight text-[#004a74]">
+                Find Flashcard Sets
+              </h1>
+              <p className="text-gray-600 font-light mb-8">
+                Discover study materials created by your classmates
+              </p>
+              
+              {/* Error message with matching style to CreatedSets */}
               {errorMessage && (
-                <div className="text-[#e53935] mb-6 p-4 bg-[rgba(229,57,53,0.08)] rounded-xl flex items-center gap-3 border-l-4 border-[#e53935] animate-fadeIn">
+                <div className="text-[#e53935] mb-6 p-4 bg-red-50 rounded-xl flex items-center gap-3 border-l-4 border-[#e53935] animate-fadeIn">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
@@ -154,12 +201,10 @@ const SearchSetsPage: React.FC = () => {
                 </div>
               )}
               
-              {/* Search container with subtle inner shadow */}
+              {/* Search container */}
               <div className="relative mb-6 transition-all duration-200">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <SearchIcon className="w-5 h-5 text-gray-400" />
                 </div>
                 <input
                   ref={inputRef}
@@ -169,23 +214,22 @@ const SearchSetsPage: React.FC = () => {
                   } rounded-xl focus:outline-none focus:ring-3 transition-all ${
                     errorMessage ? 'focus:ring-[#e53935]/20' : 'focus:ring-[#004a74]/20'
                   } focus:border-[#004a74] focus:bg-white shadow-sm`}
-                  placeholder={isLoadingCodes ? "Loading class codes..." : "Enter class code (e.g. CSE101)"}
+                  placeholder="Enter class code (e.g. CSE101)"
                   value={searchTerm}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   onBlur={handleBlur}
-                  disabled={isLoadingCodes}
                   autoComplete="off"
                   aria-label="Class code search"
                 />
                 
-                {/* Autocomplete with improved styling */}
+                {/* Autocomplete with improved styling matching CreatedSets */}
                 {autocompleteResults.length > 0 && (
                   <ul 
                     ref={autocompleteRef}
                     className="absolute left-0 right-0 z-[1000] mt-1 bg-white border border-gray-100 rounded-xl shadow-lg"
                     style={{
-                      maxHeight: '196px', // Adjusted to fit 4 rows (~49px per row)
+                      maxHeight: '196px',
                       overflowY: 'auto',
                       overscrollBehavior: 'contain',
                       position: 'absolute'
@@ -209,11 +253,14 @@ const SearchSetsPage: React.FC = () => {
                 )}
               </div>
               
-              {/* Button with better hover/active states */}
+              {/* Button with matching style to CreatedSets */}
               <button
                 onClick={handleSearch}
-                disabled={isLoading || isLoadingCodes || !searchTerm.trim()}
-                className="w-full bg-[#004a74] text-white font-bold py-4 px-6 rounded-xl hover:bg-[#00659f] active:bg-[#00395c] focus:ring-4 focus:ring-[#004a74]/30 focus:outline-none active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                disabled={isLoading || !searchTerm.trim()}
+                className="w-full bg-[#004a74] text-white font-bold py-4 px-6 rounded-xl 
+                  hover:bg-[#00659f] active:bg-[#00395c] focus:ring-4 focus:ring-[#004a74]/30 
+                  focus:outline-none active:scale-[0.98] transition-all flex items-center 
+                  justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                 aria-label="Search for flashcards"
               >
                 {isLoading ? (
@@ -221,14 +268,12 @@ const SearchSetsPage: React.FC = () => {
                 ) : (
                   <>
                     <span>Find Flashcards</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <BookOpenIcon className="w-5 h-5" />
                   </>
                 )}
               </button>
               
-              {/* Footer with improved styling */}
+              {/* Divider with consistent styling */}
               <div className="mt-8 text-center">
                 <p className="text-gray-500 flex items-center justify-center gap-2 text-sm">
                   <span className="w-12 h-px bg-gray-200"></span>
@@ -249,7 +294,7 @@ const SearchSetsPage: React.FC = () => {
             </div>
           </div>
           
-          {/* Replace Popular Classes with PopularSets component */}
+          {/* PopularSets component */}
           <PopularSets />
         </div>
       </div>

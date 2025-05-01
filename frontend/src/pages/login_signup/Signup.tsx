@@ -1,15 +1,47 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ParticlesBackground from "../../components/ParticlesBackground";
-import { AlertCircle as AlertCircleIcon, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { AlertCircle as AlertCircleIcon, Eye, EyeOff, CheckCircle, Menu, X } from "lucide-react";
 import { API_BASE_URL, getApiUrl } from '../../config/api';
 import TermsOfServicePopup from "../../components/TermsOfServicePopup";
 import PrivacyPolicyPopup from "../../components/PrivacyPolicyPopup";
+import AccountFoundPopup from "../../components/AccountFoundPopup";
 import { useAuth } from "../../context/AuthContext"; // Import the auth hook
+import { 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  getRedirectResult
+} from "firebase/auth";
+import { auth } from '../../config/firebase';
 
 const CombinedSignup: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // Use the auth context
+  const { login, loginWithGoogle, setDelayedNavigationAfterLogin } = useAuth(); // Use the auth context
+
+  const handleAccountLinkSuccess = () => {
+    setShowAccountLinkModal(false);
+    setPendingGoogleAuth(null);
+    setGoogleLoading(false);
+    navigate('/created-sets');
+  };
+  
+  const handleAccountLinkCancel = () => {
+    setShowAccountLinkModal(false);
+    setPendingGoogleAuth(null);
+    setGoogleLoading(false);
+  };
+
+const [showAccountLinkModal, setShowAccountLinkModal] = useState(false);
+const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  university: string;
+  token: string;
+} | null>(null);
   
   // Basic user information
   const [email, setEmail] = useState("");
@@ -17,14 +49,18 @@ const CombinedSignup: React.FC = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   
-  // Additional details
-  const [university, setUniversity] = useState("University of California, Santa Cruz");
+  // Retrieve university from localStorage if available, otherwise use default
+  const [university, setUniversity] = useState("");
   
   // UI state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false); // State for Google loading
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
+  const [showAccountFoundPopup, setShowAccountFoundPopup] = useState(false);
+  const [foundAccountEmail, setFoundAccountEmail] = useState("");
   
   // Username validation state
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
@@ -38,6 +74,17 @@ const CombinedSignup: React.FC = () => {
   const [isLoadingUniversities, setIsLoadingUniversities] = useState<boolean>(true);
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handleAccountFoundPopupClose = () => {
+    setShowAccountFoundPopup(false);
+    
+    // Now we can navigate to the created-sets page
+    navigate('/created-sets');
+    
+    // Reset the flag in our auth context
+    setDelayedNavigationAfterLogin(false);
+  };
 
   // Memoize particle background props to prevent re-rendering
   const particleProps = useMemo(() => ({
@@ -56,6 +103,215 @@ const CombinedSignup: React.FC = () => {
   // Functions to handle opening and closing the privacy popup
   const openPrivacyPopup = () => setIsPrivacyOpen(true);
   const closePrivacyPopup = () => setIsPrivacyOpen(false);
+
+  // Toggle mobile menu
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(prev => !prev);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      // Validate university input first
+      if (!university.trim()) {
+        setError("Please select your university before continuing with Google");
+        return;
+      }
+      
+      // Check if the university is valid
+      const isValidUniversity = allUniversities.some(school =>
+        school.toLowerCase() === university.trim().toLowerCase()
+      );
+        
+      if (!isValidUniversity) {
+        setError("Please select a valid university from the list");
+        return;
+      }
+      
+      setGoogleLoading(true);
+      setError("");
+        
+      // Create a Google Auth Provider
+      const provider = new GoogleAuthProvider();
+        
+      // Optional: Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+        
+      // Sign in with popup
+      const result = await signInWithPopup(auth, provider);
+        
+      // Get the Firebase ID token
+      const firebaseToken = await result.user.getIdToken();
+        
+      // The signed-in user info
+      const user = result.user;
+      
+      // Save university to localStorage
+      localStorage.setItem('selectedSchool', university);
+      
+      try {
+        // First, check if this email already has an account
+        const checkResponse = await fetch(`${API_BASE_URL}/auth/check-existing-account`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: user.email
+          })
+        });
+        
+        const checkData = await checkResponse.json();
+        
+        // If account exists and has Google provider, show the account found popup
+        if (checkData.accountExists) {
+          // Tell our auth context that a delayed navigation is happening
+          setDelayedNavigationAfterLogin(true);
+          
+          // Show the custom popup
+          setFoundAccountEmail(user.email || '');
+          setShowAccountFoundPopup(true);
+          
+          // Process the login in the background while the popup is showing
+          const loginResponse = await fetch(`${API_BASE_URL}/auth/google-login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: user.email,
+              token: firebaseToken
+            })
+          });
+          
+          if (!loginResponse.ok) {
+            const errorData = await loginResponse.json();
+            throw new Error(errorData.message || "Failed to login with Google");
+          }
+          
+          const loginData = await loginResponse.json();
+          
+          // Store the backend JWT token
+          if (loginData.token) {
+            // Use the loginWithGoogle function - but don't navigate yet
+            // The navigation will happen when the popup closes
+            await loginWithGoogle(user.email || '', loginData.token);
+          } else {
+            throw new Error("No authentication token received from server");
+          }
+          
+          return;
+        }
+        
+        // For new users or non-Google accounts, proceed with signup
+        const response = await fetch(`${API_BASE_URL}/auth/google-signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            university: university,
+            token: firebaseToken,
+            isNewSignup: !checkData.accountExists // Flag indicating this is a new signup
+          })
+        });
+        
+        // Handle any errors
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (errorData.emailInUse) {
+            setError("This email is already registered with a different authentication method. Please use a different email or sign in with your existing account.");
+            setGoogleLoading(false);
+            return;
+          }
+          throw new Error(errorData.message || "Failed to complete signup");
+        }
+        
+        const data = await response.json();
+        
+        // Store the backend JWT token
+        if (data.token) {
+          // Use the loginWithGoogle function
+          await loginWithGoogle(user.email || '', data.token);
+          
+          // Now that AuthContext is updated, navigate to created-sets
+          navigate('/created-sets');
+        } else {
+          throw new Error("No authentication token received from server");
+        }
+      } catch (backendError) {
+        console.error("Google authentication error:", backendError);
+        setError("Failed to authenticate with Google. Please try again.");
+      }
+    } catch (error: any) {
+      console.error("Google Sign In Error:", error);
+        
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError("Sign in was cancelled");
+      } else if (error.code === 'auth/popup-blocked') {
+        setError("Popup was blocked by the browser. Please allow popups for this site.");
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        setError("An account already exists with the same email address but different sign-in credentials.");
+      } else {
+        setError(`Sign in failed: ${error.message || 'Unknown error'}`);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+  useEffect(() => {
+    // Only set the university from localStorage if it exists
+    const storedUniversity = localStorage.getItem('selectedSchool');
+    if (storedUniversity && storedUniversity.trim() !== '') {
+      setUniversity(storedUniversity);
+    }
+    
+    // Check for successful Google auth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      // Exchange the token for user info
+      const exchangeToken = async () => {
+        try {
+          setLoading(true);
+          
+          const response = await fetch(`${API_BASE_URL}/auth/exchange-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            // Save token to localStorage or context
+            localStorage.setItem('authToken', data.token);
+            
+            // Clean up URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Redirect to created-sets or dashboard
+            navigate('/created-sets');
+          } else {
+            setError(data.message || "Token exchange failed");
+          }
+        } catch (err) {
+          console.error("Token exchange error:", err);
+          setError("Failed to complete Google authentication");
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      exchangeToken();
+    }
+  }, []); 
 
   // Load universities from CSV
   useEffect(() => {
@@ -80,6 +336,18 @@ const CombinedSignup: React.FC = () => {
         console.log('✅ Loaded universities:', universities);
         setAllUniversities(universities);
         setIsLoadingUniversities(false);
+        
+        // If the autofilled university from localStorage exists, validate it
+        if (university && universities.length > 0) {
+          const isValidUniversity = universities.some(
+            school => school.toLowerCase() === university.toLowerCase()
+          );
+          
+          if (!isValidUniversity) {
+            console.log('❌ Autofilled university not found in list, resetting');
+            setUniversity("");
+          }
+        }
       } catch (error) {
         console.error('❌ Error loading universities:', error);
         setIsLoadingUniversities(false);
@@ -199,6 +467,18 @@ const CombinedSignup: React.FC = () => {
     setUniversity(school);
     setAutocompleteResults([]);
     setError("");
+    
+    // On mobile, scroll to next input or button
+    if (window.innerWidth <= 768) {
+      if (formRef.current) {
+        const submitButton = formRef.current.querySelector('button[type="submit"]');
+        if (submitButton) {
+          setTimeout(() => {
+            submitButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      }
+    }
   }, []);
 
   // Close autocomplete when clicking outside
@@ -247,13 +527,13 @@ const CombinedSignup: React.FC = () => {
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-
+  
     // Form validation
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-
+  
     if (!username.trim() || username.length < 3) {
       setError("Username must be at least 3 characters");
       return;
@@ -268,14 +548,14 @@ const CombinedSignup: React.FC = () => {
         return;
       }
     }
-
+  
     // Validate university selection
     if (university.trim() === '') {
       setError("Please enter your university");
       return;
     }
-
-    // Check if the university is valid (case-insensitive)
+  
+    // Check if the university is valid
     const isValidUniversity = allUniversities.some(school => 
       school.toLowerCase() === university.trim().toLowerCase()
     );
@@ -288,64 +568,65 @@ const CombinedSignup: React.FC = () => {
     try {
       setLoading(true);
       
-      // First call signup-init endpoint
-      const initResponse = await fetch(`${API_BASE_URL}/auth/signup-init`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
+      // Create user with email and password in Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Update the user profile with username
+      await updateProfile(user, {
+        displayName: username
       });
-  
-      const initData = await initResponse.json();
-  
-      if (!initResponse.ok) {
-        // Handle specific error cases
-        if (initData.code === "USERNAME_TAKEN") {
-          setUsernameAvailable(false);
-          setError("Username already taken");
-          return;
-        }
+      
+      // Save additional user information to your database
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/users/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await user.getIdToken()}`
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            username: username,
+            university: university
+          })
+        });
         
-        setError(initData.message || "Signup failed");
-        setLoading(false);
-        return;
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to save user data");
+        }
+      } catch (dbError) {
+        console.error("Error saving user data to database:", dbError);
+        // User is created in Firebase Auth but not in your database
+        // You might want to handle this situation
       }
       
-      console.log("User credentials stored, proceeding to completion");
+      // Clean up localStorage after successful signup
+      localStorage.removeItem('selectedSchool');
+      localStorage.removeItem('searchSchool');
       
-      // Then immediately call complete-signup endpoint
-      const completeResponse = await fetch(`${API_BASE_URL}/auth/complete-signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email, 
-          university, 
-          fieldOfStudy: "" // Empty string as we removed this field
-        }),
-      });
-
-      const completeData = await completeResponse.json();
+      // Navigate to created-sets page after successful signup
+      navigate("/created-sets");
       
-      if (completeResponse.ok) {
-        console.log("User signed up successfully:", completeData);
-        
-        // Instead of manually storing user data, use the login function from AuthContext
-        try {
-          // After successful signup, login the user
-          await login(email, password);
-          // Navigate to created-sets page after successful login
-          navigate("/created-sets");
-        } catch (loginError) {
-          console.error("Auto-login failed after signup:", loginError);
-          setError("Account created but login failed. Please try logging in manually.");
-          // If auto-login fails, redirect to login page
-          navigate("/login");
-        }
+    } catch (error: any) {
+      // Handle Firebase Auth errors
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      
+      console.error("Signup error:", errorCode, errorMessage);
+      
+      if (errorCode === 'auth/email-already-in-use') {
+        setError("This email is already in use. Try signing in instead.");
+      } else if (errorCode === 'auth/invalid-email') {
+        setError("Please enter a valid email address.");
+      } else if (errorCode === 'auth/weak-password') {
+        setError("Password is too weak. Please choose a stronger password.");
       } else {
-        setError(completeData.message || "Signup completion failed");
+        setError(`Signup failed: ${errorMessage}`);
       }
-    } catch (err) {
-      console.error("Signup error:", err);
-      setError("Connection error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -355,20 +636,22 @@ const CombinedSignup: React.FC = () => {
     <div className="flex flex-col justify-center items-center min-h-screen w-screen overflow-hidden relative bg-gradient-to-br from-[#004a74] to-[#001f3f]">
       <ParticlesBackground {...particleProps} />
       
-      {/* Fixed Navigation Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
+      {/* Fixed Navigation Header - Mobile Responsive */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4 
                      bg-black/5 backdrop-blur-md border-b border-white/5">
-        <Link to="/" className="flex items-center space-x-3">
-        <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-full h-11 w-12">
-              <img 
-                src="/images/fliply_logo.png" 
-                alt="Fliply Logo" 
-                className="h-9 w-auto"
-              />
-            </div>
-          <span className="text-white text-xl font-medium tracking-wide"></span>
+        <Link to="/" className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-full h-9 w-9 sm:h-11 sm:w-12">
+            <img 
+              src="/images/fliply_logo.png" 
+              alt="Fliply Logo" 
+              className="h-7 sm:h-9 w-auto"
+            />
+          </div>
+          <span className="text-white text-lg sm:text-xl font-medium tracking-wide hidden sm:inline"></span>
         </Link>
-        <nav className="flex items-center space-x-8">
+        
+        {/* Desktop Navigation */}
+        <nav className="hidden sm:flex items-center space-x-8">
           <Link 
             to="/signup" 
             className="text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full 
@@ -383,22 +666,60 @@ const CombinedSignup: React.FC = () => {
             Sign In
           </Link>
         </nav>
+        
+        {/* Mobile Menu Button */}
+        <button 
+          className="sm:hidden text-white p-2"
+          onClick={toggleMobileMenu}
+          aria-label="Toggle mobile menu"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </header>
       
-      {/* Main Content with spacing for the fixed header */}
-      <div className="bg-white p-12 rounded-xl shadow-xl w-[min(550px,90vw)] max-h-[90vh] overflow-y-auto text-center relative z-10 scrollbar-thin scrollbar-thumb-[#004a74] scrollbar-track-gray-100 mt-20">
-        <h1 className="text-[#004a74] text-[min(3.5rem,8vw)] font-bold mb-3 leading-tight">
-        Welcome!
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden fixed inset-0 z-40 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center animate-fadeIn">
+          <button 
+            className="absolute top-4 right-4 text-white p-2"
+            onClick={toggleMobileMenu}
+            aria-label="Close mobile menu"
+          >
+            <X size={24} />
+          </button>
+          <nav className="flex flex-col items-center space-y-6">
+            <Link 
+              to="/signup" 
+              className="text-white text-xl font-medium py-2 px-8 border-b-2 border-white/10"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Sign Up
+            </Link>
+            <Link 
+              to="/login" 
+              className="text-white/80 hover:text-white text-xl font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Sign In
+            </Link>
+          </nav>
+        </div>
+      )}
+      
+      {/* Main Content - Mobile Responsive */}
+      <div className="bg-white p-6 sm:p-10 rounded-xl shadow-xl w-[92%] sm:w-[min(550px,90vw)] max-h-[90vh] overflow-y-auto text-center relative z-10 scrollbar-thin scrollbar-thumb-[#004a74] scrollbar-track-gray-100 mt-16 sm:mt-20 mb-4">
+        <h1 className="text-[#004a74] text-3xl sm:text-[min(3.5rem,8vw)] font-bold mb-2 sm:mb-3 leading-tight">
+          Welcome!
         </h1>
         
         {error && (
           <p className="text-[#e53935] text-sm my-2 p-2 bg-[rgba(229,57,53,0.1)] rounded-md w-full flex items-center">
             <AlertCircleIcon className="w-4 h-4 mr-2 flex-shrink-0" />
-            {error}
+            <span className="text-left">{error}</span>
           </p>
         )}
         
-        <p className="mt-2 mb-4 text-base text-gray-600">
+        <p className="mt-2 mb-4 text-sm sm:text-base text-gray-600">
           Already have an account? <Link 
             to="/login" 
             className="text-[#004a74] font-medium hover:text-[#00659f] hover:underline transition-colors"
@@ -407,7 +728,81 @@ const CombinedSignup: React.FC = () => {
           </Link>
         </p>
 
-        <form onSubmit={handleSignup} className="w-full">
+        {/* University dropdown with autocomplete - We need to get this BEFORE Google Sign In */}
+        <div className="relative w-full mb-4">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={isLoadingUniversities ? "Loading universities..." : "Enter Your University"}
+            value={university}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            required
+            disabled={isLoadingUniversities}
+            aria-label="University"
+            className={`w-full p-3 sm:p-4 border ${error.includes('university') ? 'border-[#e53935]' : 'border-gray-200'} rounded-lg text-sm sm:text-base 
+              outline-none transition-all duration-300 
+              focus:border-[#004a74] focus:ring-2 focus:ring-[#004a74]/10`}
+            autoComplete="off"
+          />
+          
+          {/* Autocomplete dropdown list - Mobile friendly */}
+          {autocompleteResults.length > 0 && (
+            <ul 
+              ref={autocompleteRef}
+              className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg"
+              style={{
+                width: '100%',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+                zIndex: 1000
+              }}
+            >
+              {autocompleteResults.map((school, index) => (
+                <li 
+                  key={index}
+                  className="p-2.5 sm:p-3 hover:bg-[#e3f3ff] cursor-pointer border-b border-gray-100 text-left font-medium text-sm sm:text-base"
+                  onMouseDown={() => handleAutocompleteSelect(school)}
+                  // For mobile touch
+                  onTouchStart={() => {}}
+                >
+                  {school}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        
+{/* Google Sign In Button */}
+<button
+  type="button"
+  onClick={handleGoogleSignIn}
+  disabled={googleLoading || isLoadingUniversities || !university}
+  className="w-full p-3 sm:p-4 mb-4 flex items-center justify-center space-x-3 border border-gray-300 rounded-lg hover:bg-gray-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {googleLoading ? (
+    <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+  ) : (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
+      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+      <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+      <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+      <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+    </svg>
+  )}
+  <span className="text-gray-700 font-medium text-sm sm:text-base">Continue with Google</span>
+</button>
+
+        {/* Or separator */}
+        <div className="flex items-center mt-4 sm:mt-6 mb-4">
+          <div className="flex-grow h-px bg-gray-200"></div>
+          <span className="px-4 text-gray-400 text-xs sm:text-sm font-medium">OR</span>
+          <div className="flex-grow h-px bg-gray-200"></div>
+        </div>
+
+        <form ref={formRef} onSubmit={handleSignup} className="w-full">
           <div className="mb-4">
             <input 
               type="email" 
@@ -417,11 +812,11 @@ const CombinedSignup: React.FC = () => {
               required 
               aria-label="Email"
               autoComplete="email"
-              className="w-full p-4 my-3 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all"
+              className="w-full p-3 sm:p-4 my-2 sm:my-3 border border-gray-200 rounded-lg text-sm sm:text-base focus:border-[#004a74] focus:ring-2 focus:ring-[#004a74]/10 transition-all"
             />
             
             {/* Username field with validation status */}
-            <div className="relative my-3">
+            <div className="relative my-2 sm:my-3">
               <input 
                 type="text" 
                 placeholder="Create Username" 
@@ -429,8 +824,8 @@ const CombinedSignup: React.FC = () => {
                 onChange={handleUsernameChange}
                 required 
                 aria-label="Username"
-                className={`w-full p-4 border ${usernameError ? 'border-[#e53935]' : usernameAvailable && username.length >= 3 ? 'border-green-500' : 'border-gray-200'} 
-                          rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all pr-12`}
+                className={`w-full p-3 sm:p-4 border ${usernameError ? 'border-[#e53935]' : usernameAvailable && username.length >= 3 ? 'border-green-500' : 'border-gray-200'} 
+                          rounded-lg text-sm sm:text-base focus:border-[#004a74] focus:ring-2 focus:ring-[#004a74]/10 transition-all pr-12`}
               />
               
               {/* Username validation indicator */}
@@ -462,7 +857,7 @@ const CombinedSignup: React.FC = () => {
             )}
             
             {/* Password field with toggle */}
-            <div className="relative mt-6">
+            <div className="relative mt-4 sm:mt-6">
               <input 
                 type={showPassword ? "text" : "password"}
                 placeholder="Create Password" 
@@ -471,7 +866,7 @@ const CombinedSignup: React.FC = () => {
                 required 
                 aria-label="Password"
                 autoComplete="new-password"
-                className="w-full p-4 border border-gray-200 rounded-lg text-base focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10 transition-all pr-12"
+                className="w-full p-3 sm:p-4 border border-gray-200 rounded-lg text-sm sm:text-base focus:border-[#004a74] focus:ring-2 focus:ring-[#004a74]/10 transition-all pr-12"
               />
               <button
                 type="button"
@@ -487,53 +882,10 @@ const CombinedSignup: React.FC = () => {
               </button>
             </div>
             
-            {/* University dropdown with autocomplete */}
-            <div className="relative w-full mt-6">
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder={isLoadingUniversities ? "Loading universities..." : "Enter Your University"}
-                value={university}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                required
-                disabled={isLoadingUniversities}
-                aria-label="University"
-                className={`w-full p-4 border ${error.includes('university') ? 'border-[#e53935]' : 'border-gray-200'} rounded-lg text-base 
-                  outline-none transition-all duration-300 
-                  focus:border-[#004a74] focus:ring-4 focus:ring-[#004a74]/10`}
-                autoComplete="off"
-              />
-              
-              {/* Autocomplete dropdown list */}
-              {autocompleteResults.length > 0 && (
-                <ul 
-                  ref={autocompleteRef}
-                  className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg"
-                  style={{
-                    width: '100%',
-                    maxHeight: '240px',
-                    overflowY: 'auto',
-                    overscrollBehavior: 'contain',
-                    zIndex: 1000
-                  }}
-                >
-                  {autocompleteResults.map((school, index) => (
-                    <li 
-                      key={index}
-                      className="p-3 hover:bg-[#e3f3ff] cursor-pointer border-b border-gray-100 text-left font-medium"
-                      onMouseDown={() => handleAutocompleteSelect(school)}
-                    >
-                      {school}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
             
             {/* Terms of Service Statement */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="mt-5 sm:mt-6 text-center">
+              <p className="text-xs sm:text-sm text-gray-600">
                 By using Fliply, you agree to our {" "}
                 <button
                   type="button"
@@ -557,7 +909,7 @@ const CombinedSignup: React.FC = () => {
           <button 
             type="submit" 
             disabled={loading || isLoadingUniversities || isCheckingUsername || (username.length >= 3 && !usernameAvailable)}
-            className="mt-5 w-full p-4 bg-[#004a74] text-white text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-4 sm:mt-5 w-full p-3 sm:p-4 bg-[#004a74] text-white text-base sm:text-lg font-medium rounded-lg hover:bg-[#00659f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
@@ -569,6 +921,13 @@ const CombinedSignup: React.FC = () => {
       
       {/* Privacy Policy Popup */}
       <PrivacyPolicyPopup isOpen={isPrivacyOpen} onClose={closePrivacyPopup} />
+      
+      {/* Account Found Popup */}
+      <AccountFoundPopup 
+        isOpen={showAccountFoundPopup} 
+        onClose={handleAccountFoundPopupClose} 
+        email={foundAccountEmail}
+      />
     </div>
   );
 };

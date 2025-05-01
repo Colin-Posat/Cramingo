@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import admin from "firebase-admin";
 import jwt from "jsonwebtoken";
+import * as bcrypt from 'bcrypt';
 
 const db = admin.firestore(); // Firestore instance
 const auth = admin.auth(); // Firebase Authentication instance
@@ -385,3 +386,397 @@ export const checkUsernameAvailability = async (req: Request, res: Response): Pr
     res.status(500).json({ available: false, message: "Internal error" });
   }
 };
+
+export const googleSignup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, email, displayName, photoURL, university, token, isNewSignup } = req.body;
+    
+    if (!uid || !email) {
+      res.status(400).json({ message: "User ID and email are required" });
+      return;
+    }
+    
+    // Check if user exists by EMAIL
+    const userByEmailQuery = await db.collection("users")
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+    
+    if (!userByEmailQuery.empty) {
+      // User already exists with this email
+      const existingUserDoc = userByEmailQuery.docs[0];
+      const existingUserData = existingUserDoc.data();
+      const existingUserId = existingUserDoc.id;
+      
+      // IMPORTANT CHANGE: Don't update existing user's details
+      // Just update the last login time
+      await db.collection("users").doc(existingUserId).update({
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Generate JWT for the EXISTING user
+      const persistentToken = jwt.sign(
+        { 
+          uid: existingUserId,
+          email,
+          username: existingUserData.username
+        },
+        JWT_SECRET,
+        { expiresIn: TOKEN_EXPIRY }
+      );
+      
+      res.status(200).json({
+        message: "Google login successful with existing account",
+        token: persistentToken,
+        user: {
+          uid: existingUserId,
+          email,
+          username: existingUserData.username,
+          university: existingUserData.university, // Keep existing university
+          fieldOfStudy: existingUserData.fieldOfStudy || null,
+          photoURL: existingUserData.photoURL || null,
+          likes: existingUserData.likes || 0
+        }
+      });
+      return;
+    }
+    
+    // If we get here, it's truly a new user - check if UID already exists
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (userDoc.exists) {
+      // User already exists by UID, DON'T update their information
+      // Just update the last login time
+      await db.collection("users").doc(uid).update({
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      const userData = userDoc.data();
+      
+      // Generate JWT for the EXISTING user
+      const persistentToken = jwt.sign(
+        { 
+          uid,
+          email,
+          username: userData?.username
+        },
+        JWT_SECRET,
+        { expiresIn: TOKEN_EXPIRY }
+      );
+      
+      res.status(200).json({
+        message: "Google login successful with existing account by UID",
+        token: persistentToken,
+        user: {
+          uid,
+          email,
+          username: userData?.username,
+          university: userData?.university, // Keep existing university
+          fieldOfStudy: userData?.fieldOfStudy || null,
+          photoURL: userData?.photoURL || photoURL || null,
+          likes: userData?.likes || 0
+        }
+      });
+      return;
+    }
+    
+    // If we reach here, this is a completely new user
+    // Only for new users, require university
+    if (!university && isNewSignup) {
+      res.status(400).json({ message: "University is required for new users" });
+      return;
+    }
+    
+    // Create new user document
+    await db.collection("users").doc(uid).set({
+      email,
+      username: displayName || email.split('@')[0], // Use display name or create username from email
+      university, // Only set for new users
+      photoURL: photoURL || null,
+      likes: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      authProvider: 'google'
+    });
+    
+    // Generate JWT for persistent login
+    const persistentToken = jwt.sign(
+      { 
+        uid,
+        email,
+        username: displayName || email.split('@')[0]
+      },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+    
+    res.status(201).json({
+      message: "Google signup successful",
+      token: persistentToken,
+      user: {
+        uid,
+        email,
+        username: displayName || email.split('@')[0],
+        university,
+        photoURL: photoURL || null,
+        likes: 0
+      }
+    });
+    
+  } catch (error) {
+    console.error("Google signup error:", error);
+    res.status(500).json({ message: "Google signup failed", error: (error as Error).message });
+  }
+};
+
+/**
+ * Handle exchanging Google auth token after redirect
+ */
+export const exchangeGoogleToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      res.status(400).json({ message: "Token is required" });
+      return;
+    }
+    
+    // Verify the Google ID token
+    const decodedToken = await auth.verifyIdToken(token);
+    const uid = decodedToken.uid;
+    
+    // Get user details from Firestore
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      res.status(404).json({ message: "User not found. Complete signup first." });
+      return;
+    }
+    
+    const userData = userDoc.data();
+    
+    // Generate JWT for persistent login
+    const persistentToken = jwt.sign(
+      { 
+        uid,
+        email: userData?.email,
+        username: userData?.username
+      },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+    
+    res.status(200).json({
+      message: "Token exchange successful",
+      token: persistentToken,
+      user: {
+        uid,
+        email: userData?.email,
+        username: userData?.username,
+        university: userData?.university,
+        photoURL: userData?.photoURL || null,
+        likes: userData?.likes || 0
+      }
+    });
+    
+  } catch (error) {
+    console.error("Token exchange error:", error);
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, token } = req.body;
+    
+    if (!email || !token) {
+      res.status(400).json({ message: "Email and token are required" });
+      return;
+    }
+    
+    let uid: string;
+    let isGoogleAuthenticated = false;
+    
+    // Try to verify the token in different ways
+    try {
+      // First try as an ID token
+      const decodedToken = await auth.verifyIdToken(token);
+      uid = decodedToken.uid;
+      isGoogleAuthenticated = true;
+    } catch (idTokenError) {
+      console.log("ID token verification failed, trying as custom token:", idTokenError);
+      
+      try {
+        // Try to find user by email to check if they exist
+        const userRecord = await auth.getUserByEmail(email);
+        uid = userRecord.uid;
+        
+        // Check if this account was created with Google provider
+        isGoogleAuthenticated = userRecord.providerData.some(
+          provider => provider.providerId === 'google.com'
+        );
+        
+        // If the account exists but was NOT created with Google
+        if (!isGoogleAuthenticated) {
+          // Return a special response indicating account exists but needs linking
+          res.status(200).json({ 
+            accountExists: true,
+            message: "An account with this email already exists but wasn't created with Google.",
+            email: email,
+            needsLinking: true
+          });
+          return;
+        }
+      } catch (userError) {
+        console.error("Failed to fetch user by email:", userError);
+        res.status(401).json({ message: "Invalid authentication credentials" });
+        return;
+      }
+    }
+    
+    // Get user details from Firestore
+    const userDoc = await db.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      res.status(404).json({
+        message: "User not found. Please complete the signup process first."
+      });
+      return;
+    }
+    
+    const userData = userDoc.data();
+    
+    // Generate JWT for persistent login
+    const persistentToken = jwt.sign(
+      {
+        uid,
+        email: userData?.email,
+        username: userData?.username
+      },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+    
+    // Update last login timestamp
+    await db.collection("users").doc(uid).update({
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    res.status(200).json({
+      message: "Google login successful",
+      token: persistentToken,
+      user: {
+        uid,
+        email: userData?.email,
+        username: userData?.username,
+        university: userData?.university || "Unknown",
+        fieldOfStudy: userData?.fieldOfStudy || null,
+        likes: userData?.likes || 0,
+        photoURL: userData?.photoURL || null
+      }
+    });
+    
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      message: "Google login failed",
+      error: (error as Error).message
+    });
+  }
+};
+
+export const checkExistingAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      res.status(400).json({ message: "Email is required" });
+      return;
+    }
+    
+    try {
+      // First, check Firestore for users with this email
+      const userByEmailQuery = await db.collection("users")
+        .where("email", "==", email)
+        .limit(1)
+        .get();
+      
+      if (!userByEmailQuery.empty) {
+        // User found in Firestore
+        const userDoc = userByEmailQuery.docs[0];
+        const userData = userDoc.data();
+        
+        // Check if this was created with Google auth
+        const isGoogleAuth = userData.authProvider === 'google';
+        
+        res.status(200).json({
+          accountExists: true,
+          hasGoogleProvider: isGoogleAuth,
+          uid: userDoc.id,
+          hasFirestoreData: true,
+          userData: {
+            username: userData.username,
+            university: userData.university,
+            // Don't include sensitive data
+          }
+        });
+        return;
+      }
+      
+      // If not found in Firestore, try Firebase Auth
+      try {
+        const userRecord = await auth.getUserByEmail(email);
+        
+        // Check if this account was created with Google provider
+        const hasGoogleProvider = userRecord.providerData.some(
+          provider => provider.providerId === 'google.com'
+        );
+        
+        res.status(200).json({
+          accountExists: true,
+          hasGoogleProvider,
+          uid: userRecord.uid,
+          hasFirestoreData: false
+        });
+      } catch (authError) {
+        // If not found in Firebase Auth either, account doesn't exist
+        res.status(200).json({
+          accountExists: false,
+          hasGoogleProvider: false
+        });
+      }
+    } catch (firestoreError) {
+      console.error("Firestore query error:", firestoreError);
+      
+      // Fall back to Firebase Auth check
+      try {
+        const userRecord = await auth.getUserByEmail(email);
+        
+        // Check if this account was created with Google provider
+        const hasGoogleProvider = userRecord.providerData.some(
+          provider => provider.providerId === 'google.com'
+        );
+        
+        res.status(200).json({
+          accountExists: true,
+          hasGoogleProvider,
+          uid: userRecord.uid,
+          hasFirestoreData: false
+        });
+      } catch (authError) {
+        // If not found in Firebase Auth either, account doesn't exist
+        res.status(200).json({
+          accountExists: false,
+          hasGoogleProvider: false
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Check existing account error:", error);
+    res.status(500).json({
+      message: "Server error checking existing account",
+      error: (error as Error).message
+    });
+  }
+};
+

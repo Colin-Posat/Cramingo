@@ -8,7 +8,9 @@ import {
   Edit as EditIcon,
   LogOut as LogOutIcon,
   AlertCircle as AlertCircleIcon,
-  RefreshCw as RefreshIcon
+  RefreshCw as RefreshIcon,
+  CheckCircleIcon,
+  BookOpenIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
@@ -35,7 +37,6 @@ const ProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profileDataSource, setProfileDataSource] = useState<string>('');
   const navigate = useNavigate();
 
   // Function to force sync total likes with the backend
@@ -119,7 +120,6 @@ const ProfilePage: React.FC = () => {
             ...prev,
             totalLikes: likesData.totalLikes || 0
           }));
-          setProfileDataSource('Total likes endpoint');
         }
       } catch (likesError) {
         console.error('Error fetching total likes:', likesError);
@@ -181,15 +181,18 @@ const ProfilePage: React.FC = () => {
   // Loading state
   if ((authLoading || isLoading) && !userProfile.username) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="flex flex-col items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74] mb-4"></div>
-              <p className="text-lg text-[#004a74]">Loading your profile...</p>
-              <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
+              <div className="animate-spin relative rounded-full h-16 w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
             </div>
+            <div className="mt-6 bg-blue-50 px-6 py-3 rounded-lg shadow-sm">
+              <p className="text-[#004a74] font-medium text-lg">Loading your profile...</p>
+            </div>
+            <p className="mt-3 text-gray-500 text-sm">This may take a moment</p>
           </div>
         </div>
       </div>
@@ -199,22 +202,39 @@ const ProfilePage: React.FC = () => {
   // Not authenticated state
   if (!isAuthenticated && !authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <AlertCircleIcon className="h-8 w-8 text-red-600" />
+        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+          <div className="bg-white shadow-xl rounded-2xl max-w-md w-full overflow-hidden">
+            <div className="h-2 bg-red-500"></div>
+            <div className="p-8">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+                  <AlertCircleIcon className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">Authentication Required</h2>
+                  <p className="text-gray-600 mb-6">
+                    You need to be logged in to view and manage your profile.
+                  </p>
+                  <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-6 text-gray-700 text-sm">
+                    <p className="font-medium">Why do I need to log in?</p>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>To access your personal profile</li>
+                      <li>To edit your profile information</li>
+                      <li>To see your total likes received</li>
+                    </ul>
+                  </div>
+                  <button 
+                    onClick={() => navigate('/login')} 
+                    className="bg-[#004a74] w-full text-white px-5 py-3 rounded-lg hover:bg-[#00659f] 
+                      transition-all shadow-md font-medium flex items-center justify-center gap-2"
+                  >
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Log In
+                  </button>
+                </div>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-              <p className="text-gray-600 mb-6">You need to be logged in to view your profile.</p>
-              <button 
-                onClick={() => navigate('/login')} 
-                className="px-6 py-3 bg-[#004a74] text-white font-medium rounded-xl hover:bg-[#00659f] transition-all"
-              >
-                Go to Login
-              </button>
             </div>
           </div>
         </div>
@@ -225,29 +245,34 @@ const ProfilePage: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <AlertCircleIcon className="h-8 w-8 text-red-600" />
+        <div className="pt-24 px-6 pb-6">
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 animate-fade-in">
+            <div className="flex items-start gap-4">
+              <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+                <AlertCircleIcon className="w-6 h-6 text-red-500" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Profile</h2>
-              <p className="text-gray-600 mb-6">{error}</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button 
-                  onClick={handleRefresh} 
-                  className="px-6 py-3 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition-all"
-                >
-                  Try Again
-                </button>
-                <button 
-                  onClick={() => navigate('/login')} 
-                  className="px-6 py-3 bg-[#004a74] text-white font-medium rounded-xl hover:bg-[#00659f] transition-all"
-                >
-                  Go to Login
-                </button>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Unable to Load Profile</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={handleRefresh} 
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 
+                      transition flex items-center gap-2 text-sm font-medium shadow-sm"
+                  >
+                    <RefreshIcon className="w-4 h-4" />
+                    Try Again
+                  </button>
+                  <button 
+                    onClick={() => navigate('/login')} 
+                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 
+                      rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+                  >
+                    Go to Login
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -257,92 +282,95 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
-      <div className="container mx-auto px-4 pt-24 pb-12">
-        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Header Section */}
-          <div className="bg-[#004a74] text-white p-8 relative">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-white/30 mb-4">
-                <UserIcon className="h-10 w-10" />
-              </div>
-              <h1 className="text-3xl font-bold mb-2">{userProfile.username}</h1>
-              <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-                <HeartIcon className="h-5 w-5 text-pink-200" />
-                <span className="font-bold">{userProfile.totalLikes}</span>
-                <span className="text-sm opacity-80">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</span>
-                {isSyncing && (
-                  <RefreshIcon className="h-4 w-4 ml-2 animate-spin" />
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Content Section */}
-          <div className="p-8">
-            <div className="space-y-4 mb-8">
-              {/* University */}
-              <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-start">
-                  <div className="mr-3 mt-1">
-                    <SchoolIcon className="h-5 w-5 text-[#004a74]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-1">University</h3>
-                    <p className="text-lg font-semibold text-[#004a74]">{userProfile.university}</p>
+      <div className="container mx-auto pt-24 px-6 pb-12">
+        <div className="max-w-2xl mx-auto">
+          {/* Profile Card */}
+          <div 
+            className="bg-white rounded-2xl shadow-lg overflow-hidden 
+
+            hover:shadow-xl transition-all duration-300 ease-out
+            border border-gray-200 hover:border-[#004a74]/30"
+          >
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white p-8 relative">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center h-24 w-24 rounded-full 
+                  bg-white/20 mb-4 ring-4 ring-white/10 shadow-inner">
+                  <UserIcon className="h-12 w-12" />
+                </div>
+                <h1 className="text-3xl font-bold mb-3">{userProfile.username}</h1>
+                
+                <div className="flex items-center justify-center gap-4">
+                  <div className="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                    <HeartIcon className="h-5 w-5 text-pink-200" />
+                    <span className="font-bold">{userProfile.totalLikes}</span>
+                    <span className="text-sm opacity-80">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</span>
+                    {isSyncing && (
+                      <RefreshIcon className="h-4 w-4 ml-1 animate-spin" />
+                    )}
                   </div>
                 </div>
               </div>
-              
-              {/* Email (if available) */}
-              {userProfile.email && (
-                <div className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-100">
+            </div>
+            
+            {/* Content Section */}
+            <div className="p-8">
+              <div className="space-y-5 mb-8">
+                {/* University */}
+                <div className="bg-blue-50 rounded-xl p-5 shadow-sm border border-blue-100
+                  hover:shadow-md transition-shadow duration-300">
                   <div className="flex items-start">
-                    <div className="mr-3 mt-1">
-                      <MailIcon className="h-5 w-5 text-[#004a74]" />
+                    <div className="bg-[#004a74] text-white rounded-lg p-3 mr-4 shadow-sm">
+                      <SchoolIcon className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
-                      <p className="text-lg font-semibold text-[#004a74]">{userProfile.email}</p>
+                      <h3 className="text-sm font-medium text-gray-500 mb-2">University</h3>
+                      <p className="text-xl font-semibold text-[#004a74]">{userProfile.university}</p>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleEditProfile}
-                className="w-full bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] transition-all flex items-center justify-center gap-2"
-              >
-                <EditIcon className="h-5 w-5" />
-                Edit Profile
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="w-full bg-white border border-[#004a74] text-[#004a74] font-bold py-3 px-6 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-              >
-                <LogOutIcon className="h-5 w-5" />
-                Sign Out
-              </button>
-            </div>
-            
-            {/* Last refresh time indicator */}
-            <div className="mt-6 text-center text-xs text-gray-500">
-              Last updated: {new Date().toLocaleTimeString()}
-              <button 
-                onClick={handleRefresh}
-                className="ml-2 text-[#004a74] hover:underline"
-                disabled={isLoading}
-              >
-                Refresh
-              </button>
-            </div>
-            
-            {/* Debug info - you can remove this in production */}
-            <div className="mt-2 text-center text-xs text-gray-400">
+                
+
+                {/* Email (if available) */}
+                {userProfile.email && (
+                  <div className="bg-blue-50 rounded-xl p-5 shadow-sm border border-blue-100
+                    hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-start">
+                      <div className="bg-[#004a74] text-white rounded-lg p-3 mr-4 shadow-sm">
+                        <MailIcon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Email</h3>
+                        <p className="text-xl font-semibold text-[#004a74]">{userProfile.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleEditProfile}
+                  className="w-full bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl 
+                  hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <EditIcon className="h-5 w-5" />
+                  Edit Profile
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full bg-white border border-[#004a74] text-[#004a74] font-bold py-3 px-6 
+                  rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all shadow-sm 
+                  flex items-center justify-center gap-2"
+                >
+                  <LogOutIcon className="h-5 w-5" />
+                  Sign Out
+                </button>
+              </div>
+              
 
             </div>
           </div>
