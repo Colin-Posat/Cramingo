@@ -31,6 +31,16 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Fetch the user's school from their user document
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    
+    const userData = userDoc.data() || {};
+    const userSchool = userData.school || null;
+
     await db.collection("flashcardSets").doc(id).set({
       id,
       title,
@@ -45,7 +55,8 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       userId,
       numCards: flashcards.length,
       isDerived: false, // Explicitly mark as NOT derived/saved
-      likes: 0 // Initialize likes count to 0
+      likes: 0, // Initialize likes count to 0
+      school: userSchool // Add the school field from the user's document
     });
 
     console.log('Successfully created set with ID:', id);
@@ -109,6 +120,9 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
     // Preserve the current likes count
     const currentLikes = setData?.likes || 0;
     
+    // Preserve the school field from the existing set
+    const school = setData?.school || null;
+    
     // Update the document
     await db.collection("flashcardSets").doc(setId).update({
       title,
@@ -121,7 +135,8 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
         : "/FliplyPNGs/private_flashcard.png",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       numCards: flashcards.length,
-      likes: currentLikes // Preserve the likes count
+      likes: currentLikes, // Preserve the likes count
+      school // Preserve the school field
     });
     
     console.log('Successfully updated set with ID:', setId);
@@ -137,6 +152,7 @@ export const updateSet = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
 
 // Get flashcard sets for a specific user
 export const getUserSets = async (req: Request, res: Response): Promise<void> => {
@@ -418,17 +434,24 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
   try {
     // Get the class code from the query parameter
     const classCode = req.query.classCode as string;
+    const school = req.query.school as string;
     
     if (!classCode) {
       res.status(400).json({ message: "Class code is required" });
       return;
     }
     
-    // Query for public sets where the classCode matches
+    if (!school) {
+      res.status(400).json({ message: "School is required" });
+      return;
+    }
+    
+    // Query for public sets where the classCode and school match
     const setsSnapshot = await db.collection("flashcardSets")
       .where("classCode", "==", classCode.toUpperCase())
       .where("isPublic", "==", true)
       .where("isDerived", "==", false)
+      .where("school", "==", school)
       .orderBy("createdAt", "desc")
       .get();
     
@@ -458,6 +481,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       userId: string;
       numCards: number;
       likes?: number; // Add likes field to type
+      school?: string; // Add school field to type
       [key: string]: any; // Allow for additional fields
     }
     
@@ -514,7 +538,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       };
     });
     
-    console.log(`Found ${setsWithUserInfo.length} public sets for class code ${classCode}`);
+    console.log(`Found ${setsWithUserInfo.length} public sets for class code ${classCode} and school ${school}`);
     res.status(200).json(setsWithUserInfo);
   } catch (error) {
     console.error("Error getting sets by class code:", error);

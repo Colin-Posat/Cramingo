@@ -7,6 +7,7 @@ import TermsOfServicePopup from "../../components/TermsOfServicePopup";
 import PrivacyPolicyPopup from "../../components/PrivacyPolicyPopup";
 import AccountFoundPopup from "../../components/AccountFoundPopup";
 import { useAuth } from "../../context/AuthContext"; // Import the auth hook
+import { universityAcronyms, enhanceUniversitySearch } from "../../utils/universitySearch";
 import { 
   GoogleAuthProvider, 
   signInWithPopup,
@@ -15,6 +16,7 @@ import {
   getRedirectResult
 } from "firebase/auth";
 import { auth } from '../../config/firebase';
+import ContactPopup from "../../components/FeedbackModal";
 
 const CombinedSignup: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +44,8 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
   university: string;
   token: string;
 } | null>(null);
+
+
   
   // Basic user information
   const [email, setEmail] = useState("");
@@ -75,6 +79,11 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [isContactOpen, setIsContactOpen] = useState<boolean>(false);
+
+  // Add this with your other popup handlers like openTermsPopup, closeTermsPopup
+  const openContactPopup = () => setIsContactOpen(true);
+  const closeContactPopup = () => setIsContactOpen(false);
 
   const handleAccountFoundPopupClose = () => {
     setShowAccountFoundPopup(false);
@@ -357,6 +366,27 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
     fetchUniversities();
   }, []);
 
+  // Inside your CombinedSignup component, add this function to check if a school is recognized
+const isSchoolRecognized = (searchInput: any) => {
+  if (!searchInput.trim()) return false;
+  
+  // Check for acronym match first
+  const lowerSearchInput = searchInput.trim().toLowerCase();
+  for (const [acronym, fullName] of Object.entries(universityAcronyms)) {
+    if (acronym.toLowerCase() === lowerSearchInput) {
+      return allUniversities.some(
+        school => school.toLowerCase() === fullName.toLowerCase()
+      );
+    }
+  }
+  
+  // If no acronym match, check for direct school match
+  return allUniversities.some(
+    school => school.toLowerCase() === searchInput.trim().toLowerCase()
+  );
+};
+
+
   // Check if username is available
   const checkUsername = useCallback(async (usernameToCheck: string) => {
     if (!usernameToCheck || usernameToCheck.length < 3) {
@@ -441,15 +471,9 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
     setError("");
     
     if (value.length > 0) {
-      // Filter universities that START WITH or INCLUDE the input value
-      const filteredResults = allUniversities
-        .filter(school => 
-          school.toLowerCase().startsWith(value.toLowerCase()) || 
-          school.toLowerCase().includes(value.toLowerCase())
-        )
-        .slice(0, 5); // Limit to 5 results
-      
-      setAutocompleteResults(filteredResults);
+      // Use the enhanced search function instead of simple filtering
+      const enhancedResults = enhanceUniversitySearch(value, allUniversities);
+      setAutocompleteResults(enhancedResults.slice(0, 5)); // Limit to 5 results
     } else {
       setAutocompleteResults([]);
     }
@@ -568,65 +592,64 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
     try {
       setLoading(true);
       
-      // Create user with email and password in Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Update the user profile with username
-      await updateProfile(user, {
-        displayName: username
+      // Step 1: Initialize signup - store user credentials in Firestore temporarily
+      const initResponse = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          username
+        })
       });
       
-      // Save additional user information to your database
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/users/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await user.getIdToken()}`
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            username: username,
-            university: university
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to save user data");
-        }
-      } catch (dbError) {
-        console.error("Error saving user data to database:", dbError);
-        // User is created in Firebase Auth but not in your database
-        // You might want to handle this situation
+      const initData = await initResponse.json();
+      
+      if (!initResponse.ok) {
+        throw new Error(initData.message || "Failed to initialize signup");
       }
       
-      // Clean up localStorage after successful signup
-      localStorage.removeItem('selectedSchool');
-      localStorage.removeItem('searchSchool');
+      // Step 2: Complete signup - create user in Firebase Auth and Firestore
+      const completeResponse = await fetch(`${API_BASE_URL}/auth/signup/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          university,
+          fieldOfStudy: '' // Add a field of study if you collect it, or leave empty
+        })
+      });
       
-      // Navigate to created-sets page after successful signup
-      navigate("/created-sets");
+      const completeData = await completeResponse.json();
       
-    } catch (error: any) {
-      // Handle Firebase Auth errors
-      const errorCode = error.code;
-      const errorMessage = error.message;
+      if (!completeResponse.ok) {
+        throw new Error(completeData.message || "Failed to complete signup");
+      }
       
-      console.error("Signup error:", errorCode, errorMessage);
-      
-      if (errorCode === 'auth/email-already-in-use') {
-        setError("This email is already in use. Try signing in instead.");
-      } else if (errorCode === 'auth/invalid-email') {
-        setError("Please enter a valid email address.");
-      } else if (errorCode === 'auth/weak-password') {
-        setError("Password is too weak. Please choose a stronger password.");
+      // If signup was successful, we should have received a token
+      if (completeData.token) {
+        // Store token in localStorage
+        localStorage.setItem('token', completeData.token);
+        
+        // Use your auth context's login function with the token
+        await login(email, '', completeData.token);
+        
+        // Clean up localStorage after successful signup
+        localStorage.removeItem('selectedSchool');
+        localStorage.removeItem('searchSchool');
+        
+        // Navigate to created-sets page after successful signup
+        navigate("/created-sets");
       } else {
-        setError(`Signup failed: ${errorMessage}`);
+        throw new Error("No authentication token received from server");
       }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      setError(error.message || "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -773,6 +796,17 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
             </ul>
           )}
         </div>
+        {university.trim() && !isSchoolRecognized(university) && !autocompleteResults.length && (
+        <div className="text-[#004a74] text-xs mt-1 mb-2">
+          Don't see your university? <button 
+            onClick={openContactPopup}
+            className="text-[#00659f] hover:text-[#004a74] underline transition-colors"
+          >
+            Request it to be added
+          </button>
+        </div>
+      )}
+
 
         
 {/* Google Sign In Button */}
@@ -928,6 +962,9 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
         onClose={handleAccountFoundPopupClose} 
         email={foundAccountEmail}
       />
+      {/* Contact Popup */}
+<ContactPopup isOpen={isContactOpen} onClose={closeContactPopup} />
+
     </div>
   );
 };
