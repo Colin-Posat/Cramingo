@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
+import { useAuth } from '../../context/AuthContext';
 
 // Type definitions
 type Flashcard = {
@@ -41,6 +42,7 @@ type FlashcardSet = {
 type SortOption = 'recent' | 'popular' | 'default';
 
 const SearchResultsPage: React.FC = () => {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchResults, setSearchResults] = useState<FlashcardSet[]>([]);
@@ -64,7 +66,18 @@ const SearchResultsPage: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${API_BASE_URL}/sets/search?classCode=${encodeURIComponent(query)}`, {
+        // Build the API URL with both classCode and userId parameters
+        let apiUrl = `${API_BASE_URL}/sets/search?classCode=${encodeURIComponent(query)}`;
+        
+        // Add the userId parameter if a user is logged in
+        if (user && user.uid) {
+          apiUrl += `&userId=${encodeURIComponent(user.uid)}`;
+        } else {
+          // If no user is logged in, we'll still search but backend will handle appropriately
+          console.log('No user logged in, search results may not be filtered by school');
+        }
+        
+        const response = await fetch(apiUrl, {
           credentials: 'include'
         });
         
@@ -93,7 +106,7 @@ const SearchResultsPage: React.FC = () => {
     };
     
     fetchResults();
-  }, [query]);
+  }, [query, user]);
 
   // Apply filters whenever title search or sort option changes
   useEffect(() => {

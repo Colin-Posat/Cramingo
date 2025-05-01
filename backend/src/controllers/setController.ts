@@ -31,7 +31,7 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Fetch the user's school from their user document
+    // Fetch the user's university from their user document
     const userDoc = await db.collection("users").doc(userId).get();
     if (!userDoc.exists) {
       res.status(404).json({ message: "User not found" });
@@ -39,7 +39,7 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
     }
     
     const userData = userDoc.data() || {};
-    const userSchool = userData.school || null;
+    const userSchool = userData.university || null;
 
     await db.collection("flashcardSets").doc(id).set({
       id,
@@ -56,7 +56,7 @@ export const createSet = async (req: Request, res: Response): Promise<void> => {
       numCards: flashcards.length,
       isDerived: false, // Explicitly mark as NOT derived/saved
       likes: 0, // Initialize likes count to 0
-      school: userSchool // Add the school field from the user's document
+      school: userSchool // Add the university/school field from the user's document
     });
 
     console.log('Successfully created set with ID:', id);
@@ -434,33 +434,45 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
   try {
     // Get the class code from the query parameter
     const classCode = req.query.classCode as string;
-    const school = req.query.school as string;
+    const userId = req.query.userId as string;
     
     if (!classCode) {
       res.status(400).json({ message: "Class code is required" });
       return;
     }
     
-    if (!school) {
-      res.status(400).json({ message: "School is required" });
-      return;
+    let school = null;
+    
+    // If userId is provided, try to get the user's school
+    if (userId) {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data() || {};
+        school = userData.university || null;
+      }
     }
     
-    // Query for public sets where the classCode and school match
-    const setsSnapshot = await db.collection("flashcardSets")
+    // Initialize query to get all public sets matching the class code that are not derived
+    let query = db.collection("flashcardSets")
       .where("classCode", "==", classCode.toUpperCase())
       .where("isPublic", "==", true)
-      .where("isDerived", "==", false)
-      .where("school", "==", school)
-      .orderBy("createdAt", "desc")
-      .get();
+      .where("isDerived", "==", false);
+    
+    // If we have the user's school, filter by that school
+    if (school) {
+      query = query.where("school", "==", school);
+    }
+    
+    // Execute the query
+    const setsSnapshot = await query.orderBy("createdAt", "desc").get();
     
     if (setsSnapshot.empty) {
-      // No sets found, return empty array
+      // No sets found with the school filter, return empty array
       res.status(200).json([]);
       return;
     }
     
+    // Process results as before
     // Define a type for the Firestore document data
     interface FlashcardSetData {
       id: string;
@@ -494,6 +506,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       } as FlashcardSetData;
     });
     
+    // Rest of the code to process and return sets with user info
     // Create a map of userIds to avoid duplicates (ES5 compatible)
     const userIdMap: { [key: string]: boolean } = {};
     setsData.forEach(set => {
@@ -538,7 +551,7 @@ export const getSetsByClassCode = async (req: Request, res: Response): Promise<v
       };
     });
     
-    console.log(`Found ${setsWithUserInfo.length} public sets for class code ${classCode} and school ${school}`);
+    console.log(`Found ${setsWithUserInfo.length} public sets for class code ${classCode}${school ? ` and school ${school}` : ''}`);
     res.status(200).json(setsWithUserInfo);
   } catch (error) {
     console.error("Error getting sets by class code:", error);
