@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import PopularSets from '../../components/PopularSets';
+import { useAuth } from '../../context/AuthContext'; 
 
 const SearchSetsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -20,13 +21,46 @@ const SearchSetsPage: React.FC = () => {
   const autocompleteRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const slugifyUniversityName = (universityName: string): string => {
+    return universityName
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-')     // Replace spaces with hyphens
+      .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
+      .trim();                  // Trim leading/trailing hyphens
+  };
 
   // Load class codes from CSV
   useEffect(() => {
     const fetchClassCodes = async () => {
       try {
         setIsLoadingCodes(true);
-        const response = await fetch('/data/class_codes.csv'); 
+        
+        let csvPath = '/data/class_codes.csv'; // Default path
+        
+        if (user && user.university) {
+          // Convert university name to a slugified format
+          const slugifiedUniName = slugifyUniversityName(user.university);
+          const uniSpecificPath = `/data/${slugifiedUniName}-class-codes.csv`;
+          
+          // Try to load the university-specific CSV first
+          try {
+            const uniResponse = await fetch(uniSpecificPath);
+            if (uniResponse.ok) {
+              csvPath = uniSpecificPath; // Use university-specific path
+              console.log(`✅ Using class codes for: ${user.university}`);
+            } else {
+              console.warn(`⚠️ No specific class codes found for ${user.university}, using default`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ Error loading university-specific codes:`, err);
+          }
+        }
+        
+        // Load from either the university-specific path or the default path
+        const response = await fetch(csvPath);
         const text = await response.text();
         const classCodes = text.split('\n')
           .map(code => code.trim())
@@ -44,45 +78,189 @@ const SearchSetsPage: React.FC = () => {
         setIsLoadingCodes(false);
       }
     };
+    
     fetchClassCodes();
-  }, []);
+  }, [user]); // Add user to dependency array
 
-  // Filter class codes - only show results that START WITH the input
+  // Enhanced handleInputChange function with more flexible search
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim().toUpperCase();
     setSearchTerm(value);
     setErrorMessage('');
     
     if (value.length > 0) {
-      const filteredResults = allClassCodes
-        .filter(code => code.toUpperCase().startsWith(value))
-        .slice(0, 4);
+      // More flexible filtering that matches in different ways:
+      const filteredResults = allClassCodes.filter(code => {
+        const codeUpper = code.toUpperCase();
+        
+        // 1. Exact prefix match (original behavior)
+        if (codeUpper.startsWith(value)) return true;
+        
+        // 2. Match without spaces (so "CS101" matches "CS 101")
+        const valueNoSpace = value.replace(/\s+/g, '');
+        const codeNoSpace = codeUpper.replace(/\s+/g, '');
+        if (codeNoSpace.startsWith(valueNoSpace)) return true;
+        
+        // 3. Match just the number part (so "101" matches "CS 101", "MATH 101", etc.)
+        const numberMatch = value.match(/^\d+$/);
+        if (numberMatch) {
+          const codeNumberMatch = codeUpper.match(/\d+/);
+          if (codeNumberMatch && codeNumberMatch[0] === value) return true;
+        }
+        
+        // 4. Match department without number (so "CS" matches "CS 101", "CS 201", etc.)
+        const deptMatch = value.match(/^[A-Z]+$/);
+        if (deptMatch) {
+          const codeDeptMatch = codeUpper.match(/^([A-Z]+)/);
+          if (codeDeptMatch && codeDeptMatch[0] === value) return true;
+        }
+        
+        return false;
+      }).slice(0, 8); // Show more results since we have more flexible matching
+      
       setAutocompleteResults(filteredResults);
     } else {
       setAutocompleteResults([]);
     }
   }, [allClassCodes]);
 
-  // Handle search button click
+  // Helper function to highlight matched text in search results
+  const highlightMatch = useCallback((code: string, searchValue: string) => {
+    if (!searchValue) return code;
+    
+    const codeUpper = code.toUpperCase();
+    const valueUpper = searchValue.toUpperCase();
+    
+    // Check for direct prefix match
+    if (codeUpper.startsWith(valueUpper)) {
+      return (
+        <>
+          <span className="bg-blue-100">{code.substring(0, searchValue.length)}</span>
+          {code.substring(searchValue.length)}
+        </>
+      );
+    }
+    
+    // Check for no-space match
+    const valueNoSpace = valueUpper.replace(/\s+/g, '');
+    const codeNoSpace = codeUpper.replace(/\s+/g, '');
+    if (codeNoSpace.startsWith(valueNoSpace)) {
+      // This is more complex - we need to highlight the corresponding parts
+      let remaining = valueNoSpace.length;
+      let highlighted = '';
+      let i = 0;
+      
+      for (const char of code) {
+        if (remaining > 0 && char.toUpperCase() !== ' ') {
+          highlighted += `<span class="bg-blue-100">${char}</span>`;
+          remaining--;
+        } else {
+          highlighted += char;
+        }
+        i++;
+      }
+      
+      return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+    }
+    
+    // Check for number-only match
+    const numberMatch = valueUpper.match(/^\d+$/);
+    if (numberMatch) {
+      const codeNumberMatch = codeUpper.match(/(\d+)/);
+      if (codeNumberMatch && codeNumberMatch[1] === valueUpper) {
+        const index = code.indexOf(codeNumberMatch[1]);
+        return (
+          <>
+            {code.substring(0, index)}
+            <span className="bg-blue-100">{codeNumberMatch[1]}</span>
+            {code.substring(index + codeNumberMatch[1].length)}
+          </>
+        );
+      }
+    }
+    
+    // Check for department code match
+    const deptMatch = valueUpper.match(/^[A-Z]+$/);
+    if (deptMatch) {
+      const codeDeptMatch = codeUpper.match(/^([A-Z]+)/);
+      if (codeDeptMatch && codeDeptMatch[0] === valueUpper) {
+        const deptLength = codeDeptMatch[0].length;
+        return (
+          <>
+            <span className="bg-blue-100">{code.substring(0, deptLength)}</span>
+            {code.substring(deptLength)}
+          </>
+        );
+      }
+    }
+    
+    // Default case - just return the code
+    return code;
+  }, []);
+
+  // Updated handleSearch function with fuzzy matching
   const handleSearch = useCallback(() => {
     if (!searchTerm.trim()) return;
     
-    if (!allClassCodes.includes(searchTerm.trim().toUpperCase())) {
-      setErrorMessage('Please select a valid class code from the list');
+    // Find the closest matching code
+    const exactMatch = allClassCodes.find(
+      code => code.toUpperCase() === searchTerm.trim().toUpperCase()
+    );
+    
+    if (exactMatch) {
+      // Use the exact match for search
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate(`/search-results?q=${encodeURIComponent(exactMatch)}`);
+      }, 500);
       return;
     }
     
-    setIsLoading(true);
-    console.log(`Searching for: ${searchTerm}`);
+    // Try to find a fuzzy match
+    const fuzzyMatches = allClassCodes.filter(code => {
+      const codeUpper = code.toUpperCase();
+      const valueUpper = searchTerm.trim().toUpperCase();
+      
+      // Match without spaces
+      const valueNoSpace = valueUpper.replace(/\s+/g, '');
+      const codeNoSpace = codeUpper.replace(/\s+/g, '');
+      if (codeNoSpace.startsWith(valueNoSpace)) return true;
+      
+      // Match just numbers
+      const numberMatch = valueUpper.match(/^\d+$/);
+      if (numberMatch) {
+        const codeNumberMatch = codeUpper.match(/\d+/);
+        if (codeNumberMatch && codeNumberMatch[0] === valueUpper) return true;
+      }
+      
+      // Match just department code
+      const deptMatch = valueUpper.match(/^[A-Z]+$/);
+      if (deptMatch) {
+        const codeDeptMatch = codeUpper.match(/^([A-Z]+)/);
+        if (codeDeptMatch && codeDeptMatch[0] === valueUpper) return true;
+      }
+      
+      return false;
+    });
     
-    // Navigate to results page with the search term
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate(`/search-results?q=${encodeURIComponent(searchTerm)}`);
-    }, 500);
+    if (fuzzyMatches.length > 0) {
+      // Use the first fuzzy match
+      setIsLoading(true);
+      console.log(`Using fuzzy match: ${fuzzyMatches[0]} for input: ${searchTerm}`);
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate(`/search-results?q=${encodeURIComponent(fuzzyMatches[0])}`);
+      }, 500);
+      return;
+    }
+    
+    // No matches found
+    setErrorMessage('Please select a valid class code from the list');
+    
   }, [searchTerm, allClassCodes, navigate]);
 
-  // Handle autocomplete selection
+  // Handle autocomplete selection - unchanged
   const handleAutocompleteSelect = useCallback((code: string) => {
     setSearchTerm(code);
     setAutocompleteResults([]);
@@ -91,7 +269,7 @@ const SearchSetsPage: React.FC = () => {
     inputRef.current?.focus();
   }, []);
 
-  // Close autocomplete when clicking outside
+  // Close autocomplete when clicking outside - unchanged
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -106,10 +284,47 @@ const SearchSetsPage: React.FC = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Validate input on blur
+  // Updated handleBlur function - more lenient with fuzzy matches
   const handleBlur = useCallback(() => {
     setTimeout(() => {
-      if (searchTerm.trim() && !allClassCodes.includes(searchTerm.trim().toUpperCase())) {
+      if (!searchTerm.trim()) return;
+      
+      // Check for exact match
+      const exactMatch = allClassCodes.find(
+        code => code.toUpperCase() === searchTerm.trim().toUpperCase()
+      );
+      
+      if (exactMatch) return; // Valid exact match
+      
+      // Check for fuzzy matches
+      const fuzzyMatches = allClassCodes.filter(code => {
+        const codeUpper = code.toUpperCase();
+        const valueUpper = searchTerm.trim().toUpperCase();
+        
+        // Match without spaces
+        const valueNoSpace = valueUpper.replace(/\s+/g, '');
+        const codeNoSpace = codeUpper.replace(/\s+/g, '');
+        if (codeNoSpace.startsWith(valueNoSpace)) return true;
+        
+        // Match just numbers
+        const numberMatch = valueUpper.match(/^\d+$/);
+        if (numberMatch) {
+          const codeNumberMatch = codeUpper.match(/\d+/);
+          if (codeNumberMatch && codeNumberMatch[0] === valueUpper) return true;
+        }
+        
+        // Match just department code
+        const deptMatch = valueUpper.match(/^[A-Z]+$/);
+        if (deptMatch) {
+          const codeDeptMatch = codeUpper.match(/^([A-Z]+)/);
+          if (codeDeptMatch && codeDeptMatch[0] === valueUpper) return true;
+        }
+        
+        return false;
+      });
+      
+      if (fuzzyMatches.length === 0) {
+        // No matches found - show error and clear
         setErrorMessage('Please select a valid class code from the list');
         setTimeout(() => {
           setSearchTerm('');
@@ -117,24 +332,28 @@ const SearchSetsPage: React.FC = () => {
             setErrorMessage('');
           }, 3000);
         }, 1500);
+      } else if (fuzzyMatches.length === 1) {
+        // Only one match - auto-select it
+        setSearchTerm(fuzzyMatches[0]);
       }
+      // If multiple matches, leave as is for user to select
     }, 100);
   }, [searchTerm, allClassCodes]);
 
-  // Handle Enter key press
+  // Handle Enter key press - unchanged
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchTerm.trim()) {
       handleSearch();
     }
   }, [searchTerm, handleSearch]);
 
-  // Navigate to set creator
+  // Navigate to set creator - unchanged
   const navigateToSetCreator = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     navigate('/set-creator');
   }, [navigate]);
 
-  // Loading state component - matching CreatedSets style
+  // Loading state component - unchanged
   const LoadingState = () => (
     <div className="min-h-screen bg-white">
       <NavBar />
@@ -214,7 +433,7 @@ const SearchSetsPage: React.FC = () => {
                   } rounded-xl focus:outline-none focus:ring-3 transition-all ${
                     errorMessage ? 'focus:ring-[#e53935]/20' : 'focus:ring-[#004a74]/20'
                   } focus:border-[#004a74] focus:bg-white shadow-sm`}
-                  placeholder="Enter class code (e.g. CSE101)"
+                  placeholder="Enter Class Code (e.g. PSYCH1 or ENG101)"
                   value={searchTerm}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
@@ -223,13 +442,13 @@ const SearchSetsPage: React.FC = () => {
                   aria-label="Class code search"
                 />
                 
-                {/* Autocomplete with improved styling matching CreatedSets */}
+                {/* Autocomplete with improved styling and highlighting */}
                 {autocompleteResults.length > 0 && (
                   <ul 
                     ref={autocompleteRef}
                     className="absolute left-0 right-0 z-[1000] mt-1 bg-white border border-gray-100 rounded-xl shadow-lg"
                     style={{
-                      maxHeight: '196px',
+                      maxHeight: '296px', // Increased height for more results
                       overflowY: 'auto',
                       overscrollBehavior: 'contain',
                       position: 'absolute'
@@ -246,7 +465,7 @@ const SearchSetsPage: React.FC = () => {
                         onMouseDown={() => handleAutocompleteSelect(code)}
                         role="option"
                       >
-                        {code}
+                        {highlightMatch(code, searchTerm)}
                       </li>
                     ))}
                   </ul>

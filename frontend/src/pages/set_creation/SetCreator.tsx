@@ -90,15 +90,66 @@ const SetCreator: React.FC = () => {
   const fileInputRefs = useRef<HTMLInputElement[]>([]);
 
   // Fetch class codes from CSV file
-  const fetchClassCodes = async () => {
-    try {
+  // Fetch class codes from university-specific CSV file
+const fetchClassCodes = async () => {
+  try {
+    // Check if user is authenticated and has university information
+    if (user && user.university) {
+      const universityName = user.university;
+      
+      // Convert university name to a slugified format for file naming
+      const slugifiedUniName = slugifyUniversityName(universityName);
+      
+      // Construct the path to the university-specific class codes CSV
+      const csvPath = `/data/${slugifiedUniName}-class-codes.csv`;
+      
+      try {
+        // Try to fetch the university-specific CSV
+        const response = await fetch(csvPath);
+        
+        if (response.ok) {
+          const text = await response.text();
+          const codes = text.split("\n")
+            .map(code => code.trim())
+            .filter(code => code.length > 0);
+          
+          setClassCodes(codes);
+        } else {
+          // If university-specific CSV doesn't exist, fall back to the generic one
+          console.warn(`No class codes found for ${universityName}, using default codes`);
+          const fallbackResponse = await fetch("/data/class_codes.csv");
+          const text = await fallbackResponse.text();
+          const codes = text.split("\n").map(code => code.trim()).filter(code => code.length > 0);
+          setClassCodes(codes);
+        }
+      } catch (error) {
+        console.error("Error loading university-specific class codes:", error);
+        // Fall back to the generic CSV on error
+        const fallbackResponse = await fetch("/data/class_codes.csv");
+        const text = await fallbackResponse.text();
+        const codes = text.split("\n").map(code => code.trim()).filter(code => code.length > 0);
+        setClassCodes(codes);
+      }
+    } else {
+      // If no user or university info is available, use the generic CSV
       const response = await fetch("/data/class_codes.csv");
       const text = await response.text();
       const codes = text.split("\n").map(code => code.trim()).filter(code => code.length > 0);
       setClassCodes(codes);
-    } catch (error) {
-      console.error("Error loading class codes:", error);
     }
+  } catch (error) {
+    console.error("Error loading class codes:", error);
+    setClassCodes([]); // Set empty array in case of error
+  }
+};
+
+  const slugifyUniversityName = (universityName: string): string => {
+    return universityName
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-')     // Replace spaces with hyphens
+      .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
+      .trim();                  // Trim leading/trailing hyphens
   };
 
   // Check if we're editing an existing set and if it belongs to the current user
@@ -166,21 +217,47 @@ const SetCreator: React.FC = () => {
     };
   }, []);
 
-  // Handle class code input and show suggestions
-  const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.trim().toUpperCase();
-    setClassCode(value);
-    setClassCodeError('');
+  // Enhanced handleClassCodeChange function with more flexible search
+const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = e.target.value.trim().toUpperCase();
+  setClassCode(value);
+  setClassCodeError('');
+  
+  if (value.length > 0) {
+    // More flexible filtering that matches in different ways:
+    const filteredResults = classCodes.filter(code => {
+      const codeUpper = code.toUpperCase();
+      
+      // 1. Exact prefix match (original behavior)
+      if (codeUpper.startsWith(value)) return true;
+      
+      // 2. Match without spaces (so "CS101" matches "CS 101")
+      const valueNoSpace = value.replace(/\s+/g, '');
+      const codeNoSpace = codeUpper.replace(/\s+/g, '');
+      if (codeNoSpace.startsWith(valueNoSpace)) return true;
+      
+      // 3. Match just the number part (so "101" matches "CS 101", "MATH 101", etc.)
+      const numberMatch = value.match(/^\d+$/);
+      if (numberMatch) {
+        const codeNumberMatch = codeUpper.match(/\d+/);
+        if (codeNumberMatch && codeNumberMatch[0] === value) return true;
+      }
+      
+      // 4. Match department without number (so "CS" matches "CS 101", "CS 201", etc.)
+      const deptMatch = value.match(/^[A-Z]+$/);
+      if (deptMatch) {
+        const codeDeptMatch = codeUpper.match(/^([A-Z]+)/);
+        if (codeDeptMatch && codeDeptMatch[0] === value) return true;
+      }
+      
+      return false;
+    }).slice(0, 10); // Show more results since we have more flexible matching
     
-    if (value.length > 0) {
-      const filteredResults = classCodes
-        .filter(code => code.toUpperCase().startsWith(value))
-        .slice(0, 5);
-      setSuggestions(filteredResults);
-    } else {
-      setSuggestions([]);
-    }
-  }, [classCodes]);
+    setSuggestions(filteredResults);
+  } else {
+    setSuggestions([]);
+  }
+}, [classCodes]);
 
   // Handle title input changes
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -698,7 +775,7 @@ const SetCreator: React.FC = () => {
                   type="text"
                   value={title}
                   onChange={handleTitleChange}
-                  placeholder="E.g., BIO 101 Midterm"
+                  placeholder="Enter Set Title (e.g. Bio Midterm)"
                   className={`w-full px-4 py-3 text-base rounded-lg border 
                     focus:outline-none focus:ring-2 transition-all 
                     ${titleError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}
@@ -723,7 +800,7 @@ const SetCreator: React.FC = () => {
                     value={classCode}
                     onChange={handleClassCodeChange}
                     onBlur={handleBlur}
-                    placeholder="E.g., CSE101"
+                    placeholder="Enter Class Code (e.g. PSYCH1 or ENG101)"
                     className={`w-full px-4 py-3 text-base rounded-lg border 
                       focus:outline-none focus:ring-2 transition-all 
                       ${classCodeError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#004a74]/20'}`}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen as BookOpenIcon, Heart as HeartIcon } from 'lucide-react';
+import { BookOpen as BookOpenIcon, Heart as HeartIcon, School as SchoolIcon } from 'lucide-react';
 import { API_BASE_URL } from '../config/api'; // Adjust path as needed
+import { useAuth } from '../context/AuthContext'; // Import auth context
 
 // Type definitions (same as in SearchResultsPage)
 type Flashcard = {
@@ -23,6 +24,17 @@ type FlashcardSet = {
   username?: string;
   createdBy?: string;
   likes?: number;
+  university?: string;
+};
+
+// Helper function to slugify university names (same as in SearchSetsPage)
+const slugifyUniversityName = (universityName: string): string => {
+  return universityName
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
+    .trim();                  // Trim leading/trailing hyphens
 };
 
 const PopularSets: React.FC = () => {
@@ -30,6 +42,7 @@ const PopularSets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get user info from auth context
 
   useEffect(() => {
     const fetchPopularSets = async () => {
@@ -37,8 +50,18 @@ const PopularSets: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Use the new popular sets endpoint instead of fetching all public sets
-        const response = await fetch(`${API_BASE_URL}/sets/popular`, {
+        let endpoint = `${API_BASE_URL}/sets/popular`;
+        
+        // If user has university info, add it as a query parameter
+        if (user?.university) {
+          const slugifiedUni = slugifyUniversityName(user.university);
+          endpoint = `${API_BASE_URL}/sets/popular?university=${encodeURIComponent(slugifiedUni)}`;
+          console.log(`📚 Fetching popular sets for ${user.university}`);
+        } else {
+          console.log('❌ No university info available, fetching general popular sets');
+        }
+        
+        const response = await fetch(endpoint, {
           credentials: 'include'
         });
         
@@ -49,67 +72,118 @@ const PopularSets: React.FC = () => {
         const data = await response.json();
         console.log('Popular sets:', data);
         
-        setPopularSets(data);
+        // Filter sets by user's university if university info exists
+        let filteredSets = data;
+        if (user?.university) {
+          filteredSets = data.filter((set: FlashcardSet) => 
+            !set.university || // Include sets without university info
+            set.university.toLowerCase() === user.university?.toLowerCase() // Match by university
+          );
+          
+          console.log(`📊 Found ${filteredSets.length} sets for ${user.university}`);
+        }
+        
+        setPopularSets(filteredSets);
       } catch (error) {
         console.error('Error fetching popular sets:', error);
         setError("Failed to load popular sets");
         
-        // Fallback to mock data only if there's an error
-        const mockSets = [
-          {
-            id: "mock1",
-            title: "Calculus Fundamentals",
-            classCode: "MATH103",
-            numCards: 45,
-            likes: 124,
-            flashcards: [],
-            isPublic: true
-          },
-          {
-            id: "mock2",
-            title: "Introduction to Programming",
-            classCode: "CSE101",
-            numCards: 36,
-            likes: 98,
-            flashcards: [],
-            isPublic: true
-          },
-          {
-            id: "mock3",
-            title: "Organic Chemistry Basics",
-            classCode: "CHEM110",
-            numCards: 52,
-            likes: 87,
-            flashcards: [],
-            isPublic: true
-          },
-          {
-            id: "mock4",
-            title: "Physics Mechanics",
-            classCode: "PHYS104",
-            numCards: 29,
-            likes: 76,
-            flashcards: [],
-            isPublic: true
-          },
-          {
-            id: "mock5",
-            title: "Cell Biology Review",
-            classCode: "BIO201",
-            numCards: 63,
-            likes: 63,
-            flashcards: [],
-            isPublic: true
-          }
-        ];
-        setPopularSets(mockSets);
+        // Fallback to mock data only if there's an error - now with university field
+        // We'll pretend these mock sets are from the user's university
+        if (user?.university) {
+          const mockSets = [
+            {
+              id: "mock1",
+              title: "Calculus Fundamentals",
+              classCode: "MATH103",
+              numCards: 45,
+              likes: 124,
+              flashcards: [],
+              isPublic: true,
+              university: user.university
+            },
+            {
+              id: "mock2",
+              title: "Introduction to Programming",
+              classCode: "CSE101",
+              numCards: 36,
+              likes: 98,
+              flashcards: [],
+              isPublic: true,
+              university: user.university
+            },
+            {
+              id: "mock3",
+              title: "Organic Chemistry Basics",
+              classCode: "CHEM110",
+              numCards: 52,
+              likes: 87,
+              flashcards: [],
+              isPublic: true,
+              university: user.university
+            },
+            {
+              id: "mock4",
+              title: "Physics Mechanics",
+              classCode: "PHYS104",
+              numCards: 29,
+              likes: 76,
+              flashcards: [],
+              isPublic: true,
+              university: user.university
+            },
+            {
+              id: "mock5",
+              title: "Cell Biology Review",
+              classCode: "BIO201",
+              numCards: 63,
+              likes: 63,
+              flashcards: [],
+              isPublic: true,
+              university: user.university
+            }
+          ];
+          setPopularSets(mockSets);
+        } else {
+          // Generic mock data if no university
+          const mockSets = [
+            {
+              id: "mock1",
+              title: "Calculus Fundamentals",
+              classCode: "MATH103",
+              numCards: 45,
+              likes: 124,
+              flashcards: [],
+              isPublic: true
+            },
+            {
+              id: "mock2",
+              title: "Introduction to Programming",
+              classCode: "CSE101",
+              numCards: 36,
+              likes: 98,
+              flashcards: [],
+              isPublic: true
+            },
+            {
+              id: "mock3",
+              title: "Organic Chemistry Basics",
+              classCode: "CHEM110",
+              numCards: 52,
+              likes: 87,
+              flashcards: [],
+              isPublic: true
+            }
+          ];
+          setPopularSets(mockSets);
+        }
       } finally {
         setLoading(false);
       }
     };
     
     fetchPopularSets();
-  }, []);
+  }, [user]); // Add user to dependency array to refetch when user changes
 
   // Updated viewSet function to pass the fromPopularSets state
   const viewSet = (setId: string) => {
@@ -143,7 +217,16 @@ const PopularSets: React.FC = () => {
 
   return (
     <div className="mt-8 bg-white backdrop-blur-sm rounded-2xl shadow-md border border-gray-100 p-6">
-      <h2 className="text-lg font-medium text-gray-800 mb-4">Most Popular Sets</h2>
+      <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
+        {user?.university ? (
+          <>
+            <SchoolIcon className="w-5 h-5 mr-2 text-[#004a74]" />
+            <span>Most Popular Sets at {user.university}</span>
+          </>
+        ) : (
+          'Most Popular Sets'
+        )}
+      </h2>
       
       <div className="space-y-3">
         {popularSets.map((set) => (
@@ -182,7 +265,10 @@ const PopularSets: React.FC = () => {
       </div>
       
       {popularSets.length === 0 && (
-        <p className="text-gray-500 text-sm">No popular sets available yet.</p>
+        <div className="text-center py-6">
+          <p className="text-gray-500">No popular sets available for {user?.university || 'your university'} yet.</p>
+          <p className="text-sm text-gray-400 mt-1">Be the first to create one!</p>
+        </div>
       )}
     </div>
   );
