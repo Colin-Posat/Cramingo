@@ -27,16 +27,6 @@ type FlashcardSet = {
   university?: string;
 };
 
-// Helper function to slugify university names (same as in SearchSetsPage)
-const slugifyUniversityName = (universityName: string): string => {
-  return universityName
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-')     // Replace spaces with hyphens
-    .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
-    .trim();                  // Trim leading/trailing hyphens
-};
-
 const PopularSets: React.FC = () => {
   const [popularSets, setPopularSets] = useState<FlashcardSet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,10 +42,10 @@ const PopularSets: React.FC = () => {
         
         let endpoint = `${API_BASE_URL}/sets/popular`;
         
-        // If user has university info, add it as a query parameter
+        // If user has university info, add it as a query parameter - NO SLUGIFICATION
         if (user?.university) {
-          const slugifiedUni = slugifyUniversityName(user.university);
-          endpoint = `${API_BASE_URL}/sets/popular?university=${encodeURIComponent(slugifiedUni)}`;
+          // Pass the exact university name as is - no slugification
+          endpoint = `${API_BASE_URL}/sets/popular?university=${encodeURIComponent(user.university)}`;
           console.log(`📚 Fetching popular sets for ${user.university}`);
         } else {
           console.log('❌ No university info available, fetching general popular sets');
@@ -72,18 +62,8 @@ const PopularSets: React.FC = () => {
         const data = await response.json();
         console.log('Popular sets:', data);
         
-        // Filter sets by user's university if university info exists
-        let filteredSets = data;
-        if (user?.university) {
-          filteredSets = data.filter((set: FlashcardSet) => 
-            !set.university || // Include sets without university info
-            set.university.toLowerCase() === user.university?.toLowerCase() // Match by university
-          );
-          
-          console.log(`📊 Found ${filteredSets.length} sets for ${user.university}`);
-        }
-        
-        setPopularSets(filteredSets);
+        // The backend is now handling the filtering, no need to filter again on frontend
+        setPopularSets(data);
       } catch (error) {
         console.error('Error fetching popular sets:', error);
         setError("Failed to load popular sets");

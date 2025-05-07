@@ -655,21 +655,58 @@ export const unsaveSet = async (req: Request, res: Response): Promise<void> => {
 export const getTopPopularSets = async (req: Request, res: Response): Promise<void> => {
   console.log("getTopPopularSets controller called");
   try {
-    // Query for public sets ordered by likes
-    const setsSnapshot = await db.collection("flashcardSets")
+    // Get userId from query parameters
+    const userId = req.query.userId as string;
+    // Get university directly from query parameters - exact value, not slugified
+    const universityParam = req.query.university as string;
+    let school = null;
+    
+    // First try to use university from query params
+    if (universityParam) {
+      console.log(`Using university from query params: ${universityParam}`);
+      school = universityParam;
+    } 
+    // If not provided but userId is, fetch from user document
+    else if (userId) {
+      console.log(`Fetching university from user ${userId}`);
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data() || {};
+        school = userData.university || null;
+        console.log(`Found user's school: ${school || 'none'}`);
+      }
+    }
+    
+    // If no school was found, log the issue
+    if (!school) {
+      console.log("No school information found for filtering");
+    }
+    
+    // Initialize base query for public sets that are not derived
+    let query = db.collection("flashcardSets")
       .where("isPublic", "==", true)
-      .where("isDerived", "==", false) // Only original sets, not saved ones
+      .where("isDerived", "==", false);
+    
+    // If we have the user's school, filter by that school
+    if (school) {
+      console.log(`Filtering popular sets for school: ${school}`);
+      query = query.where("school", "==", school);
+    }
+    
+    // Execute the query with ordering
+    const setsSnapshot = await query
       .orderBy("likes", "desc")
-      .limit(5)
+      .limit(10) // Increased limit for school-filtered results
       .get();
     
+    // If no results found, return empty array
     if (setsSnapshot.empty) {
-      // No sets found, return empty array
+      console.log(`No popular sets found${school ? ` for school: ${school}` : ''}`);
       res.status(200).json([]);
       return;
     }
     
-    // Define a type for the Firestore document data (same as in getSetsByClassCode)
+    // Define a type for the Firestore document data
     interface FlashcardSetData {
       id: string;
       title: string;
@@ -689,10 +726,11 @@ export const getTopPopularSets = async (req: Request, res: Response): Promise<vo
       userId: string;
       numCards: number;
       likes?: number;
+      school?: string; // Add school field to type
       [key: string]: any; // Allow for additional fields
     }
     
-    // Get all sets data including userId with proper typing
+    // Map the documents to structured data with proper typing
     const setsData = setsSnapshot.docs.map(doc => {
       const data = doc.data() as Partial<FlashcardSetData>;
       return {
@@ -745,7 +783,7 @@ export const getTopPopularSets = async (req: Request, res: Response): Promise<vo
       };
     });
     
-    console.log(`Found ${setsWithUserInfo.length} top popular sets`);
+    console.log(`Found ${setsWithUserInfo.length} top popular sets${school ? ` for school: ${school}` : ''}`);
     res.status(200).json(setsWithUserInfo);
   } catch (error) {
     console.error("Error getting top popular sets:", error);
