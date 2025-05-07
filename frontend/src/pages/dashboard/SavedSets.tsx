@@ -620,9 +620,9 @@ const EmptyState = () => (
         </button>
       </div>
       
-      {/* Right-aligned counter with improved design */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium
-                    flex items-center justify-center shadow-inner border border-blue-200">
+      {/* Right-aligned counter with improved design - Hidden on mobile when it would stack */}
+      <div className="hidden sm:flex bg-gradient-to-r from-blue-50 to-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium
+                   items-center justify-center shadow-inner border border-blue-200">
         <span className="font-bold mr-1">{sets.length}</span>
         <span>{sets.length === 1 ? 'set' : 'sets'}</span>
       </div>

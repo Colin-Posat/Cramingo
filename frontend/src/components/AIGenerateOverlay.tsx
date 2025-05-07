@@ -32,6 +32,7 @@ interface AIGenerateOverlayProps {
 }
 
 const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenerate }) => {
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [inputNotes, setInputNotes] = useState<string>('');
   const [notesError, setNotesError] = useState<string>('');
   const [notesSuccess, setNotesSuccess] = useState<string>('');
@@ -59,6 +60,29 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       notesRef.current.focus();
     }
   }, [uploadedFile, isParsing, isGenerating]);
+
+  // Detect if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
+    };
+    
+    checkMobile(); // Check on initial load
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
+
+  // Modified auto-focus code to skip on mobile
+  useEffect(() => {
+    if (!isMobile && !uploadedFile && notesRef.current && !isParsing && !isGenerating) {
+      notesRef.current.focus();
+    }
+  }, [uploadedFile, isParsing, isGenerating, isMobile]);
+
+  
 
   // Auto-parse PDF when file is uploaded
   useEffect(() => {
