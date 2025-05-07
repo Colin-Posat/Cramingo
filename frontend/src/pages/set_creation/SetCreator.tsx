@@ -13,13 +13,15 @@ import {
   Info as InfoIcon,
   Image as ImageIcon,
   Trash2 as TrashIcon,
-  Calculator as CalculatorIcon
+  Calculator as CalculatorIcon,
+  CheckCircle as CheckCircleIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
 import EquationEditor from '../../components/EquationEditor';
 import { API_BASE_URL, getApiUrl } from '../../config/api';
 import { useAuth } from '../../context/AuthContext'; // Import the auth context hook
+import { useBeforeUnload, useLocation } from 'react-router-dom';
 
 // Type definitions
 type Flashcard = {
@@ -76,6 +78,11 @@ const SetCreator: React.FC = () => {
   const [imageError, setImageError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const [showGenerationSuccess, setShowGenerationSuccess] = useState<boolean>(false);
+  const [generatedCardsCount, setGeneratedCardsCount] = useState<number>(0);
+  const cardsContainerRef = useRef<HTMLDivElement>(null);
+
 
   // State for AI Generate Overlay
   const [showAIGenerateOverlay, setShowAIGenerateOverlay] = useState(false);
@@ -143,6 +150,34 @@ const fetchClassCodes = async () => {
   }
 };
 
+const hasUnsavedChanges = useCallback(() => {
+  const hasContent = flashcards.some(card => 
+    card.question.trim() || 
+    card.answer.trim() || 
+    card.hasQuestionImage || 
+    card.hasAnswerImage
+  );
+  
+  if (!hasContent && flashcards.length === 1) {
+    return false;
+  }
+  
+  if (editingSet) {
+    const noChanges = 
+      editingSet.title === title &&
+      editingSet.classCode === classCode &&
+      editingSet.description === description &&
+      areFlashcardsEqual(editingSet.flashcards, flashcards);
+    
+    if (noChanges) {
+      return false;
+    }
+  }
+  
+  return true;
+}, [flashcards, editingSet, title, classCode, description]);
+
+
   const slugifyUniversityName = (universityName: string): string => {
     return universityName
       .toLowerCase()
@@ -198,6 +233,50 @@ const fetchClassCodes = async () => {
       }
     }
   }, [navigate, loading, isAuthenticated, user]);
+
+  useEffect(() => {
+    const handleNavigation = (e: MouseEvent) => {
+      // Check if the click is on a navigation element
+      const target = e.target as HTMLElement;
+      const navLink = target.closest('a');
+      
+      if (navLink) {
+        const href = navLink.getAttribute('href');
+        
+        // Skip if it's not a link or it's an external link
+        if (!href || href.startsWith('http') || href.startsWith('#') || href === window.location.pathname) {
+          return;
+        }
+        
+        // Check if there are unsaved changes
+        if (hasUnsavedChanges()) {
+          e.preventDefault();
+          setExitDestination(href);
+          setShowExitModal(true);
+        }
+      }
+    };
+    
+    // Add event listener to the document
+    document.addEventListener('click', handleNavigation, { capture: true });
+    
+    return () => {
+      document.removeEventListener('click', handleNavigation, { capture: true });
+    };
+  }, [hasUnsavedChanges]);
+
+
+  useBeforeUnload(
+    useCallback((event) => {
+      if (hasUnsavedChanges()) {
+        // Modern browsers don't allow custom messages anymore, but we still need to set this
+        event.preventDefault();
+        // This is the standard message that will be shown by the browser
+        return "You have unsaved changes. Are you sure you want to leave?";
+      }
+    }, [hasUnsavedChanges])
+  );
+  
 
   // Close autocomplete when clicking outside
   useEffect(() => {
@@ -432,34 +511,13 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
 
   // Navigate with confirmation if needed
   const navigateWithConfirmation = (destination: string) => {
-    const hasContent = flashcards.some(card => 
-      card.question.trim() || 
-      card.answer.trim() || 
-      card.hasQuestionImage || 
-      card.hasAnswerImage
-    );
-    
-    if (!hasContent && flashcards.length === 1) {
-      navigate(destination);
-      return;
-    }
-    
-    if (editingSet) {
-      const noChanges = 
-        editingSet.title === title &&
-        editingSet.classCode === classCode &&
-        editingSet.description === description &&
-        areFlashcardsEqual(editingSet.flashcards, flashcards);
-      
-      if (noChanges) {
-        navigate(destination);
-        return;
-      }
-    }
-    
+  if (hasUnsavedChanges()) {
     setExitDestination(destination);
     setShowExitModal(true);
-  };
+  } else {
+    navigate(destination);
+  }
+};
 
   // Compare flashcard arrays
   const areFlashcardsEqual = (arr1: Flashcard[], arr2: Flashcard[]) => {
@@ -630,8 +688,9 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
 
   const handleExitWithoutSaving = () => {
     localStorage.removeItem("editingFlashcardSet");
-    navigate(exitDestination);
     setShowExitModal(false);
+    // Use navigate function directly instead of location.href to prevent reloading
+    navigate(exitDestination);
   };
 
   // Check if there are any non-empty flashcards (including those with images)
@@ -643,7 +702,7 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
   );
 
   // Handler for AI Generated Flashcards
-  const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[]) => {
+  const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[], shouldScroll: boolean = false) => {
     // Make sure AI-generated cards have image properties
     const processedFlashcards = generatedFlashcards.map(card => ({
       ...card,
@@ -661,9 +720,33 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
     const finalFlashcards = currentFlashcards.length === 0 
       ? processedFlashcards 
       : [...currentFlashcards, ...processedFlashcards];
-
+  
     setFlashcards(finalFlashcards);
     setShowAIGenerateOverlay(false);
+    
+    // Store the count of newly generated cards for the success message
+    setGeneratedCardsCount(generatedFlashcards.length);
+    
+    // Show the success notification
+    setShowGenerationSuccess(true);
+    
+    // Auto-hide the notification after 4 seconds
+    setTimeout(() => {
+      setShowGenerationSuccess(false);
+    }, 1000);
+    
+    // If shouldScroll is true, scroll to the cards container
+    if (shouldScroll) {
+      // We need a slight delay to ensure the DOM has updated
+      setTimeout(() => {
+        if (cardsContainerRef.current) {
+          cardsContainerRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start'
+          });
+        }
+      }, 200);
+    }
   };
 
   // Show loading state while auth context is loading
@@ -675,16 +758,18 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
     );
   }
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
 
       {/* Success Message */}
       {saveSuccess && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full border border-green-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-green-200 
+            transform-gpu animate-scaleIn">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
-                <CheckIcon className="h-8 w-8 text-green-600" />
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4
+                animate-pulse">
+                <CheckCircleIcon className="h-8 w-8 text-green-600" />
               </div>
               <p className="text-xl font-semibold text-gray-900">Saved Successfully!</p>
               <p className="text-gray-500 mt-2">Redirecting to your flashcard sets...</p>
@@ -696,20 +781,24 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
       <div className="container mx-auto px-4 pt-24 pb-12">
         {/* Header with back button and page title */}
         <div className="flex justify-between items-center mb-6">
-          <button 
+        <button 
             onClick={() => navigateWithConfirmation('/created-sets')}
-            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
+            className="flex items-center text-sm bg-white px-4 py-2.5 rounded-xl shadow-sm 
+              border border-[#004a74]/20 text-[#004a74] hover:bg-blue-50 transition-colors
+              group active:scale-[0.98]"
           >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Created Sets
+            <ChevronLeftIcon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+            <span>Back to Created Sets</span>
           </button>
           <h1 className="text-xl font-bold text-[#004a74]">
-            {editingSet ? 'Edit Flashcard Set' : 'Create New Flashcard Set'}
+            {editingSet ? '' : ''}
           </h1>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:border-[#004a74]/20 transition-all">
           {/* Progress indicator */}
-          <div className="bg-[#004a74] px-6 py-4 text-white">
+          <div className="bg-gradient-to-r from-[#004a74] to-[#0074c2] px-6 py-4 text-white">
+
             <h2 className="text-xl font-bold">
               {editingSet ? 'Editing: ' + editingSet.title : 'New Flashcard Set'}
             </h2>
@@ -870,15 +959,30 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
 
             {/* AI Generate Button - now opens overlay */}
             <div className="mb-6">
-              <button 
-                onClick={() => setShowAIGenerateOverlay(true)}
-                className="w-full flex items-center justify-center gap-2 
-                bg-blue-100 border-2 border-[#004a74] text-[#004a74] font-bold
-                px-6 py-4 rounded-lg hover:bg-blue-200 transition-colors shadow-md"
-              >
-                <SparklesIcon className="w-6 h-6" />
-                AI Generate Cards from Notes or PDF
-              </button>
+            <button 
+  onClick={() => setShowAIGenerateOverlay(true)}
+  className="relative overflow-hidden w-full flex items-center justify-center gap-3 
+    bg-gradient-to-r from-blue-500 to-sky-500 text-white font-bold
+    px-6 py-5 rounded-xl hover:from-blue-600 hover:to-sky-600
+    transition-all duration-200 shadow-lg hover:shadow-xl group border border-white/10"
+>
+  {/* Animated sparkle effect */}
+  <div className="absolute inset-0 w-full h-full">
+    <div className="absolute h-8 w-8 rounded-full bg-white/20 animate-ping opacity-75 top-1/2 left-1/4"></div>
+    <div className="absolute h-4 w-4 rounded-full bg-white/30 animate-ping opacity-75 delay-300 top-1/4 right-1/3"></div>
+  </div>
+  
+  {/* Animated highlight */}
+  <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
+    -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+  
+  {/* Icon with animation */}
+  <div className="relative bg-white/30 p-2.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+    <SparklesIcon className="w-6 h-6" />
+  </div>
+  
+  <span className="relative text-lg">AI Generate Cards from Notes or PDF</span>
+</button>
             </div>
 
             <h3 className="text-lg font-bold text-[#004a74] mb-4 flex items-center">
@@ -888,13 +992,16 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
               </span>
             </h3>
 
-            <div className="space-y-6">
+            <div className="space-y-6" ref={cardsContainerRef}>
             {flashcards.map((card, index) => (
                 <div 
-                  key={index} 
-                  className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <div className="bg-[#004a74] text-white px-6 py-3 flex items-center justify-between">
+                key={index} 
+                className="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden 
+                  hover:shadow-lg transition-all hover:border-[#004a74]/30 transform-gpu hover:scale-[1.01]"
+              >
+                 <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white px-6 py-3 
+  flex items-center justify-between group-hover:from-[#00395c] group-hover:to-[#0074c2] 
+  transition-colors duration-300">
                     <span className="font-bold">Card {index + 1}</span>
                     <button 
                       onClick={() => deleteFlashcard(index)}
@@ -943,12 +1050,13 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
                       >
                         {/* Question Text Input */}
                         <textarea 
-                          value={card.question}
-                          onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
-                          placeholder="Enter your question or drag & drop an image here"
-                          className="w-full min-h-[100px] p-3 text-base rounded-lg border border-gray-200 
-                            focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none"
-                        />
+                        value={card.question}
+                        onChange={(e) => updateFlashcard(index, 'question', e.target.value)}
+                        placeholder="Enter your question or drag & drop an image here"
+                        className="w-full min-h-[100px] p-4 text-base rounded-xl border border-gray-200 
+                          focus:outline-none focus:ring-2 focus:ring-[#004a74]/20 resize-none
+                          hover:border-[#004a74]/30 transition-colors"
+                      />
                         
                         {/* Question Action Buttons (Image & Equation) */}
                         <div className="mt-2 flex gap-3">
@@ -1096,14 +1204,17 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
             </div>
 
             <div className="mt-6 text-center">
-              <button 
-                onClick={addFlashcard}
-                className="px-4 py-2 bg-white border border-[#004a74] text-[#004a74] 
-                  rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mx-auto"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Add a New Card
-              </button>
+            <button 
+              onClick={addFlashcard}
+              className="px-5 py-3 bg-white border border-[#004a74] text-[#004a74] 
+                rounded-xl hover:bg-blue-50 transition-all flex items-center justify-center 
+                gap-2 mx-auto shadow-sm hover:shadow active:scale-[0.98] group"
+            >
+              <div className="bg-blue-100 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
+                <PlusIcon className="w-4 h-4" />
+              </div>
+              <span className="font-medium">Add a New Card</span>
+            </button>
             </div>
           </div>
 
@@ -1113,39 +1224,55 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
       </div>
 
       {/* Sticky Save Actions */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl py-4
+  backdrop-blur-md bg-white/95">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-4">
-            <button 
-              onClick={() => saveFlashcardSet(false)} 
-              className="px-4 py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
-                hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-                flex items-center justify-center gap-3 group shadow-md"
-              disabled={isLoading || imageUploading}
-            >
-              <LockIcon className="w-6 h-6 text-[#004a74] group-hover:scale-110 transition-transform" />
-              <div className="text-left">
-                <span className="font-bold block">
-                  {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save as Private')}
-                </span>
-                <span className="text-xs text-gray-500 block">Only you can access</span>
-              </div>
-            </button>
-            <button 
-              onClick={() => saveFlashcardSet(true)}
-              className="px-4 py-4 bg-[#004a74] text-white rounded-xl 
-                hover:bg-[#00659f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
-                flex items-center justify-center gap-3 group shadow-xl"
-              disabled={isLoading || imageUploading}
-            >
-              <GlobeIcon className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
-              <div className="text-left">
-                <span className="font-bold block">
-                  {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save & Publish')}
-                </span>
-                <span className="text-xs text-white/80 block">Everyone can view</span>
-              </div>
-            </button>
+          <button 
+            onClick={() => saveFlashcardSet(false)} 
+            className="relative overflow-hidden px-4 py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
+              hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+              flex items-center justify-center gap-3 group shadow-md hover:shadow-lg active:scale-[0.99]"
+            disabled={isLoading || imageUploading}
+          >
+            {/* Subtle animated background highlight */}
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-blue-100/50 to-transparent 
+              -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+            
+            <div className="bg-blue-100 p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+              <LockIcon className="w-5 h-5 text-[#004a74]" />
+            </div>
+            
+            <div className="text-left">
+              <span className="font-bold block">
+                {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save as Private')}
+              </span>
+              <span className="text-xs text-gray-500 block">Only you can access</span>
+            </div>
+          </button>
+          <button 
+            onClick={() => saveFlashcardSet(true)}
+            className="relative overflow-hidden px-4 py-4 bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white rounded-xl 
+              hover:from-[#00395c] hover:to-[#0068b0] transition-all duration-200 
+              disabled:opacity-50 disabled:cursor-not-allowed 
+              flex items-center justify-center gap-3 group shadow-xl active:scale-[0.99]"
+            disabled={isLoading || imageUploading}
+          >
+            {/* Animated highlight */}
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
+              -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+            
+            <div className="bg-white/20 p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+              <GlobeIcon className="w-5 h-5 text-white" />
+            </div>
+            
+            <div className="text-left">
+              <span className="font-bold block">
+                {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save & Publish')}
+              </span>
+              <span className="text-xs text-white/80 block">Everyone can view</span>
+            </div>
+          </button>
           </div>
         </div>
       </div>
@@ -1157,6 +1284,23 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
           onGenerate={handleAIGeneratedFlashcards}
         />
       )}
+
+      {/* Generation Success Toast */}
+      {showGenerationSuccess && (
+      <div className="fixed inset-0 flex items-center justify-center z-50">
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-xl 
+                      flex items-center animate-fade-in max-w-md mx-auto">
+          <CheckCircleIcon className="w-6 h-6 mr-2 text-green-500" />
+          <div>
+            <p className="font-bold">Flashcards Generated!</p>
+            <p className="text-sm">
+              {generatedCardsCount} new {generatedCardsCount === 1 ? 'card' : 'cards'} have been added.
+
+            </p>
+          </div>
+        </div>
+      </div>
+)}
 
       {/* Equation Editor Overlay */}
       {showEquationEditor && (
@@ -1175,36 +1319,49 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
       )}
 
       {showExitModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full border border-gray-200">
-            <h3 className="text-xl font-bold text-[#004a74] mb-3">Unsaved Changes</h3>
-            <p className="text-gray-600 mb-6">You have unsaved changes. What would you like to do?</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button 
-                onClick={handleSaveAndExit}
-                className="px-4 py-2 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors flex items-center justify-center gap-2"
-              >
-                <SaveIcon className="w-4 h-4" />
-                Save and Exit
-              </button>
-              <button 
-                onClick={handleExitWithoutSaving}
-                className="px-4 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                Exit Without Saving
-              </button>
-              <button 
-                onClick={() => setShowExitModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors sm:col-span-2"
-              >
-                Continue Editing
-              </button>
-            </div>
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 transform-gpu animate-scaleIn">
+      <h3 className="text-xl font-bold text-[#004a74] mb-3">Unsaved Changes</h3>
+      <p className="text-gray-600 mb-6">You have unsaved changes. What would you like to do?</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button 
+          onClick={handleSaveAndExit}
+          className="relative overflow-hidden px-4 py-3 bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white rounded-xl 
+            hover:from-[#00395c] hover:to-[#0068b0] transition-all duration-200 shadow-md hover:shadow-lg
+            flex items-center justify-center gap-2 group active:scale-[0.98]"
+        >
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
+            -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+          <div className="bg-white/20 p-1 rounded-lg group-hover:scale-110 transition-transform duration-200">
+            <SaveIcon className="w-4 h-4" />
           </div>
-        </div>
-      )}
+          <span className="relative font-medium">Save and Exit</span>
+        </button>
+        <button 
+          onClick={handleExitWithoutSaving}
+          className="px-4 py-3 bg-white text-red-600 border border-red-600 rounded-xl
+            hover:bg-red-50 transition-all duration-200 flex items-center justify-center gap-2
+            group active:scale-[0.98] shadow-sm hover:shadow"
+        >
+          <XIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          <span className="font-medium">Exit Without Saving</span>
+        </button>
+        <button 
+          onClick={() => setShowExitModal(false)}
+          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 
+            transition-all duration-200 sm:col-span-2 active:scale-[0.98]
+            flex items-center justify-center shadow-sm hover:shadow"
+        >
+          <span className="font-medium">Continue Editing</span>
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
 
+
 export default SetCreator;
+

@@ -23,71 +23,70 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     }
 
     const MIN_ALLOWED_FLASHCARDS = 5;
-    const MAX_ALLOWED_FLASHCARDS = 30;
+    const MAX_ALLOWED_FLASHCARDS = 50; // Updated to 50 from 30
 
     // Determine target count based on input
     let targetCount = 0;
     
-    // If autoCount is true, calculate based on text length
+    // If autoCount is true, calculate based on text length with adjusted scale for max 50
     if (autoCount === true) {
       const wordCount = notes.trim().split(/\s+/).length;
-      // Auto count calculation logic
+      // Auto count calculation logic - optimized for max of 50
       if (wordCount < 200) {
         targetCount = 5;
       } else if (wordCount < 500) {
-        targetCount = 8;
+        targetCount = 10;
       } else if (wordCount < 1000) {
-        targetCount = 12;
+        targetCount = 15;
       } else if (wordCount < 2000) {
-        targetCount = 16;
-      } else if (wordCount < 3000) {
-        targetCount = 20;
-      } else {
         targetCount = 25;
+      } else if (wordCount < 3000) {
+        targetCount = 35;
+      } else {
+        targetCount = 50; // Maximum auto-generated cards is now 50
       }
     } else {
       // If not autoCount, use the provided count with validation
       const requestedCount = count ? parseInt(count, 10) : 0;
-      targetCount = requestedCount > 0 && requestedCount <= 50 ? requestedCount : 10; // Default to 10 if invalid
+      targetCount = requestedCount > 0 && requestedCount <= 50 ? requestedCount : 10; // Updated max limit to 50
     }
 
-    targetCount = Math.min(targetCount, MAX_ALLOWED_FLASHCARDS);
+    // No need to cap at MAX_ALLOWED_FLASHCARDS since logic above already ensures max is 50
     
     // First, check if the input is valid educational content that can be turned into flashcards
-    // First, check if the input is valid educational content that can be turned into flashcards
-const validationCheck = await openai.chat.completions.create({
-  model: "gpt-3.5-turbo",
-  messages: [
-    {
-      role: "system",
-      content: `You are an expert educator evaluating if text can be used to create educational flashcards. 
-      Respond only with a JSON object with two fields:
-      - "valid": boolean (true if input can be turned into flashcards, false otherwise)
-      - "reason": string (explanation why the input is not valid, only if valid is false)
-      
-      Be very lenient in your evaluation. Accept almost all text that could potentially provide educational value.
-      Valid inputs include:
-      - Any educational content, lecture notes, textbook excerpts, study materials
-      - Notes or summaries on any topic
-      - Lists of facts, terms, concepts, or ideas
-      - Brief paragraphs about specific topics
-      - Content in any field or domain
-      - Content that might be incomplete but still has useful information
-      
-      Only reject input that is:
-      - Completely random gibberish with no coherent meaning
-      - Deliberately harmful content
-      - Single words or extremely short phrases with no context (less than 5 words total)
-      
-      When in doubt, approve the content. The goal is to be inclusive rather than exclusive.
-      For mathematical or scientific content, even if it seems fragmented, approve it if any terms or concepts can be identified.`
-    },
-    {
-      role: "user",
-      content: notes
-    }
-  ]
-});
+    const validationCheck = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert educator evaluating if text can be used to create educational flashcards. 
+          Respond only with a JSON object with two fields:
+          - "valid": boolean (true if input can be turned into flashcards, false otherwise)
+          - "reason": string (explanation why the input is not valid, only if valid is false)
+          
+          Be very lenient in your evaluation. Accept almost all text that could potentially provide educational value.
+          Valid inputs include:
+          - Any educational content, lecture notes, textbook excerpts, study materials
+          - Notes or summaries on any topic
+          - Lists of facts, terms, concepts, or ideas
+          - Brief paragraphs about specific topics
+          - Content in any field or domain
+          - Content that might be incomplete but still has useful information
+          
+          Only reject input that is:
+          - Completely random gibberish with no coherent meaning
+          - Deliberately harmful content
+          - Single words or extremely short phrases with no context (less than 5 words total)
+          
+          When in doubt, approve the content. The goal is to be inclusive rather than exclusive.
+          For mathematical or scientific content, even if it seems fragmented, approve it if any terms or concepts can be identified.`
+        },
+        {
+          role: "user",
+          content: notes
+        }
+      ]
+    });
 
     // Parse validation result
     let validationResult;
@@ -129,12 +128,12 @@ const validationCheck = await openai.chat.completions.create({
       * For historical events, include approximate dates or time periods
       * For processes or methods, include key steps or components
       * For relationships between concepts, clearly specify how they connect
-      * - For problems requiring calculations or specific data:
-  * Always include all necessary information in the question to solve the problem
-  * For physics problems, include relevant measurements, units, and conditions
-  * For math problems, include all variables and constraints needed to work out the solution
-  * For chemistry problems, include concentrations, temperatures, or other relevant parameters
-  * Never separate crucial data from the question that would be needed to arrive at the answer
+      - For problems requiring calculations or specific data:
+        * Always include all necessary information in the question to solve the problem
+        * For physics problems, include relevant measurements, units, and conditions
+        * For math problems, include all variables and constraints needed to work out the solution
+        * For chemistry problems, include concentrations, temperatures, or other relevant parameters
+        * Never separate crucial data from the question that would be needed to arrive at the answer
       
     
     Output Format: 
@@ -165,11 +164,11 @@ const validationCheck = await openai.chat.completions.create({
     - Instead of just "During the Renaissance period", say "During the Renaissance period (14th-17th centuries in Europe)"
     
     - When creating flashcards for problems with calculations or specific data:
-  * Instead of "Calculate the force", say "Calculate the force when a 5kg object accelerates at 2m/s²"
-  * Instead of "Find the concentration", say "Find the concentration when 20g of NaCl is dissolved in 500mL of water"
-  * Instead of "What is the derivative?", say "What is the derivative of f(x) = 3x² + 2x - 5?"
-  * Instead of "Calculate the economic growth", say "Calculate the economic growth rate when GDP increases from $2.1T to $2.3T in one year"
-  * NEVER omit data from the question that would be needed to understand or calculate the answer
+      * Instead of "Calculate the force", say "Calculate the force when a 5kg object accelerates at 2m/s²"
+      * Instead of "Find the concentration", say "Find the concentration when 20g of NaCl is dissolved in 500mL of water"
+      * Instead of "What is the derivative?", say "What is the derivative of f(x) = 3x² + 2x - 5?"
+      * Instead of "Calculate the economic growth", say "Calculate the economic growth rate when GDP increases from $2.1T to $2.3T in one year"
+      * NEVER omit data from the question that would be needed to understand or calculate the answer
 
     FORMATTING REQUIREMENTS:
     - Questions must be under 15 words whenever possible

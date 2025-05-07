@@ -1,3 +1,4 @@
+// Updated AIGenerateOverlay.tsx with improved flashcard selector
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   X as XIcon,
@@ -10,14 +11,24 @@ import {
   CheckCircle as CheckCircleIcon,
   Info as InfoIcon,
   Minus as MinusIcon,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  HelpCircle as HelpCircleIcon,
+  Crown as CrownIcon
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
-import { useAuth } from '../context/AuthContext'; // Import useAuth hook
+import { useAuth } from '../context/AuthContext';
+
+// Simplified shimmer animation
+const shimmerKeyframes = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+`;
 
 interface AIGenerateOverlayProps {
   onClose: () => void;
-  onGenerate: (flashcards: { question: string; answer: string }[]) => void;
+  onGenerate: (flashcards: { question: string; answer: string }[], shouldScroll: boolean) => void;
 }
 
 const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenerate }) => {
@@ -32,25 +43,24 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const [flashcardCount, setFlashcardCount] = useState<number>(10); // Default count
   const [useAutoCount, setUseAutoCount] = useState<boolean>(false); // Auto count option
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropAreaRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   
-  // Use the auth context instead of localStorage
+  // Use the auth context
   const { user, isAuthenticated } = useAuth();
   
   const MIN_CHARACTERS = 100;
   const MAX_CHARACTERS = 30000;
   const MIN_FLASHCARDS = 5;
-  const MAX_FLASHCARDS = 30;
+  const MAX_FLASHCARDS = 50;
 
-  // Auto-focus the textarea when there's no file uploaded
+  // Auto-focus textarea
   useEffect(() => {
     if (!uploadedFile && notesRef.current && !isParsing && !isGenerating) {
       notesRef.current.focus();
     }
   }, [uploadedFile, isParsing, isGenerating]);
 
-  // Auto-parse PDF when file is uploaded (better UX)
+  // Auto-parse PDF when file is uploaded
   useEffect(() => {
     if (uploadedFile && !isParsing && !isGenerating) {
       parsePdfContent();
@@ -59,13 +69,11 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
 
   // File validation function
   const validateFile = (file: File): string | null => {
-    // Validate file type
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       return 'Only PDF files are supported';
     }
     
-    // Validate file size (10MB max)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
       return 'File size exceeds the 10MB limit';
     }
@@ -84,13 +92,12 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       return;
     }
     
-    // Clear previous file and notes
     setUploadedFile(file);
     setInputNotes('');
     setNotesError('');
     setNotesSuccess(`"${file.name}" selected`);
     
-    // Simulated upload progress for better UX
+    // Simulated upload progress
     setUploadProgress(0);
     const interval = setInterval(() => {
       setUploadProgress(prev => {
@@ -103,40 +110,23 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     }, 50);
   };
 
-  // Drag and drop handlers
+  // Drag and drop handlers (simplified)
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isGenerating && !isParsing) {
-      setIsDragging(true);
-    }
+    if (!isGenerating && !isParsing) setIsDragging(true);
   }, [isGenerating, isParsing]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isGenerating && !isParsing) {
-      setIsDragging(true);
-    }
+    if (!isGenerating && !isParsing) setIsDragging(true);
   }, [isGenerating, isParsing]);
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Only set isDragging to false if we're leaving the dropzone and not entering a child element
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (
-      x <= rect.left || 
-      x >= rect.right || 
-      y <= rect.top || 
-      y >= rect.bottom
-    ) {
-      setIsDragging(false);
-    }
+    setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -161,7 +151,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       setNotesError('');
       setNotesSuccess(`"${file.name}" dropped successfully`);
       
-      // Simulated upload progress for better UX
+      // Simulated upload progress
       setUploadProgress(0);
       const interval = setInterval(() => {
         setUploadProgress(prev => {
@@ -183,16 +173,13 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     setNotesSuccess('');
     
     try {
-      // Check if user is authenticated using auth context
       if (!isAuthenticated || !user) {
         throw new Error('User not authenticated. Please log in.');
       }
       
-      // Create form data
       const formData = new FormData();
       formData.append('pdfFile', uploadedFile);
       
-      // Encode user info for authorization - use the user from context
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
       const response = await fetch(`${API_BASE_URL}/files/parse-pdf`, {
@@ -210,12 +197,10 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   
       const data = await response.json();
       
-      // Check if we received text data
       if (!data.text) {
         throw new Error('Received invalid response from server. Missing text content.');
       }
       
-      // Check if extracted text is too long
       if (data.text.length > MAX_CHARACTERS) {
         setInputNotes(data.text.substring(0, MAX_CHARACTERS));
         setNotesError(`PDF content exceeds ${MAX_CHARACTERS} characters. Text has been truncated.`);
@@ -224,14 +209,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
         setNotesError(`Extracted text is less than ${MIN_CHARACTERS} characters. Add more content for better results.`);
       } else {
         setInputNotes(data.text);
-        // Show page count information if available
         if (data.pageCount) {
           setNotesSuccess(`Successfully parsed ${data.pageCount} page${data.pageCount !== 1 ? 's' : ''} from PDF.`);
-          
-          // Auto scroll to the textarea
-          setTimeout(() => {
-            notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 300);
         }
       }
     } catch (error) {
@@ -255,11 +234,26 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     }
   };
 
-  // Handle flashcard count change
+  // Handle flashcard count change with bounds checking
   const handleFlashcardCountChange = (newCount: number) => {
-    if (newCount >= MIN_FLASHCARDS && newCount <= MAX_FLASHCARDS) {
-      setFlashcardCount(newCount);
-    }
+    const boundedCount = Math.min(Math.max(newCount, MIN_FLASHCARDS), MAX_FLASHCARDS);
+    setFlashcardCount(boundedCount);
+  };
+
+  // Get color based on flashcard count
+  const getCountColor = () => {
+    if (flashcardCount <= 10) return "bg-green-500";
+    if (flashcardCount <= 20) return "bg-blue-500";
+    if (flashcardCount <= 35) return "bg-purple-500";
+    return "bg-orange-500";
+  };
+  
+  // Get tooltip text based on flashcard count
+  const getCountTooltip = () => {
+    if (flashcardCount <= 10) return "Quick study session";
+    if (flashcardCount <= 20) return "Balanced set";
+    if (flashcardCount <= 35) return "Comprehensive review";
+    return "Intensive study";
   };
 
   const generateFlashcardsWithAI = async () => {
@@ -280,12 +274,10 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     setNotesSuccess('');
 
     try {
-      // Check if user is authenticated using auth context
       if (!isAuthenticated || !user) {
         throw new Error('User not authenticated. Please log in.');
       }
       
-      // Encode user info for authorization - use the user from context
       const authHeader = `Bearer ${btoa(JSON.stringify(user))}`;
       
       const response = await fetch(`${API_BASE_URL}/ai/generate-flashcards`, {
@@ -308,7 +300,6 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
 
       const data = await response.json();
       
-      // Validate the returned flashcards
       const generatedFlashcards = data.flashcards
         .map((card: any) => ({
           question: card.question?.trim() || '',
@@ -323,12 +314,18 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
         return;
       }
 
-      // Show message from backend if any
       if (data.message) {
         setNotesSuccess(data.message);
+      } else {
+        setNotesSuccess(`Successfully generated ${generatedFlashcards.length} flashcards! You can now edit them to your preference.`);
       }
 
-      onGenerate(generatedFlashcards);
+      onGenerate(generatedFlashcards, true);
+      
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      
     } catch (error) {
       console.error('Error generating flashcards:', error);
       setNotesError(
@@ -354,8 +351,8 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     if (isGenerating) {
       return {
         disabled: true,
-        text: "Generating Flashcards...",
-        icon: <LoaderIcon className="w-6 h-6 animate-spin mr-2" />
+        text: "Generating...",
+        icon: <LoaderIcon className="w-5 h-5 animate-spin" />
       };
     }
     
@@ -363,335 +360,344 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       return {
         disabled: true,
         text: "Processing PDF...",
-        icon: <LoaderIcon className="w-6 h-6 animate-spin mr-2" />
+        icon: <LoaderIcon className="w-5 h-5 animate-spin" />
       };
     }
     
     if (inputNotes.trim().length < MIN_CHARACTERS) {
       return {
         disabled: true,
-        text: `Need ${MIN_CHARACTERS - inputNotes.trim().length} More Characters`,
-        icon: <SparklesIcon className="w-6 h-6 opacity-50" />
+        text: `Need ${MIN_CHARACTERS - inputNotes.trim().length} more chars`,
+        icon: <SparklesIcon className="w-5 h-5 opacity-50" />
       };
     }
     
     return {
       disabled: false,
-      text: useAutoCount 
-        ? "Generate Flashcards (Auto Count)" 
-        : `Generate ${flashcardCount} Flashcards`,
-      icon: <SparklesIcon className="w-6 h-6" />
+      text: useAutoCount ? "Generate Flashcards (Auto)" : `Generate ${flashcardCount} Flashcards`,
+      icon: <SparklesIcon className="w-5 h-5" />
     };
   };
+
+  // Predefined common counts for quick selection
+  const quickCounts = [5, 10, 15, 20, 30];
 
   const buttonState = getButtonState();
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-        {/* Overlay Header */}
-        <div className="bg-[#004a74] px-6 py-4 text-white flex items-center justify-between rounded-t-xl">
-          <div className="flex items-center">
-            <SparklesIcon className="w-6 h-6 mr-3" />
-            <h2 className="text-xl font-bold">Generate Flashcards with AI</h2>
-          </div>
-          <button 
-            onClick={onClose}
-            className="text-white hover:text-red-300 transition-colors"
-            aria-label="Close AI Generate"
-            disabled={isGenerating || isParsing}
-          >
-            <XIcon className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Overlay Content */}
-        <div className="p-6 flex-grow overflow-y-auto">
-          {/* PDF Upload Section */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor="pdfUpload" className="block text-sm font-medium text-gray-700">
-                Upload PDF of Lecture Materials or Notes (Optional)
-              </label>
-              <span className="text-xs text-gray-500">or type your content in the text area below</span>
+    <>
+      <style>{shimmerKeyframes}</style>
+      
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+          {/* Header - increased padding */}
+          <div className="bg-gradient-to-r from-blue-500 to-sky-500 px-6 py-3 text-white flex items-center justify-between rounded-t-lg relative overflow-hidden">
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full" style={{ animation: 'shimmer 2s infinite' }}></div>
+            
+            <div className="flex items-center z-10">
+              <SparklesIcon className="w-5 h-5 mr-2" />
+              <h2 className="text-lg font-bold">Generate Flashcards with AI</h2>
             </div>
-
-            {/* Drop area */}
-            <div 
-              ref={dropAreaRef}
-              className={`w-full border border-dashed rounded-lg p-4 text-center transition-all
-                ${isDragging 
-                  ? 'border-[#004a74] bg-[#004a74]/5 shadow-md' 
-                  : uploadedFile
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-300 hover:border-[#004a74]/50 hover:bg-[#004a74]/5'
-                }
-                ${isGenerating || isParsing ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
-              onDragEnter={handleDragEnter}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+            <button 
+              onClick={onClose}
+              className="text-white hover:text-red-200 transition-colors z-10"
+              aria-label="Close"
+              disabled={isGenerating || isParsing}
             >
-              {!uploadedFile ? (
-                <>
-                  <input
-                    type="file"
-                    id="pdfUpload"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".pdf"
-                    className="hidden"
-                    disabled={isGenerating || isParsing}
-                  />
-                  <label 
-                    htmlFor="pdfUpload" 
-                    className="flex flex-col items-center justify-center cursor-pointer py-4"
-                  >
-                    <UploadIcon className={`w-10 h-10 mb-2 ${isDragging ? 'text-[#004a74]' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-medium ${isDragging ? 'text-[#004a74]' : 'text-gray-600'}`}>
-                      {isDragging ? 'Drop your PDF here' : 'Click to upload or drag and drop a PDF'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Maximum file size: 10MB
-                    </p>
-                  </label>
-                </>
-              ) : (
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center">
-                    <FileTextIcon className="w-8 h-8 text-[#004a74] mr-3" />
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-gray-700 truncate max-w-xs">
-                        {uploadedFile.name}
-                      </p>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <span>{(uploadedFile.size / 1024).toFixed(1)} KB</span>
-                        {uploadProgress > 0 && uploadProgress < 100 && (
-                          <span className="ml-2">Uploading: {uploadProgress}%</span>
-                        )}
-                        {uploadProgress === 100 && !isParsing && (
-                          <span className="ml-2 flex items-center text-green-500">
-                            <CheckCircleIcon className="w-3 h-3 mr-1" /> Ready
-                          </span>
-                        )}
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Compact tabbed content - with explicit scrollbar */}
+          <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="p-4">
+              {/* File Upload Section - Compact */}
+              <div className="mb-3">
+                <div 
+                  className={`border border-dashed rounded-md p-3 text-center transition-all
+                    ${isDragging ? 'border-blue-500 bg-blue-50' : 
+                      uploadedFile ? 'border-green-500 bg-green-50' : 'border-gray-300'}
+                    ${isGenerating || isParsing ? 'opacity-70' : 'hover:border-blue-400 hover:bg-blue-50'}`}
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  {!uploadedFile ? (
+                    <>
+                      <input
+                        type="file"
+                        id="pdfUpload"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept=".pdf"
+                        className="hidden"
+                        disabled={isGenerating || isParsing}
+                      />
+                      <label 
+                        htmlFor="pdfUpload" 
+                        className="flex items-center justify-center cursor-pointer py-2"
+                      >
+                        <UploadIcon className="w-5 h-5 mr-2 text-gray-400" />
+                        <span className="text-sm text-gray-600">Upload or drag PDF (optional)</span>
+                      </label>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center">
+                        <FileTextIcon className="w-5 h-5 text-blue-500 mr-2" />
+                        <p className="text-sm text-gray-700 truncate max-w-xs">
+                          {uploadedFile.name}
+                        </p>
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {!isParsing && uploadProgress === 100 && (
                       <button
                         onClick={removeUploadedFile}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        className="p-1 text-red-500 hover:bg-red-50 rounded-full"
                         title="Remove file"
                         disabled={isParsing || isGenerating}
                       >
-                        <TrashIcon className="w-5 h-5" />
+                        <TrashIcon className="w-4 h-4" />
                       </button>
-                    )}
+                    </div>
+                  )}
+                  
+                  {/* Progress bar */}
+                  {(uploadProgress > 0 || isParsing) && (
+                    <div className="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                      <div 
+                        className={isParsing ? 'bg-blue-500 animate-pulse h-full' : 'bg-blue-500 h-full'}
+                        style={{ width: `${isParsing ? '100' : uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Status messages for PDF */}
+                {(notesError && notesError.includes('PDF')) && (
+                  <div className="text-red-500 flex items-center text-xs mt-0.5">
+                    <AlertCircleIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>{notesError}</span>
                   </div>
-                </div>
-              )}
-              
-              {/* Show progress bar when uploading or parsing */}
-              {(uploadProgress > 0 || isParsing) && (
-                <div className="w-full h-1 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                  <div 
-                    className={`h-full ${isParsing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}
-                    style={{ width: `${isParsing ? '100' : uploadProgress}%` }}
-                  ></div>
-                </div>
-              )}
-            </div>
-            
-            {/* Status/Error messages for PDF */}
-            {(notesError && notesError.includes('PDF')) && (
-              <div className="text-red-500 flex items-center text-sm mt-1">
-                <AlertCircleIcon className="w-4 h-4 mr-1 flex-shrink-0" />
-                <span>{notesError}</span>
-              </div>
-            )}
-            {(notesSuccess && isParsing) && (
-              <div className="text-blue-500 flex items-center text-sm mt-1">
-                <LoaderIcon className="w-4 h-4 mr-1 animate-spin" />
-                <span>Parsing PDF content...</span>
-              </div>
-            )}
-            {(notesSuccess && !isParsing && !notesError) && (
-              <div className="text-green-600 flex items-center text-sm mt-1">
-                <CheckCircleIcon className="w-4 h-4 mr-1 flex-shrink-0" />
-                <span>{notesSuccess}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Text input area */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor="aiNotes" className="block text-sm font-medium text-gray-700">
-                Your Notes or Lecture<span className="text-red-500">*</span>
-              </label>
-              <div className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center">
-                <InfoIcon className="w-3 h-3 mr-1 text-gray-500" />
-                <span>Min: {MIN_CHARACTERS} characters</span>
-              </div>
-            </div>
-            <textarea
-              id="aiNotes"
-              ref={notesRef}
-              maxLength={MAX_CHARACTERS}
-              value={inputNotes}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                if (newValue.length <= MAX_CHARACTERS) {
-                  setInputNotes(newValue);
-                  if (newValue.trim().length >= MIN_CHARACTERS || newValue.trim().length === 0) {
-                    setNotesError('');
-                  }
-                }
-              }}
-              placeholder="Paste or type your lecture content or notes here. The more detailed, the better the flashcards!"
-              className={`w-full min-h-[300px] p-4 text-base rounded-lg border 
-                focus:outline-none focus:ring-2 transition-all resize-none
-                ${notesError && !notesError.includes('PDF') ? 'border-red-500 focus:ring-red-200' : 
-                  inputNotes.length >= MIN_CHARACTERS ? 'border-green-500 focus:ring-green-200' : 
-                  'border-gray-300 focus:ring-[#004a74]/20'}`}
-              disabled={isGenerating || isParsing}
-            />
-            
-            {/* Character count and status messages */}
-            <div className="flex flex-wrap justify-between text-sm mt-1">
-              {notesError && !notesError.includes('PDF') && (
-                <div className="text-red-500 flex items-center mr-4">
-                  <AlertCircleIcon className="w-4 h-4 mr-1 flex-shrink-0" />
-                  <span>{notesError}</span>
-                </div>
-              )}
-              
-              <div className={`flex items-center ml-auto ${getCharacterCountColor()}`}>
-                <span>{inputNotes.length}</span>
-                <span className="mx-1">/</span>
-                <span>{MAX_CHARACTERS}</span>
-                <span className="ml-1">characters</span>
-                {inputNotes.length >= MIN_CHARACTERS && (
-                  <CheckCircleIcon className="w-4 h-4 ml-1 text-green-500" />
+                )}
+                {(notesSuccess && !isParsing && !notesError) && (
+                  <div className="text-green-600 flex items-center text-xs mt-0.5">
+                    <CheckCircleIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>{notesSuccess}</span>
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
-          
-          {/* Flashcard Count Selector */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Number of Flashcards
-              </label>
-              <span className="text-xs text-gray-500">{MIN_FLASHCARDS}-{MAX_FLASHCARDS} cards</span>
-            </div>
-            
-            {/* Count selector */}
-            <div className={`transition-opacity duration-150 ${useAutoCount ? 'opacity-50' : 'opacity-100'}`}>
-              <div className="flex items-center space-x-3">
-                <button
-                  type="button"
-                  onClick={() => handleFlashcardCountChange(flashcardCount - 1)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-full 
-                    ${(flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
-                      'text-gray-400 bg-gray-100 cursor-not-allowed' : 
-                      'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
-                  disabled={flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount}
-                  aria-label="Decrease flashcard count"
-                >
-                  <MinusIcon className="w-4 h-4" />
-                </button>
+
+              {/* Text input area - more compact */}
+              <div className="mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <label htmlFor="aiNotes" className="block text-xs font-medium text-gray-700">
+                    Your Notes or Lecture Content <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs bg-blue-50 px-1.5 py-0.5 rounded flex items-center">
+                    <span>Min: {MIN_CHARACTERS} chars</span>
+                  </span>
+                </div>
+                <textarea
+                  id="aiNotes"
+                  ref={notesRef}
+                  maxLength={MAX_CHARACTERS}
+                  value={inputNotes}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    if (newValue.length <= MAX_CHARACTERS) {
+                      setInputNotes(newValue);
+                      if (newValue.trim().length >= MIN_CHARACTERS || newValue.trim().length === 0) {
+                        setNotesError('');
+                      }
+                    }
+                  }}
+                  placeholder="Paste or type your lecture notes here. More details = better flashcards!"
+                  className={`w-full min-h-[150px] p-3 text-sm rounded-md border 
+                    focus:outline-none focus:ring-1 transition-all resize-none
+                    ${notesError && !notesError.includes('PDF') ? 'border-red-500' : 
+                      inputNotes.length >= MIN_CHARACTERS ? 'border-blue-500' : 'border-gray-300'}`}
+                  disabled={isGenerating || isParsing}
+                />
                 
-                <div className="flex-1">
-                  <input
-                    type="range"
-                    min={MIN_FLASHCARDS}
-                    max={MAX_FLASHCARDS}
-                    value={flashcardCount}
-                    onChange={(e) => setFlashcardCount(parseInt(e.target.value, 10))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#004a74]"
+                {/* Character count */}
+                <div className="flex flex-wrap justify-between text-xs mt-0.5">
+                  {notesError && !notesError.includes('PDF') && (
+                    <div className="text-red-500 flex items-center mr-4">
+                      <AlertCircleIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span>{notesError}</span>
+                    </div>
+                  )}
+                  
+                  <div className={`flex items-center ml-auto ${getCharacterCountColor()}`}>
+                    <span>{inputNotes.length}</span>
+                    <span className="mx-1">/</span>
+                    <span>{MAX_CHARACTERS}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Improved Flashcard Count Selector */}
+              <div className="mb-4 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700">Flashcard Count</h3>
+                    <span className="group relative ml-1 cursor-help">
+                      <HelpCircleIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                        <div className="w-48 rounded bg-gray-800 p-2 text-xs text-white shadow-lg">
+                          <p>Set the number of flashcards to generate. Choose fewer cards for quick sessions or more for deep learning.</p>
+                        </div>
+                      </div>
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">{MIN_FLASHCARDS}-{MAX_FLASHCARDS}</div>
+                </div>
+                
+                {/* Quick select buttons */}
+                <div className={`flex flex-wrap gap-1.5 mb-2 transition-opacity ${useAutoCount ? 'opacity-40' : 'opacity-100'}`}>
+                  {quickCounts.map(count => (
+                    <button
+                      key={count}
+                      onClick={() => handleFlashcardCountChange(count)}
+                      disabled={isGenerating || isParsing || useAutoCount}
+                      className={`px-2 py-1 text-xs rounded-md transition-all ${
+                        flashcardCount === count 
+                          ? 'bg-blue-100 text-blue-700 font-medium border border-blue-300' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                      } ${isGenerating || isParsing || useAutoCount ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handleFlashcardCountChange(MAX_FLASHCARDS)}
                     disabled={isGenerating || isParsing || useAutoCount}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1 px-1">
-                    <span>{MIN_FLASHCARDS}</span>
+                    className={`px-2 py-1 text-xs rounded-md transition-all flex items-center ${
+                      flashcardCount === MAX_FLASHCARDS 
+                        ? 'bg-blue-100 text-blue-700 font-medium border border-blue-300' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                    } ${isGenerating || isParsing || useAutoCount ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <CrownIcon className="w-3 h-3 mr-1" />
                     <span>{MAX_FLASHCARDS}</span>
+                  </button>
+                </div>
+
+                {/* Slider control */}
+                <div className={`transition-opacity duration-150 ${useAutoCount ? 'opacity-40' : 'opacity-100'}`}>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleFlashcardCountChange(flashcardCount - 1)}
+                      className={`w-7 h-7 flex items-center justify-center rounded-full 
+                        ${(flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
+                          'text-gray-400 bg-gray-100' : 
+                          'text-gray-700 bg-blue-100 hover:bg-blue-200 active:bg-blue-300'}`}
+                      disabled={flashcardCount <= MIN_FLASHCARDS || isGenerating || isParsing || useAutoCount}
+                    >
+                      <MinusIcon className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <div className="flex-1 relative h-7 flex items-center">
+                      {/* Track marks */}
+                      <div className="absolute inset-0 flex justify-between px-1 pointer-events-none">
+                        {[1, 2, 3, 4].map((_, index) => (
+                          <div key={index} className="w-px h-2 bg-gray-300 mt-2.5"></div>
+                        ))}
+                      </div>
+                      
+                      <input
+                        type="range"
+                        min={MIN_FLASHCARDS}
+                        max={MAX_FLASHCARDS}
+                        value={flashcardCount}
+                        onChange={(e) => setFlashcardCount(parseInt(e.target.value, 10))}
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer 
+                          bg-gradient-to-r from-green-200 via-blue-200 to-purple-200 
+                          accent-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50"
+                        disabled={isGenerating || isParsing || useAutoCount}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={() => handleFlashcardCountChange(flashcardCount + 1)}
+                      className={`w-7 h-7 flex items-center justify-center rounded-full 
+                        ${(flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
+                          'text-gray-400 bg-gray-100' : 
+                          'text-gray-700 bg-blue-100 hover:bg-blue-200 active:bg-blue-300'}`}
+                      disabled={flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount}
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <div className="relative group">
+                      <div 
+                        className={`${getCountColor()} text-white font-medium rounded-lg px-3 py-1 min-w-10 text-center text-xs transition-all`}
+                      >
+                        {flashcardCount}
+                      </div>
+                      <div className="absolute bottom-full right-0 mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                        <div className="bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                          {getCountTooltip()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <button
-                  type="button"
-                  onClick={() => handleFlashcardCountChange(flashcardCount + 1)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-full
-                    ${(flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount) ? 
-                      'text-gray-400 bg-gray-100 cursor-not-allowed' : 
-                      'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
-                  disabled={flashcardCount >= MAX_FLASHCARDS || isGenerating || isParsing || useAutoCount}
-                  aria-label="Increase flashcard count"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                </button>
-                
-                <div className="w-12 h-8 flex items-center justify-center bg-[#004a74]/10 text-[#004a74] font-medium rounded">
-                  {flashcardCount}
+                {/* Auto Count Checkbox */}
+                <div className="mt-3 flex items-center">
+                  <input
+                    id="autoCountCheckbox"
+                    type="checkbox"
+                    checked={useAutoCount}
+                    onChange={(e) => setUseAutoCount(e.target.checked)}
+                    disabled={isGenerating || isParsing}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                  />
+                  <label htmlFor="autoCountCheckbox" className="ml-2 text-xs text-gray-700 cursor-pointer">
+                    Auto-choose count based on content length
+                  </label>
+                  {useAutoCount && (
+                    <span className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+                      AI optimized
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-            
-            {/* Auto Count Checkbox */}
-            <div className="flex items-center mt-3">
-              <input
-                id="autoCountCheckbox"
-                type="checkbox"
-                checked={useAutoCount}
-                onChange={(e) => setUseAutoCount(e.target.checked)}
-                disabled={isGenerating || isParsing}
-                className="h-4 w-4 rounded border-gray-300 text-[#004a74] focus:ring-[#004a74]"
-              />
-              <label htmlFor="autoCountCheckbox" className="ml-2 text-sm text-gray-700 cursor-pointer">
-                Choose for me based on text length
-              </label>
-              {useAutoCount && (
-                <div className="ml-2 px-2 py-0.5 bg-[#004a74]/10 text-[#004a74] text-xs rounded-full">
-                  Auto
+
+              {/* Generate Button */}
+              <button 
+                onClick={generateFlashcardsWithAI}
+                className={`w-full flex items-center justify-center
+                  bg-gradient-to-r from-blue-500 to-sky-500 text-white
+                  px-4 py-3 rounded-md hover:from-blue-600 hover:to-sky-600
+                  transition-all shadow-md relative overflow-hidden
+                  ${buttonState.disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={buttonState.disabled}
+              >
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full" style={{ animation: 'shimmer 2s infinite' }}></div>
+                <div className="flex items-center gap-2 z-10">
+                  {buttonState.icon}
+                  <span>{buttonState.text}</span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Generate Button */}
-          <button 
-            onClick={generateFlashcardsWithAI}
-            className={`w-full flex items-center justify-center gap-2 
-              bg-[#004a74] text-white font-bold
-              px-6 py-4 rounded-lg hover:bg-[#00659f] transition-all shadow-md
-              ${buttonState.disabled ? 'opacity-70 cursor-not-allowed' : 'transform hover:-translate-y-0.5'}`}
-            disabled={buttonState.disabled}
-          >
-            {buttonState.icon}
-            {buttonState.text}
-          </button>
-
-          {/* Info Panel */}
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <SparklesIcon className="w-5 h-5 text-[#004a74] mr-3 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-[#004a74]">How AI Generation Works</h3>
-                <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
-                  <li>Upload a PDF document or paste your notes ({MIN_CHARACTERS}-{MAX_CHARACTERS} characters)</li>
-                  <li>Specify the number of flashcards or let AI choose based on content length</li>
-                  <li>Our AI will analyze the content and generate relevant flashcards</li>
-                  <li>You can edit the generated flashcards before saving</li>
-                  <li>Works best with lecture notes, textbook chapters, and study guides</li>
-                </ul>
+              </button>
+              
+              {/* Brief Info - super compact */}
+              <div className="mt-3 text-xs text-gray-600 bg-gray-50 p-2 rounded-md">
+                <div className="flex items-center text-blue-600 mb-1">
+                  <InfoIcon className="w-3 h-3 mr-1" />
+                  <span className="font-medium">All generated flashcards are fully editable</span>
+                </div>
+                <div>
+                  Upload a PDF or paste notes ({MIN_CHARACTERS}+ chars) → Specify count or auto → 
+                  Generate → Edit as needed.
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

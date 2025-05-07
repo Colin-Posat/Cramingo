@@ -89,14 +89,13 @@ const NavBar: React.FC = () => {
         {/* Mobile */}
         <div className="md:hidden flex items-center justify-between h-full px-4">
           <Link to="/created-sets" className="flex items-center">
-            <div className="flex items-center justify-center bg-white bg-opacity-15 rounded-full h-10 w-10 shadow-inner">
+            <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-full h-10 w-10 shadow-inner">
               <img 
                 src="/images/fliply_logo.png" 
                 alt="Fliply Logo" 
                 className="h-8 w-auto"
               />
             </div>
-            <span className="ml-2 font-bold text-base">Fliply</span>
           </Link>
           <div className="flex items-center">
             <button 

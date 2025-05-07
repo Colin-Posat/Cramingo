@@ -648,42 +648,55 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
 
 {/* Header with Create and Search Buttons - Only shown when sets exist */}
 {sets.length > 0 && (
-  <div className="fixed top-16 left-0 right-0 z-10 bg-white shadow-sm border-b border-gray-200 py-4">
-    <div className="max-w-7xl mx-auto px-6 flex items-center">
-      {/* Left-aligned buttons container */}
-      <div className="flex items-center gap-4 flex-1">
+  <div className="fixed top-16 left-0 right-0 z-10 bg-white shadow-md border-b border-gray-200 py-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-3 justify-between">
+      {/* Button container with responsive design */}
+      <div className="flex items-center gap-3 flex-grow sm:flex-grow-0">
         <button
           onClick={handleCreateSet}
-          className="relative bg-gradient-to-r from-[#004a74] to-[#006da9] text-white font-medium text-[16px] px-4 py-[0.35em] pl-5 h-[2.8em] rounded-lg flex items-center overflow-hidden cursor-pointer shadow-[inset_0_0_1.6em_-0.6em_#003857] group"
+          className="relative overflow-hidden bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white font-medium rounded-xl 
+                   flex items-center justify-center gap-2 px-4 py-2.5
+                   hover:from-[#00395c] hover:to-[#0068b0] active:scale-[0.98] transition-all duration-200
+                   shadow-md hover:shadow-lg w-full sm:w-auto text-sm group"
+          aria-label="Create flashcard set"
         >
-          <span className="mr-10">
-            Create Set
-          </span>
-          <div
-            className="absolute right-[0.3em] bg-white h-[2.2em] w-[2.2em] rounded-[0.7em] flex items-center justify-center transition-all duration-300 group-hover:w-[calc(100%-0.6em)] shadow-[0.1em_0.1em_0.6em_0.2em_#003857] active:scale-95"
-          >
-            <PlusIcon className="w-5 h-5 text-[#004a74] transition-transform duration-300 group-hover:scale-110" />
+          {/* Animated background highlight */}
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+          
+          {/* Icon with subtle animation */}
+          <div className="relative bg-white/20 p-1.5 rounded-lg mr-1 group-hover:scale-110 transition-transform duration-200">
+            <PlusIcon className="w-4 h-4" />
           </div>
+          
+          <span className="relative whitespace-nowrap">Create Set</span>
         </button>
         
         <button
           onClick={handleSearchSets}
-          className="relative bg-gradient-to-r from-white to-[#f8fbfe] text-[#004a74] font-medium text-[16px] px-4 py-[0.35em] pl-5 h-[2.8em] rounded-lg flex items-center overflow-hidden cursor-pointer border border-[#004a74] shadow-[inset_0_0_1.6em_-0.6em_#e6f2fa] group"
+          className="relative overflow-hidden bg-white text-[#004a74] font-medium rounded-xl 
+                   flex items-center justify-center gap-2 px-4 py-2.5
+                   border border-[#004a74] hover:bg-blue-50 active:scale-[0.98] 
+                   transition-all duration-200 w-full sm:w-auto text-sm
+                   shadow-sm hover:shadow group"
+          aria-label="Find flashcard sets"
         >
-          <span className="mr-10">
-            Find Sets
-          </span>
-          <div
-            className="absolute right-[0.3em] bg-gradient-to-r from-[#004a74] to-[#006da9] h-[2.2em] w-[2.2em] rounded-[0.7em] flex items-center justify-center transition-all duration-300 group-hover:w-[calc(100%-0.6em)] shadow-[0.1em_0.1em_0.6em_0.2em_#e6f2fa] active:scale-95"
-          >
-            <SearchIcon className="w-5 h-5 text-white transition-transform duration-300 group-hover:scale-110" />
+          {/* Subtle animated background highlight */}
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-blue-100/50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+          
+          {/* Icon with subtle animation */}
+          <div className="relative bg-blue-100 p-1.5 rounded-lg mr-1 group-hover:scale-110 transition-transform duration-200">
+            <SearchIcon className="w-4 h-4" />
           </div>
+          
+          <span className="relative whitespace-nowrap">Find Sets</span>
         </button>
       </div>
       
-      {/* Right-aligned counter */}
-      <div className="bg-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium ml-auto">
-        {sets.length} {sets.length === 1 ? 'set' : 'sets'}
+      {/* Right-aligned counter with improved design */}
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium
+                    flex items-center justify-center shadow-inner border border-blue-200">
+        <span className="font-bold mr-1">{sets.length}</span>
+        <span>{sets.length === 1 ? 'set' : 'sets'}</span>
       </div>
     </div>
   </div>
