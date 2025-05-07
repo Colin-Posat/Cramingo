@@ -55,7 +55,6 @@
 
 - **Protected Routes** – Only accessible when logged in.
 - **Mobile Responsive** – Works on all devices.
-- **Dark Mode** – Modern, eye-friendly theme.
 - **Enhanced UX** – Autocomplete inputs, enter-to-submit, modal confirmations.
 
 ### ⚙️ Backend API (Node.js + Express)
