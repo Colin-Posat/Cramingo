@@ -1223,59 +1223,59 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
         </div>
       </div>
 
-      {/* Sticky Save Actions */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl py-4
-  backdrop-blur-md bg-white/95">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-4">
-          <button 
-            onClick={() => saveFlashcardSet(false)} 
-            className="relative overflow-hidden px-4 py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
-              hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-              flex items-center justify-center gap-3 group shadow-md hover:shadow-lg active:scale-[0.99]"
-            disabled={isLoading || imageUploading}
-          >
-            {/* Subtle animated background highlight */}
-            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-blue-100/50 to-transparent 
-              -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-            
-            <div className="bg-blue-100 p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
-              <LockIcon className="w-5 h-5 text-[#004a74]" />
+        {/* Sticky Save Actions - Optimized for mobile */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl py-3 sm:py-4
+          backdrop-blur-md bg-white/95">
+          <div className="container mx-auto px-3 sm:px-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <button 
+                onClick={() => saveFlashcardSet(false)} 
+                className="relative overflow-hidden px-2 sm:px-4 py-2 sm:py-4 bg-white text-[#004a74] border-2 border-[#004a74] rounded-xl 
+                  hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                  flex items-center justify-center gap-2 sm:gap-3 group shadow-md hover:shadow-lg active:scale-[0.99]"
+                disabled={isLoading || imageUploading}
+              >
+                {/* Subtle animated background highlight */}
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-blue-100/50 to-transparent 
+                  -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                
+                <div className="bg-blue-100 p-1 sm:p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                  <LockIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#004a74]" />
+                </div>
+                
+                <div className="text-left">
+                  <span className="font-bold text-sm sm:text-base block">
+                    {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save Private')}
+                  </span>
+                  <span className="text-xs text-gray-500 hidden sm:block">Only you can access</span>
+                </div>
+              </button>
+              <button 
+                onClick={() => saveFlashcardSet(true)}
+                className="relative overflow-hidden px-2 sm:px-4 py-2 sm:py-4 bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white rounded-xl 
+                  hover:from-[#00395c] hover:to-[#0068b0] transition-all duration-200 
+                  disabled:opacity-50 disabled:cursor-not-allowed 
+                  flex items-center justify-center gap-2 sm:gap-3 group shadow-xl active:scale-[0.99]"
+                disabled={isLoading || imageUploading}
+              >
+                {/* Animated highlight */}
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                  -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                
+                <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                  <GlobeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                </div>
+                
+                <div className="text-left">
+                  <span className="font-bold text-sm sm:text-base block">
+                    {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Publish')}
+                  </span>
+                  <span className="text-xs text-white/80 hidden sm:block">Everyone can view</span>
+                </div>
+              </button>
             </div>
-            
-            <div className="text-left">
-              <span className="font-bold block">
-                {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save as Private')}
-              </span>
-              <span className="text-xs text-gray-500 block">Only you can access</span>
-            </div>
-          </button>
-          <button 
-            onClick={() => saveFlashcardSet(true)}
-            className="relative overflow-hidden px-4 py-4 bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white rounded-xl 
-              hover:from-[#00395c] hover:to-[#0068b0] transition-all duration-200 
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              flex items-center justify-center gap-3 group shadow-xl active:scale-[0.99]"
-            disabled={isLoading || imageUploading}
-          >
-            {/* Animated highlight */}
-            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
-              -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-            
-            <div className="bg-white/20 p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
-              <GlobeIcon className="w-5 h-5 text-white" />
-            </div>
-            
-            <div className="text-left">
-              <span className="font-bold block">
-                {isLoading ? 'Saving...' : (imageUploading ? 'Uploading...' : 'Save & Publish')}
-              </span>
-              <span className="text-xs text-white/80 block">Everyone can view</span>
-            </div>
-          </button>
           </div>
         </div>
-      </div>
 
       {/* AI Generate Overlay */}
       {showAIGenerateOverlay && (

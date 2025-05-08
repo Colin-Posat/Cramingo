@@ -16,6 +16,7 @@ import {
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import CreatedSetsHelperModal from '../../components/CreatedSetsHelperModal';
 
 // Enhanced type for Flashcard Set
 type FlashcardSet = {
@@ -422,72 +423,6 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
     </div>
   );
 
-  // Helper modal component
-  const HelperModal = () => (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="relative bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
-        {/* Top decorative bar */}
-        <div className="h-2 bg-gradient-to-r from-[#004a74] to-[#0080d4]"></div>
-        
-        {/* Close button in corner */}
-        <button 
-          onClick={() => setShowHelper(false)}
-          className="absolute top-4 right-4 bg-gray-100 text-gray-600 p-2 rounded-full 
-            hover:bg-gray-200 transition-colors z-10"
-          aria-label="Close modal"
-        >
-          <XIcon className="w-5 h-5" />
-        </button>
-        
-        <div className="p-10 pt-8 text-center">
-          {/* Header with decorative elements */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            </div>
-            <BookIcon className="mx-auto w-24 h-24 text-[#004a74] mb-4" />
-            <h2 className="text-3xl font-bold text-[#004a74]">
-              Welcome to Your Flashcard Sets!
-            </h2>
-          </div>
-          
-          {/* Content with step indicators */}
-          <div className="max-w-xl mx-auto mb-8">
-            <div className="bg-blue-50 rounded-xl p-6 mb-6">
-              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
-                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">1</div>
-                <span>Create Your Own Sets</span>
-              </h3>
-              <p className="text-gray-700">
-                Click "Create Set" to make your own flashcards for any subject or class.
-              </p>
-            </div>
-            
-            <div className="bg-blue-50 rounded-xl p-6">
-              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
-                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">2</div>
-                <span>Find Existing Sets</span>
-              </h3>
-              <p className="text-gray-700">
-                Browse flashcard sets created by others with the "Find Sets" button.
-              </p>
-            </div>
-          </div>
-          
-          {/* Action button */}
-          <button 
-            onClick={() => setShowHelper(false)}
-            className="bg-[#004a74] text-white px-8 py-3 rounded-xl 
-              hover:bg-[#00659f] transition-all flex items-center 
-              justify-center mx-auto gap-2 text-lg font-medium shadow-lg
-              hover:shadow-xl active:scale-[0.98]"
-          >
-            <CheckCircleIcon className="w-5 h-5" />
-            <span>Got it!</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   // Delete confirmation modal
   const DeleteModal = () => (
@@ -718,7 +653,7 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
         )}
 
         {/* Modals */}
-        {showHelper && <HelperModal />}
+        {showHelper && <CreatedSetsHelperModal setShowHelper={setShowHelper} />}
         {showDeleteModal && <DeleteModal />}
       </div>
     </div>

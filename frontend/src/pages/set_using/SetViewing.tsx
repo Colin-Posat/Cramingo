@@ -5,15 +5,18 @@ import {
   Edit3 as Edit3Icon,
   Save as SaveIcon,
   AlertCircle as AlertCircleIcon,
-  ChevronDown as ChevronDownIcon,
   Book as BookIcon,
   ClipboardList as ClipboardListIcon,
   Info as InfoIcon,
   X as XIcon,
   Heart as HeartIcon,
-  CheckCircle,
-  ChevronRight,
-  Bookmark
+  CheckCircle as CheckCircleIcon,
+  ChevronRight as ChevronRightIcon,
+  Bookmark as BookmarkIcon,
+  Search as SearchIcon,
+  Download as DownloadIcon,
+  Share2 as Share2Icon,
+  Printer as PrinterIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
@@ -77,37 +80,22 @@ const EnhancedSaveSuccessNotification: React.FC<SaveSuccessNotificationProps> = 
   
   return (
     <div 
-      className="fixed top-0 left-0 w-full h-full flex items-center justify-center z-50 transition-all duration-300"
-      style={{ backgroundColor: isExiting ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,0.4)' }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
       onClick={handleClose}
     >
       <div 
-        className={`bg-white rounded-xl shadow-xl p-8 max-w-md transform transition-all duration-500 ${isExiting ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
+        className={`bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-green-200 
+          transform-gpu ${isExiting ? 'scale-95 opacity-0' : 'animate-scaleIn'}`}
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the modal
       >
-        <div className="flex flex-col items-center">
-          <div className="w-24 h-24 mb-4 relative">
-            {/* Outer ring pulse */}
-            <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-20"></div>
-            
-            {/* Middle ring pulse (slower) */}
-            <div className="absolute inset-2 rounded-full bg-green-200 animate-ping opacity-40" style={{ animationDuration: '2s' }}></div>
-            
-            {/* Check mark with bookmark */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <CheckCircle size={80} className="text-green-500" />
-                <Bookmark 
-                  size={28} 
-                  className="absolute text-[#004a74] fill-[#004a74] animate-bounce" 
-                  style={{ top: '10px', right: '-12px', animationDuration: '1.5s' }}
-                />
-              </div>
-            </div>
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4
+            animate-pulse">
+            <CheckCircleIcon className="h-8 w-8 text-green-600" />
           </div>
           
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">Set Saved Successfully!</h3>
-          <p className="text-gray-600 text-center mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Set Saved Successfully!</h3>
+          <p className="text-gray-500 mb-6">
             This flashcard set has been added to your saved sets.
           </p>
           
@@ -119,10 +107,10 @@ const EnhancedSaveSuccessNotification: React.FC<SaveSuccessNotificationProps> = 
             ></div>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 justify-center">
             <button 
               onClick={handleClose}
-              className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 shadow-sm hover:shadow"
             >
               <XIcon size={16} />
               Close
@@ -135,10 +123,10 @@ const EnhancedSaveSuccessNotification: React.FC<SaveSuccessNotificationProps> = 
                   if (navigateToSavedSets) navigateToSavedSets();
                 }, 300);
               }}
-              className="px-5 py-2 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 bg-[#004a74] text-white rounded-lg hover:bg-[#00659f] transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
             >
               View Saved Sets
-              <ChevronRight size={16} />
+              <ChevronRightIcon size={16} />
             </button>
           </div>
         </div>
@@ -195,6 +183,9 @@ const SetViewingPage: React.FC = () => {
   const [hasLiked, setHasLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
+  
+  // Image preview state
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Navigation flags
   const fromSearch = location.state?.fromSearch || false;
@@ -301,35 +292,34 @@ const SetViewingPage: React.FC = () => {
   }, [setId, user]);
 
   // Back link helpers
-// Back link helpers
-const getBackLinkText = () => {
-  // Keep original navigation for search results and popular sets
-  if (fromSearch) return 'Back to Search Results';
-  if (fromPopularSets) return 'Back to Search Sets';
-  
-  // For other cases, display "Back to Saved Sets" if the user has saved this set
-  if (isSavedByCurrentUser) {
-    return 'Back to Saved Sets';
-  }
-  
-  // Original fallback logic
-  return flashcardSet?.isDerived ? 'Back to Saved Sets' : 'Back to Created Sets';
-};
+  const getBackLinkText = () => {
+    // Keep original navigation for search results and popular sets
+    if (fromSearch) return 'Back to Search Results';
+    if (fromPopularSets) return 'Back to Search Sets';
+    
+    // For other cases, display "Back to Saved Sets" if the user has saved this set
+    if (isSavedByCurrentUser) {
+      return 'Back to Saved Sets';
+    }
+    
+    // Original fallback logic
+    return flashcardSet?.isDerived ? 'Back to Saved Sets' : 'Back to Created Sets';
+  };
 
-// Similarly, update the getBackLinkPath function
-const getBackLinkPath = () => {
-  // Keep original navigation for search results and popular sets
-  if (fromSearch) return `/search-results?q=${encodeURIComponent(searchQuery)}`;
-  if (fromPopularSets) return '/search-sets';
-  
-  // For other cases, link to saved sets if the user has saved this set
-  if (isSavedByCurrentUser) {
-    return '/saved-sets';
-  }
-  
-  // Original fallback logic
-  return flashcardSet?.isDerived ? '/saved-sets' : '/created-sets';
-};
+  // Similarly, update the getBackLinkPath function
+  const getBackLinkPath = () => {
+    // Keep original navigation for search results and popular sets
+    if (fromSearch) return `/search-results?q=${encodeURIComponent(searchQuery)}`;
+    if (fromPopularSets) return '/search-sets';
+    
+    // For other cases, link to saved sets if the user has saved this set
+    if (isSavedByCurrentUser) {
+      return '/saved-sets';
+    }
+    
+    // Original fallback logic
+    return flashcardSet?.isDerived ? '/saved-sets' : '/created-sets';
+  };
 
   // Actions
   const handleEditSet = () => {
@@ -464,68 +454,148 @@ const getBackLinkPath = () => {
     setViewMode('quiz');
     navigate(`/study/${setId}/quiz`);
   };
+  
+  const showImagePreview = (imageUrl: string) => {
+    setPreviewImage(imageUrl);
+  };
+  
+  const closeImagePreview = () => {
+    setPreviewImage(null);
+  };
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50"><NavBar /><div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div></div></div>
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <NavBar />
+      <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#004a74]"></div>
+      </div>
+    </div>
   );
 
   if (error || !flashcardSet) return (
-    <div className="min-h-screen bg-gray-50"><NavBar /><div className="pt-24 px-6"><div className="bg-red-100 p-4 rounded flex items-start"><AlertCircleIcon /><div><p className="font-bold">Error</p><p>{error}</p><button onClick={() => window.location.reload()} className="mt-2 bg-red-700 text-white px-4 py-1 rounded text-sm">Try Again</button></div></div><button onClick={() => navigate('/created-sets')} className="mt-4 bg-[#004a74] text-white px-4 py-2 rounded">Back to Created Sets</button></div></div>
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <NavBar />
+      <div className="container mx-auto px-4 pt-24">
+        <div className="bg-red-100 border border-red-200 p-6 rounded-2xl shadow-md flex items-start gap-4">
+          <AlertCircleIcon className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+          <div>
+            <p className="font-bold text-red-800 text-lg mb-2">Error Loading Flashcard Set</p>
+            <p className="text-red-700 mb-4">{error || "The flashcard set could not be loaded. Please try again."}</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm shadow-sm hover:shadow transition-all active:scale-[0.98]"
+              >
+                Try Again
+              </button>
+              <button 
+                onClick={() => navigate(getBackLinkPath())} 
+                className="bg-[#004a74] hover:bg-[#00395c] text-white px-4 py-2 rounded-xl text-sm shadow-sm hover:shadow transition-all active:scale-[0.98]"
+              >
+                {getBackLinkText()}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   const isCreator = user?.uid === flashcardSet.userId && !flashcardSet.isDerived;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
       
+      {/* Save Success Notification */}
+      {showSaveSuccess && (
+        <EnhancedSaveSuccessNotification 
+          show={showSaveSuccess} 
+          onClose={() => setShowSaveSuccess(false)} 
+          navigateToSavedSets={() => navigate('/saved-sets')}
+        />
+      )}
+      
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+          onClick={closeImagePreview}
+        >
+          <div 
+            className="max-w-4xl max-h-[90vh] flex flex-col items-center transform-gpu animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+            />
+            <button 
+              onClick={closeImagePreview}
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <XIcon className="w-4 h-4" />
+              Close Preview
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="container mx-auto px-4 pt-24 pb-12">
-        <div className="flex justify-between items-center mb-6">
+        {/* Header with back button and page title */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-6">
           <button 
             onClick={() => navigate(getBackLinkPath())}
-            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
+            className="flex items-center text-sm bg-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl shadow-sm 
+              border border-[#004a74]/20 text-[#004a74] hover:bg-blue-50 transition-colors
+              group active:scale-[0.98] w-full sm:w-auto"
           >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> {getBackLinkText()}
+            <ChevronLeftIcon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+            <span className="truncate">{getBackLinkText()}</span>
           </button>
           
           {/* Conditionally render Edit or Unsave button */}
-          {isCreator ? (
-            <button 
-              onClick={handleEditSet}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[#004a74] bg-white shadow-sm border border-[#004a74]/50 hover:bg-blue-50 transition-colors"
-            >
-              <Edit3Icon className="w-5 h-5" /> Edit Set
-            </button>
-          ) : isSavedByCurrentUser ? (
-            <button 
-              onClick={handleUnsaveSet}
-              disabled={isUnsaving}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-red-500 shadow-sm hover:bg-red-600 transition-colors"
-            >
-              {isUnsaving ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <XIcon className="w-5 h-5" />
-              )}
-              Unsave Set
-            </button>
-          ) : (
-            <button 
-              onClick={handleSaveSet}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#004a74] shadow-sm hover:bg-[#00659f] transition-colors"
-            >
-              <SaveIcon className="w-5 h-5" /> Save Set
-            </button>
-          )}
-        </div>
+        {isCreator ? (
+          <button 
+            onClick={handleEditSet}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[#004a74] bg-white shadow-sm 
+              border border-[#004a74]/50 hover:bg-blue-50 transition-colors active:scale-[0.98] w-full sm:w-auto"
+          >
+            <Edit3Icon className="w-5 h-5" /> Edit Set
+          </button>
+        ) : isSavedByCurrentUser ? (
+          <button 
+            onClick={handleUnsaveSet}
+            disabled={isUnsaving}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-white bg-red-500 shadow-sm 
+              hover:bg-red-600 transition-colors active:scale-[0.98] disabled:opacity-70 w-full sm:w-auto"
+          >
+            {isUnsaving ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <XIcon className="w-5 h-5" />
+            )}
+            Unsave Set
+          </button>
+        ) : (
+          <button 
+            onClick={handleSaveSet}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-white bg-[#004a74] shadow-sm 
+              hover:bg-[#00659f] transition-colors active:scale-[0.98] w-full sm:w-auto"
+          >
+            <SaveIcon className="w-5 h-5" /> Save Set
+          </button>
+        )}
+      </div>
         
         {/* Set Info Card */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6 border border-gray-200 hover:border-[#004a74]/20 transition-all">
           {/* Header */}
-          <div className="bg-[#004a74] text-white p-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold">{flashcardSet.title}</h1>
-              <span className="bg-white text-[#004a74] px-4 py-2 rounded-lg font-medium">
+          <div className="bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+              <h1 className="text-2xl sm:text-3xl font-bold line-clamp-2">{flashcardSet.title}</h1>
+              <span className="bg-white text-[#004a74] px-3 py-1 sm:px-4 sm:py-2 rounded-lg font-medium shadow-sm text-sm sm:text-base mt-1 sm:mt-0">
                 {flashcardSet.classCode}
               </span>
             </div>
@@ -550,7 +620,7 @@ const getBackLinkPath = () => {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                 ) : (
                   <HeartIcon 
-                    className={`w-4 h-4 ${hasLiked ? 'fill-red-600' : ''}`} 
+                    className={`w-4 h-4 ${hasLiked ? 'fill-red-600' : ''} transition-transform hover:scale-110`} 
                   />
                 )}
                 <span className="font-medium">{likesCount}</span>
@@ -558,7 +628,7 @@ const getBackLinkPath = () => {
             </div>
             
             {flashcardSet.isDerived && flashcardSet.originalSetId && (
-              <p className="mt-1 text-white/70 text-sm">
+              <p className="mt-1 text-white/70 text-xs sm:text-sm">
                 Saved from original set
               </p>
             )}
@@ -581,79 +651,95 @@ const getBackLinkPath = () => {
           
           {/* Info Panel - collapsible */}
           {showInfo && (
-            <div className="bg-[#e3f3ff] p-4 flex items-start gap-3 border-b border-[#004a74]/20">
-              <InfoIcon className="w-5 h-5 text-[#004a74] mt-1 flex-shrink-0" />
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mx-6 my-4 flex">
+              <InfoIcon className="w-5 h-5 text-[#004a74] mr-3 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-[#004a74] font-medium">
+                <h3 className="font-medium text-[#004a74]">
                   What would you like to do with this set?
-                </p>
-                <p className="text-sm text-[#004a74]/80 mt-1">
-                  • View all flashcards in the default view below<br />
-                  • Start a flashcard study session with the "Study Flashcards" button<br />
-                  • Test your knowledge with the "Take Quiz" button<br />
-                  • Like the set to show your appreciation
-                </p>
-                <div className="mt-3 flex items-center">
-                </div>
+                </h3>
+                <ul className="mt-2 text-sm text-[#004a74]/80 space-y-1">
+                  <li>• View all flashcards in the default view below</li>
+                  <li>• Start a flashcard study session with the "Study Flashcards" button</li>
+                  <li>• Test your knowledge with the "Take Quiz" button</li>
+                  <li>• Like the set to show your appreciation</li>
+                </ul>
               </div>
               <button 
                 onClick={() => {
                   setShowInfo(false);
                   localStorage.setItem('hideViewerInfoTips', 'true');
                 }}
-                className="text-[#004a74] hover:bg-[#004a74]/10 p-1 rounded-full"
+                className="text-[#004a74] hover:bg-blue-100 p-1 rounded-full h-6 w-6 flex items-center justify-center"
               >
-                ✕
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
           )}
           
           {/* View Mode Buttons */}
-          <div className="p-6">
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={navigateToFlashcardView}
-                className={`flex-1 py-6 px-4 rounded-xl font-bold text-lg transition-all
-                  ${viewMode === 'flashcards'
-                    ? 'bg-[#004a74] text-white shadow-lg'
-                    : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
-                  } group flex items-center justify-center gap-2`}
-              >
-                <BookIcon className={`w-5 h-5 transition-transform 
-                  ${viewMode === 'flashcards' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
-                <span>Study Flashcards</span>
-              </button>
-              
-              <button 
-                onClick={navigateToQuizView}
-                className={`flex-1 py-3 px-4 rounded-xl font-bold text-lg transition-all
-                  ${viewMode === 'quiz'
-                    ? 'bg-[#004a74] text-white shadow-lg'
-                    : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
-                  } group flex items-center justify-center gap-2`}
-              >
-                <ClipboardListIcon className={`w-5 h-5 transition-transform
-                  ${viewMode === 'quiz' ? 'text-white' : 'text-[#004a74] group-hover:scale-110'}`} />
-                <span>Take Quiz</span>
-              </button>
-            </div>
+          <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={navigateToFlashcardView}
+              className={`py-4 sm:py-6 px-3 sm:px-4 rounded-xl font-bold text-base sm:text-lg transition-all
+                ${viewMode === 'flashcards'
+                  ? 'bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white shadow-lg'
+                  : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
+                } group flex items-center justify-center gap-2`}
+            >
+              <div className={`${viewMode === 'flashcards' ? 'bg-white/20' : 'bg-blue-100'} p-1.5 sm:p-2 rounded-lg group-hover:scale-110 transition-transform`}>
+                <BookIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${viewMode === 'flashcards' ? 'text-white' : 'text-[#004a74]'}`} />
+              </div>
+              <span>Study Flashcards</span>
+            </button>
+            
+            <button 
+              onClick={navigateToQuizView}
+              className={`py-4 sm:py-6 px-3 sm:px-4 rounded-xl font-bold text-base sm:text-lg transition-all
+                ${viewMode === 'quiz'
+                  ? 'bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white shadow-lg'
+                  : 'bg-white text-[#004a74] border border-[#004a74]/20 hover:bg-[#e3f3ff] hover:shadow-md'
+                } group flex items-center justify-center gap-2`}
+            >
+              <div className={`${viewMode === 'quiz' ? 'bg-white/20' : 'bg-blue-100'} p-1.5 sm:p-2 rounded-lg group-hover:scale-110 transition-transform`}>
+                <ClipboardListIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${viewMode === 'quiz' ? 'text-white' : 'text-[#004a74]'}`} />
+              </div>
+              <span>Take Quiz</span>
+            </button>
           </div>
+          
+          {/* Additional actions */}
+          <div className="flex justify-center gap-3 mt-4">
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm text-[#004a74] hover:bg-blue-50 rounded-lg transition-colors">
+              <Share2Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+              Share
+            </button>
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm text-[#004a74] hover:bg-blue-50 rounded-lg transition-colors">
+              <DownloadIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              Export
+            </button>
+          </div>
+        </div>
         </div>
             
         {/* Section Title */}
-        <h2 className="text-2xl font-bold text-[#004a74] mb-4 ml-1">
-          All Flashcards ({flashcardSet.flashcards.length})
+        <h2 className="text-2xl font-bold text-[#004a74] mb-4 ml-1 flex items-center">
+          All Flashcards 
+          <span className="ml-2 text-base font-normal bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg">
+            {flashcardSet.flashcards.length} card{flashcardSet.flashcards.length !== 1 ? 's' : ''}
+          </span>
         </h2>
 
         {/* Flashcards */}
         <div className="space-y-6">
           {flashcardSet.flashcards.length === 0 ? (
-            <div className="bg-blue-50 p-6 rounded-xl text-center border border-blue-200">
+            <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl text-center">
               <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
               {isCreator ? (
                 <button 
                   onClick={handleEditSet}
-                  className="bg-[#004a74] text-white px-6 py-2 rounded-lg hover:bg-[#00659f] transition-all"
+                  className="bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white px-6 py-2.5 rounded-xl 
+                    hover:from-[#00395c] hover:to-[#0068b0] transition-all shadow-md hover:shadow-lg"
                 >
                   Add Flashcards
                 </button>
@@ -663,9 +749,12 @@ const getBackLinkPath = () => {
             flashcardSet.flashcards.map((card, index) => (
               <div 
                 key={index}
-                className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden 
+                  hover:shadow-lg transition-all hover:border-[#004a74]/30 transform-gpu hover:scale-[1.01]"
               >
-                <div className="bg-[#004a74] text-white px-6 py-3 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white px-6 py-3 
+                  flex items-center justify-between group-hover:from-[#00395c] group-hover:to-[#0074c2] 
+                  transition-colors duration-300">
                   <span className="font-bold">Card {index + 1}</span>
                 </div>
                 <div className="p-6 grid md:grid-cols-2 gap-6">
@@ -674,48 +763,23 @@ const getBackLinkPath = () => {
                       <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
                       Question
                     </h3>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-[#004a74]/30 transition-colors">
                       {card.questionImage && (
                         <div className="mb-3">
-                          <img 
-                            src={card.questionImage} 
-                            alt="Question" 
-                            className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
-                            onClick={() => {
-                              if (!card.questionImage) return; // Type safety check
-                                          
-                              // Create a modal or lightbox effect
-                              const modal = document.createElement('div');
-                              modal.style.position = 'fixed';
-                              modal.style.top = '0';
-                              modal.style.left = '0';
-                              modal.style.width = '100%';
-                              modal.style.height = '100%';
-                              modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                              modal.style.display = 'flex';
-                              modal.style.alignItems = 'center';
-                              modal.style.justifyContent = 'center';
-                              modal.style.zIndex = '9999';
-                              modal.style.cursor = 'pointer';
-                              
-                              // Add full-size image
-                              const img = document.createElement('img');
-                              img.src = card.questionImage; // Now safe because of check above
-                              img.style.maxWidth = '90%';
-                              img.style.maxHeight = '90%';
-                              img.style.objectFit = 'contain';
-                              
-                              // Close on click
-                              modal.onclick = () => {
-                                document.body.removeChild(modal);
-                              };
-                              
-                              modal.appendChild(img);
-                              document.body.appendChild(modal);
-                            }}
-                            style={{ cursor: 'zoom-in' }}
-                          />
-                          <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                            <img 
+                              src={card.questionImage} 
+                              alt="Question" 
+                              className="w-full h-auto max-h-[150px] object-contain cursor-zoom-in" 
+                              onClick={() => showImagePreview(card.questionImage || '')}
+                            />
+                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                              <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
+                                <SearchIcon className="w-5 h-5 text-[#004a74]" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
                         </div>
                       )}
                       
@@ -727,48 +791,23 @@ const getBackLinkPath = () => {
                       <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
                       Answer
                     </h3>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-[#004a74]/30 transition-colors">
                       {card.answerImage && (
                         <div className="mb-3">
-                          <img 
-                            src={card.answerImage} 
-                            alt="Answer" 
-                            className="max-w-full rounded-lg h-48 object-contain mx-auto border border-gray-200 hover:border-blue-400 transition-colors"
-                            onClick={() => {
-                              if (!card.answerImage) return; // Type safety check
-                              
-                              // Create a modal or lightbox effect
-                              const modal = document.createElement('div');
-                              modal.style.position = 'fixed';
-                              modal.style.top = '0';
-                              modal.style.left = '0';
-                              modal.style.width = '100%';
-                              modal.style.height = '100%';
-                              modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                              modal.style.display = 'flex';
-                              modal.style.alignItems = 'center';
-                              modal.style.justifyContent = 'center';
-                              modal.style.zIndex = '9999';
-                              modal.style.cursor = 'pointer';
-                              
-                              // Add full-size image
-                              const img = document.createElement('img');
-                              img.src = card.answerImage; // Now safe because of check above
-                              img.style.maxWidth = '90%';
-                              img.style.maxHeight = '90%';
-                              img.style.objectFit = 'contain';
-                              
-                              // Close on click
-                              modal.onclick = () => {
-                                document.body.removeChild(modal);
-                              };
-                              
-                              modal.appendChild(img);
-                              document.body.appendChild(modal);
-                            }}
-                            style={{ cursor: 'zoom-in' }}
-                          />
-                          <div className="text-center text-xs text-gray-500 mt-1">Click image to expand</div>
+                          <div className="relative border rounded-lg overflow-hidden mb-2">
+                            <img 
+                              src={card.answerImage} 
+                              alt="Answer" 
+                              className="w-full h-auto max-h-[150px] object-contain cursor-zoom-in" 
+                              onClick={() => showImagePreview(card.answerImage || '')}
+                            />
+                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                              <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
+                                <SearchIcon className="w-5 h-5 text-[#004a74]" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
                         </div>
                       )}
                       
@@ -780,6 +819,35 @@ const getBackLinkPath = () => {
             ))
           )}
         </div>
+        
+        {/* Actions footer */}
+        {flashcardSet.flashcards.length > 0 && (
+          <div className="mt-8 flex justify-center gap-4">
+            <button
+              onClick={navigateToFlashcardView}
+              className="px-6 py-3 bg-white border-2 border-[#004a74] text-[#004a74] 
+                rounded-xl hover:bg-blue-50 transition-all shadow-md hover:shadow-lg 
+                flex items-center justify-center gap-2 group active:scale-[0.98]"
+            >
+              <div className="bg-blue-100 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
+                <BookIcon className="w-5 h-5" />
+              </div>
+              <span className="font-bold">Start Studying</span>
+            </button>
+            
+            <button 
+              onClick={navigateToQuizView}
+              className="px-6 py-3 bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white rounded-xl 
+                hover:from-[#00395c] hover:to-[#0068b0] transition-all shadow-xl hover:shadow-2xl 
+                flex items-center justify-center gap-2 group active:scale-[0.98]"
+            >
+              <div className="bg-white/20 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
+                <ClipboardListIcon className="w-5 h-5" />
+              </div>
+              <span className="font-bold">Take Quiz</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

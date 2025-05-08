@@ -27,6 +27,7 @@
     "papaparse": "^5.5.2",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.1.91",
+    "react-card-flip": "^1.2.3",
     "react-katex": "^3.0.1",
     "uuid": "^11.1.0"
   }
