@@ -373,7 +373,7 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
     return (
       <div className="min-h-screen bg-white">
         <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="flex flex-col items-center">
             <div className="relative">
               <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
@@ -594,60 +594,64 @@ const EmptyState = () => (
       {/* Navigation Bar */}
       <NavBar />
 
-{/* Header with Search Button in fixed position - Only shown when sets exist */}
-{sets.length > 0 && (
-  <div className="fixed top-16 left-0 right-0 z-10 bg-white shadow-md border-b border-gray-200 py-4">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-3 justify-between">
-      {/* Button container with responsive design */}
-      <div className="flex items-center gap-3 flex-grow sm:flex-grow-0">
-        <button
-          onClick={goToSearch}
-          className="relative overflow-hidden bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white font-medium rounded-xl 
-                   flex items-center justify-center gap-2 px-4 py-2.5
-                   hover:from-[#00395c] hover:to-[#0068b0] active:scale-[0.98] transition-all duration-200
-                   shadow-md hover:shadow-lg w-full sm:w-auto text-sm group"
-          aria-label="Find flashcard sets"
-        >
-          {/* Animated background highlight */}
-          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-          
-          {/* Icon with subtle animation */}
-          <div className="relative bg-white/20 p-1.5 rounded-lg mr-1 group-hover:scale-110 transition-transform duration-200">
-            <SearchIcon className="w-4 h-4" />
+      {/* Main Content Container - Optimized for both mobile and desktop with sidebar */}
+      <div className="md:pl-16 lg:pl-52">
+        {/* Header with Search Button - Only shown when sets exist */}
+        {sets.length > 0 && (
+          <div className="fixed top-0 left-0 right-0 z-10 pt-20 md:pt-5 pb-6 px-4 bg-white shadow-md border-b border-gray-200 md:ml-16 lg:ml-48">
+            <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-3 justify-between">
+              {/* Button container with responsive design */}
+              <div className="flex items-center gap-3 flex-grow sm:flex-grow-0">
+                <button
+                  onClick={goToSearch}
+                  className="relative overflow-hidden bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white font-medium rounded-xl 
+                          flex items-center justify-center gap-2 px-4 py-2.5
+                          hover:from-[#00395c] hover:to-[#0068b0] active:scale-[0.98] transition-all duration-200
+                          shadow-md hover:shadow-lg w-full sm:w-auto text-sm group"
+                  aria-label="Find flashcard sets"
+                >
+                  {/* Animated background highlight */}
+                  <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                  
+                  {/* Icon with subtle animation */}
+                  <div className="relative bg-white/20 p-1.5 rounded-lg mr-1 group-hover:scale-110 transition-transform duration-200">
+                    <SearchIcon className="w-4 h-4" />
+                  </div>
+                  
+                  <span className="relative whitespace-nowrap">Find Sets</span>
+                </button>
+              </div>
+              
+              {/* Right-aligned counter with improved design - Hidden on mobile when it would stack */}
+              <div className="hidden sm:flex bg-gradient-to-r from-blue-50 to-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium
+                          items-center justify-center shadow-inner border border-blue-200">
+                <span className="font-bold mr-1">{sets.length}</span>
+                <span>{sets.length === 1 ? 'set' : 'sets'}</span>
+              </div>
+            </div>
           </div>
-          
-          <span className="relative whitespace-nowrap">Find Sets</span>
-        </button>
-      </div>
-      
-      {/* Right-aligned counter with improved design - Hidden on mobile when it would stack */}
-      <div className="hidden sm:flex bg-gradient-to-r from-blue-50 to-blue-100 text-[#004a74] px-4 py-2 rounded-lg text-sm font-medium
-                   items-center justify-center shadow-inner border border-blue-200">
-        <span className="font-bold mr-1">{sets.length}</span>
-        <span>{sets.length === 1 ? 'set' : 'sets'}</span>
-      </div>
-    </div>
-  </div>
-)}
-      {/* Main Content */}
-      <div className="pt-40 px-4 sm:px-6 pb-16 max-w-7xl mx-auto">
-        {/* Error message */}
-        {error && <ErrorState message={error} />}
-
-        {/* Show grid of sets or empty state */}
-        {sets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sets.map((set) => (
-              <FlashcardSetCard key={set.id} set={set} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState />
         )}
 
-        {/* Modals */}
-        {showHelper && <HelperModal />}
-        {showUnsaveModal && <UnsaveModal />}
+        {/* Content Area - Adjusted for header height */}
+        <div className={`${sets.length > 0 ? "pt-44 md:pt-28" : "pt-20 md:pt-6"} px-4 sm:px-6 pb-16 mx-auto max-w-screen-2xl`}>
+          {/* Error message */}
+          {error && <ErrorState message={error} />}
+
+          {/* Show grid of sets or empty state */}
+          {sets.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+              {sets.map((set) => (
+                <FlashcardSetCard key={set.id} set={set} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+
+          {/* Modals */}
+          {showHelper && <HelperModal />}
+          {showUnsaveModal && <UnsaveModal />}
+        </div>
       </div>
     </div>
   );

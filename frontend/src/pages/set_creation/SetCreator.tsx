@@ -511,13 +511,17 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
 
   // Navigate with confirmation if needed
   const navigateWithConfirmation = (destination: string) => {
-  if (hasUnsavedChanges()) {
-    setExitDestination(destination);
-    setShowExitModal(true);
-  } else {
-    navigate(destination);
-  }
-};
+    if (hasUnsavedChanges()) {
+      setExitDestination(destination);
+      setShowExitModal(true);
+    } else {
+      // Clean up localStorage even when exiting without changes
+      if (editingSet) {
+        localStorage.removeItem("editingFlashcardSet");
+      }
+      navigate(destination);
+    }
+  };
 
   // Compare flashcard arrays
   const areFlashcardsEqual = (arr1: Flashcard[], arr2: Flashcard[]) => {

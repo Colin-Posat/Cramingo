@@ -353,11 +353,11 @@ const SearchSetsPage: React.FC = () => {
     navigate('/set-creator');
   }, [navigate]);
 
-  // Loading state component - unchanged
+  // Loading state component - updated for sidebar
   const LoadingState = () => (
     <div className="min-h-screen bg-white">
       <NavBar />
-      <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+      <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
         <div className="flex flex-col items-center">
           <div className="relative">
             <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
@@ -380,8 +380,8 @@ const SearchSetsPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
       
-      {/* Main content area with matching padding/styling to CreatedSets */}
-      <div className="pt-24 px-4 sm:px-6 pb-16 max-w-7xl mx-auto">
+      {/* Main content area - Updated with sidebar adjustment */}
+      <div className="md:pl-24 lg:pl-56 pt-24 md:pt-8 px-4 sm:px-6 pb-16">
         <div className="max-w-4xl mx-auto">
           {/* Card with styling that matches the CreatedSets cards */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 

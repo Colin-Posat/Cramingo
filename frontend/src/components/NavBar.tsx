@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  BookIcon,
   BookmarkIcon,
   SearchIcon,
   UserIcon,
   MenuIcon,
   XIcon,
   MessageCircleQuestionIcon,
-  FolderIcon
+  FolderIcon,
+  ChevronRightIcon,
+  LogOutIcon
 } from 'lucide-react';
 import FeedbackModal from './FeedbackModal';
+import { useAuth } from '../context/AuthContext';
 
-const NavBar: React.FC = () => {
+const NavBar = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { user, logout } = useAuth();
+
+  // Handle scroll state for shadow effects
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Update active tab when location changes
   useEffect(() => {
@@ -33,23 +47,38 @@ const NavBar: React.FC = () => {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleFeedback = () => setIsFeedbackOpen(!isFeedbackOpen);
 
+  // Check if current route is one of the main section pages
+  const isMainSection = [
+    '/created-sets',
+    '/saved-sets',
+    '/search-sets',
+    '/profile'
+  ].some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
+
+  // For all OTHER pages that are NOT the main section pages
+  const isOtherPage = !isMainSection;
+
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white z-50 h-16 shadow-lg">
-        {/* Desktop */}
-        <div className="hidden md:flex items-center justify-between h-full px-6 w-full">
-          <Link to="/created-sets" className="transition-all duration-300 transform hover:scale-105 flex items-center">
-            <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-full h-11 w-12 shadow-inner backdrop-blur-sm">
-              <img 
-                src="/images/fliply_logo.png" 
-                alt="Fliply Logo" 
-                className="h-9 w-auto"
-              />
-            </div>
-            <span className="ml-3 font-bold text-lg tracking-wide"></span>
-          </Link>
+      {/* Desktop - Left Sidebar - Only for main section pages */}
+      {isMainSection && (
+        <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-16 lg:w-48 bg-gradient-to-b from-[#004a74] to-[#0060a1] text-white z-50 shadow-xl transition-all duration-300 border-r border-white/10">
+          {/* Logo area */}
+          <div className="py-4 flex justify-center lg:justify-start lg:px-4">
+            <Link to="/created-sets" className="transition-all duration-300 transform hover:scale-105 flex items-center">
+              <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+                <img 
+                  src="/images/fliply_logo.png" 
+                  alt="Fliply Logo" 
+                  className="h-8 w-auto"
+                />
+              </div>
+              <span className="hidden lg:block ml-3 font-bold text-xl tracking-wide">Fliply</span>
+            </Link>
+          </div>
           
-          <div className="flex items-center justify-center">
+          {/* Navigation Items */}
+          <div className="flex flex-col py-6 flex-grow space-y-1 px-2">
             {navItems.map(item => {
               const isActive = activeTab === item.to;
               const Icon = item.icon;
@@ -57,124 +86,227 @@ const NavBar: React.FC = () => {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`relative px-4 py-2 flex items-center gap-2 transition-all duration-300 mx-2 md:mx-3 lg:mx-4 
-                    hover:bg-white hover:bg-opacity-10 rounded-lg 
-                    ${isActive ? 'font-medium shadow-sm' : 'font-normal'}`}
+                  className={`relative py-3 transition-all duration-200 flex flex-col lg:flex-row items-center rounded-xl
+                    ${isActive 
+                      ? 'bg-white/15 text-white shadow-lg' 
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    }
+                    group`}
                   onClick={() => setActiveTab(item.to)}
                 >
-                  <div className={`absolute inset-0 ${isActive ? 'opacity-100' : 'opacity-0'} bg-white bg-opacity-10 rounded-lg backdrop-blur-sm hover:opacity-20 transition-opacity`}></div>
-                  <div className="z-10 flex items-center gap-2">
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-200'} transition-colors`} />
-                    <span className={`${isActive ? 'font-medium' : ''} transition-all whitespace-nowrap`}>
+                  <div className={`flex items-center justify-center w-full lg:justify-start lg:px-4`}>
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''} transition-colors`} />
+                    <span className={`hidden lg:block text-sm ml-3 ${isActive ? 'font-medium' : ''} transition-all`}>
                       {item.label}
                     </span>
+                    {isActive && (
+                      <div className="hidden lg:block ml-auto">
+                        <ChevronRightIcon className="w-4 h-4 text-white/80" />
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Active indicator dot for mobile view */}
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"></div>
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full lg:hidden"></div>
                   )}
                 </Link>
               );
             })}
           </div>
           
-          <button
-            onClick={toggleFeedback}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white hover:bg-opacity-10 transition-all duration-200"
-            aria-label="Give Feedback"
-          >
-            <MessageCircleQuestionIcon className="w-6 h-6" />
-          </button>
-        </div>
+          {/* Feedback button at bottom */}
+          <div className="py-4 border-t border-white border-opacity-10 flex justify-center lg:px-4">
+            <button
+              onClick={toggleFeedback}
+              className="flex flex-col lg:flex-row items-center justify-center lg:justify-start lg:gap-3 w-full py-2 lg:px-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-all duration-200"
+              aria-label="Give Feedback"
+            >
+              <MessageCircleQuestionIcon className="w-5 h-5" />
+              <span className="hidden lg:block text-xs lg:text-sm">Feedback</span>
+            </button>
+          </div>
+        </aside>
+      )}
 
-        {/* Mobile */}
-        <div className="md:hidden flex items-center justify-between h-full px-4">
-          <Link to="/created-sets" className="flex items-center">
-            <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-full h-10 w-10 shadow-inner">
-              <img 
-                src="/images/fliply_logo.png" 
-                alt="Fliply Logo" 
-                className="h-8 w-auto"
-              />
+      {/* Mobile - Top Bar - For main section pages */}
+      {isMainSection && (
+        <nav className={`md:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white z-50 h-16 
+          ${isScrolled ? 'shadow-lg' : ''} transition-all duration-300`}>
+          <div className="flex items-center justify-between h-full px-4">
+            <div className="flex items-center">
+              <button 
+                onClick={toggleMenu} 
+                className="p-2.5 mr-3 hover:bg-white/10 active:bg-white/20 rounded-xl transition-all duration-150"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen
+                  ? <XIcon className="w-6 h-6" />
+                  : <MenuIcon className="w-6 h-6" />}
+              </button>
+              <Link to="/created-sets" className="flex items-center">
+                <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+                  <img 
+                    src="/images/fliply_logo.png" 
+                    alt="Fliply Logo" 
+                    className="h-8 w-auto"
+                  />
+                </div>
+                <span className="ml-3 font-bold text-lg tracking-wide">Fliply</span>
+              </Link>
             </div>
-          </Link>
-          <div className="flex items-center">
             <button 
               onClick={toggleFeedback} 
-              className="p-2 mr-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors" 
+              className="p-2.5 hover:bg-white/10 active:bg-white/20 rounded-xl transition-all duration-150" 
               aria-label="Give Feedback"
             >
               <MessageCircleQuestionIcon className="w-6 h-6" />
             </button>
+          </div>
+        </nav>
+      )}
+
+      {/* Navigation Bar for ALL OTHER PAGES (not main section) - Both Mobile and Desktop */}
+      {isOtherPage && (
+        <nav className={`fixed top-0 left-0 right-0 bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white z-50 h-16 
+          ${isScrolled ? 'shadow-lg' : ''} transition-all duration-300`}>
+          <div className="flex items-center justify-between h-full px-4">
+            <div className="flex items-center">
+              <button 
+                onClick={toggleMenu} 
+                className="p-2.5 mr-3 hover:bg-white/10 active:bg-white/20 rounded-xl transition-all duration-150"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen
+                  ? <XIcon className="w-6 h-6" />
+                  : <MenuIcon className="w-6 h-6" />}
+              </button>
+              <Link to="/created-sets" className="flex items-center group">
+                <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+                  <img 
+                    src="/images/fliply_logo.png" 
+                    alt="Fliply Logo" 
+                    className="h-8 w-auto"
+                  />
+                </div>
+                <span className="ml-3 font-bold text-lg tracking-wide">Fliply</span>
+              </Link>
+            </div>
             <button 
-              onClick={toggleMenu} 
-              className="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors"
+              onClick={toggleFeedback} 
+              className="p-2.5 hover:bg-white/10 active:bg-white/20 rounded-xl transition-all duration-150" 
+              aria-label="Give Feedback"
             >
-              {isMenuOpen
-                ? <XIcon className="w-6 h-6" />
-                : <MenuIcon className="w-6 h-6" />}
+              <MessageCircleQuestionIcon className="w-6 h-6" />
             </button>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
-      {/* Mobile Menu - Slide in from right */}
+      {/* Menu - For both Mobile and Desktop - FIXED THIS SECTION */}
       <div 
-        className={`md:hidden fixed top-16 right-0 w-64 h-screen bg-gradient-to-b from-[#004a74] to-[#00659f] z-40 shadow-xl transform transition-transform duration-300 ease-in-out ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ease-in-out ${
+          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-        <div className="flex flex-col py-3">
-          {navItems.map(item => {
-            const isActive = activeTab === item.to;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => {
-                  setActiveTab(item.to);
-                  setIsMenuOpen(false);
-                }}
-                className={`flex items-center gap-3 px-5 py-3.5 transition-all duration-200
-                  ${isActive 
-                    ? 'bg-white bg-opacity-10 border-l-4 border-white shadow-inner' 
-                    : 'border-l-4 border-transparent hover:bg-white hover:bg-opacity-5'
-                  }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-200'}`} />
-                <span className={`text-white ${isActive ? 'font-medium' : ''}`}>{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Backdrop for mobile menu */}
-      {isMenuOpen && (
+        {/* Backdrop with blur effect */}
         <div 
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-30 animate-fadeIn"
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={() => setIsMenuOpen(false)}
         ></div>
-      )}
+        
+        {/* Menu panel with animation */}
+        <div 
+          className={`absolute top-0 left-0 w-72 h-full bg-gradient-to-b from-[#004a74] to-[#0060a1] shadow-2xl transform transition-transform duration-300 ease-in-out ${
+            isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {/* User profile area */}
+          <div className="pt-20 pb-6 px-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center border border-white/20">
+                <UserIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-white font-medium">{user?.username || 'User Account'}</div>
+                <div className="text-white/70 text-sm">{user?.email || 'Not signed in'}</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Divider */}
+          <div className="border-t border-white/10 mx-4"></div>
+          
+          {/* Navigation Items */}
+          <div className="px-3 py-6">
+            <div className="space-y-1.5">
+              {navItems.map(item => {
+                const isActive = activeTab === item.to;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => {
+                      setActiveTab(item.to);
+                      setIsMenuOpen(false);
+                    }}
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200
+                      ${isActive 
+                        ? 'bg-white/15 text-white shadow-lg' 
+                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                  >
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
+                    <span className={`${isActive ? 'font-medium' : ''}`}>{item.label}</span>
+                    {isActive && <ChevronRightIcon className="w-4 h-4 ml-auto text-white/80" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Bottom section with feedback and logout */}
+          <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10">
+            <div className="space-y-1.5 mb-6">
+              <button
+                onClick={() => {
+                  toggleFeedback();
+                  setIsMenuOpen(false);
+                }}
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+              >
+                <MessageCircleQuestionIcon className="w-5 h-5" />
+                <span>Give Feedback</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  // Handle logout logic here
+                  if (logout) logout();
+                  setIsMenuOpen(false);
+                }}
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+              >
+                <LogOutIcon className="w-5 h-5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+            
+            <div className="px-4 py-3 text-center">
+              <div className="text-white/50 text-xs">Fliply v2.0</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Feedback Modal Component */}
       <FeedbackModal 
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
       />
-
-      {/* Space for fixed navbar is handled by your page layout */}
     </>
   );
 };
-
-// Add this to your CSS or tailwind.config.js to ensure proper animations
-// @keyframes fadeIn {
-//   from { opacity: 0; }
-//   to { opacity: 1; }
-// }
-// .animate-fadeIn {
-//   animation: fadeIn 0.3s ease-in-out;
-// }
 
 export default NavBar;

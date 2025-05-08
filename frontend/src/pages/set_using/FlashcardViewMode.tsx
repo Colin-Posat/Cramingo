@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -10,33 +10,36 @@ import {
   X as XIcon,
   Info as InfoIcon
 } from 'lucide-react';
-import ReactCardFlip from 'react-card-flip';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
 
 // Type definitions
-type Flashcard = {
+interface Flashcard {
   id: number;
   question: string;
   answer: string;
   questionImage?: string;
   answerImage?: string;
-};
+}
 
-type FlashcardViewModeProps = {
+interface FlashcardViewModeProps {
   flashcards?: Flashcard[];
-};
+}
 
 const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propFlashcards }) => {
   const { setId } = useParams<{ setId: string }>();
   const navigate = useNavigate();
+  
+  // Create all useState hooks first to maintain consistent order
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [localFlashcards, setLocalFlashcards] = useState<Flashcard[]>([]);
   const [isShuffling, setIsShuffling] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [showKeyboardHint, setShowKeyboardHint] = useState(true);
-
+  
+  // Remove isHovering state which was causing issues
+  
   // State for standalone mode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +49,207 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     flashcards: Omit<Flashcard, 'id'>[];
   }>({ flashcards: [] });
 
+  // Create all refs before any other hooks
+  const styleRef = useRef<HTMLStyleElement | null>(null);
+  
+  // Define callbacks before useEffect hooks
+  const handleFlip = useCallback(() => {
+    setIsFlipped(prev => !prev);
+    
+    // Add visual pulse effect to the flip button
+    const flipButton = document.getElementById('flip-button');
+    if (flipButton) {
+      flipButton.classList.add('flip-button-active');
+      setTimeout(() => {
+        flipButton.classList.remove('flip-button-active');
+      }, 500);
+    }
+  }, []);
+
   const isStandalone = !propFlashcards;
 
+  // Add the style to the document head
+  useEffect(() => {
+    // Only create the style if it doesn't already exist
+    if (!styleRef.current) {
+      // Add CSS to the document head
+      const styleElement = document.createElement('style');
+      styleRef.current = styleElement;
+      styleElement.innerHTML = `
+        .flip-card {
+          perspective: 1000px;
+          width: 100%;
+          height: 400px;
+          transform: translateZ(0);
+          user-select: none; /* Make all text in flip card unhighlightable */
+          position: relative; /* Important for the animation */
+        }
+        
+        .flip-card-inner {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+          transform-style: preserve-3d;
+          will-change: transform;
+          border-radius: 1rem; /* Match card border radius */
+        }
+        
+        .flip-card.flipped .flip-card-inner {
+          transform: rotateY(180deg);
+        }
+        
+        /* Replace the old animation with a pseudo-element based approach */
+        .flip-card::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 1rem;
+          box-shadow: 0 0 0 0 rgba(0, 74, 116, 0);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+          z-index: -1;
+        }
+        
+        .flip-card.flipped::after {
+          animation: clean-card-pulse 0.5s ease-out forwards;
+        }
+        
+        @keyframes clean-card-pulse {
+          0% { 
+            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
+            opacity: 0;
+          }
+          50% { 
+            box-shadow: 0 0 25px 5px rgba(0, 74, 116, 0.25); 
+            opacity: 1;
+          }
+          100% { 
+            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
+            opacity: 0;
+          }
+        }
+        
+        .flip-card-front, .flip-card-back {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          transform: translateZ(0);
+          border-radius: 1rem; /* Ensure consistent border radius */
+          overflow: hidden; /* Prevent content from spilling outside the border radius */
+        }
+        
+        .flip-card-back {
+          transform: rotateY(180deg) translateZ(0);
+        }
+        
+        /* Simplified card styling - removed conflicting transitions */
+        .card-container {
+          border: 1px solid rgba(209, 213, 219, 1);
+          border-radius: 1rem;
+          background-color: white;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+          transition: box-shadow 0.2s ease-out;
+        }
+        
+        .card-container:hover {
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 74, 116, 0.3);
+        }
+        
+        /* Completely revised button glow effect */
+        #flip-button {
+          position: relative;
+          overflow: visible;
+        }
+        
+        #flip-button::after {
+          content: '';
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          right: -4px;
+          bottom: -4px;
+          border-radius: 0.875rem; /* Slightly larger than the button */
+          box-shadow: 0 0 0 0 rgba(0, 74, 116, 0);
+          opacity: 0;
+          transition: opacity 0.2s ease;
+          pointer-events: none;
+        }
+        
+        .flip-button-active::after {
+          animation: clean-button-glow 0.5s ease forwards;
+        }
+        
+        @keyframes clean-button-glow {
+          0% { 
+            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0.7); 
+            opacity: 0;
+          }
+          50% { 
+            box-shadow: 0 0 15px 3px rgba(0, 74, 116, 0.5); 
+            opacity: 1;
+          }
+          100% { 
+            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
+            opacity: 0;
+          }
+        }
+        
+        /* Add some animations for image modal */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Make images more obviously clickable */
+        .cursor-zoom-in {
+          cursor: zoom-in;
+        }
+        
+        .cursor-zoom-in:hover::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: rgba(0, 74, 116, 0.1);
+          border-radius: 0.5rem;
+          pointer-events: none;
+        }
+        
+        /* Ensure text cannot be selected anywhere in the component */
+        .no-select {
+          -webkit-touch-callout: none; /* iOS Safari */
+          -webkit-user-select: none;   /* Safari */
+          -khtml-user-select: none;    /* Konqueror HTML */
+          -moz-user-select: none;      /* Firefox */
+          -ms-user-select: none;       /* Internet Explorer/Edge */
+          user-select: none;           /* Non-prefixed version, supported by Chrome and Opera */
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
+
+    // Clean up the style element when the component unmounts
+    return () => {
+      if (styleRef.current && document.head.contains(styleRef.current)) {
+        document.head.removeChild(styleRef.current);
+        styleRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Other useEffect hooks in the same order as original
   useEffect(() => {
     if (isStandalone && setId) {
       fetchFlashcardSet();
@@ -72,7 +274,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
       // Flip card on spacebar
       if (event.code === 'Space') {
         event.preventDefault();
-        setIsFlipped(prev => !prev);
+        handleFlip();
       }
       // Previous card
       else if (event.code === 'ArrowLeft' && currentIndex > 0) {
@@ -90,7 +292,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [expandedImage, isShuffling, currentIndex, localFlashcards.length]);
+  }, [expandedImage, isShuffling, currentIndex, localFlashcards.length, handleFlip]);
 
   const fetchFlashcardSet = async () => {
     try {
@@ -122,10 +324,6 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     }
   };
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    setIsFlipped(prev => !prev);
-  };
-
   const shuffleCards = () => {
     if (localFlashcards.length <= 1) return;
     setIsShuffling(true);
@@ -137,7 +335,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   };
 
   const handleImageClick = (imageUrl: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent triggering card flip
+    // The stopPropagation is now done in the click handler of the div wrapping the image
     setExpandedImage(imageUrl);
   };
 
@@ -237,12 +435,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
 
   if (noCardsAvailable || !currentCard) {
      // This block handles the case where flashcards are expected but not available or the current card is undefined
-     // It should ideally not be reached if the standalone checks above pass and propFlashcards is not empty
-     // or flashcardSet.flashcards is not empty after fetching.
-     // However, as a fallback for unexpected states:
      if (isStandalone) {
-         // This case should be covered by the explicit standalone noCardsAvailable check above,
-         // but keeping a fallback is safe.
           return (
             <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
               <NavBar />
@@ -274,18 +467,22 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
      }
   }
 
-
-  // Image expanded modal
+  // Image expanded modal - improved with animation and better UI
   const ImageExpandedModal = () => {
     if (!expandedImage) return null;
 
     return (
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 no-select"
+        style={{ animation: 'fadeIn 0.2s ease-out' }}
         onClick={closeExpandedImage}
       >
         <div
-          className="max-w-4xl max-h-[90vh] flex flex-col items-center transform-gpu animate-scaleIn"
+          className="max-w-4xl max-h-[90vh] flex flex-col items-center"
+          style={{ 
+            animation: 'scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            transform: 'translateZ(0)' // Force GPU acceleration
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <img
@@ -305,12 +502,13 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     );
   };
 
-  // Flashcard Element
+  // Flashcard Element - cleaned up version
   const FlashcardElement = () => (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center w-full no-select">
+      {/* CSS is now injected via useEffect */}
+      
       {/* Image expanded modal */}
       <ImageExpandedModal />
-
 
       {/* Top section */}
       <div className="w-full max-w-7xl mx-auto mb-4">
@@ -335,103 +533,105 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Flashcard with ReactCardFlip - CORE FIX Applied Here */}
-      <div
-        className="w-full max-w-4xl mb-8 mx-auto"
-        style={{ perspective: "1000px", transformStyle: "preserve-3d" }} // Added transformStyle
-      >
-        <ReactCardFlip
-          isFlipped={isFlipped}
-          flipDirection="horizontal"
-          containerStyle={{ height: "400px" }} // Explicit height is important
-          cardStyles={{
-            front: { height: "100%", width: "100%" },
-            back: { height: "100%", width: "100%" }
-          }}
-        >
-          {/* Front Side (Question) */}
-          <div
-            onClick={handleCardClick}
-            className="h-full w-full bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:p-8
-              flex flex-col items-center justify-center overflow-auto cursor-pointer hover:shadow-xl
-              hover:border-[#004a74]/30 transition-all transform-gpu hover:scale-[1.01]"
-          >
-            <div className="absolute top-6 left-6 bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm">Question</div>
-            <div className="absolute top-6 right-6 text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded-lg">
-              Click to flip
-            </div>
+      {/* Improved and Cleaned Up Flashcard Implementation */}
+      <div className="w-full max-w-4xl mb-8 mx-auto">
+        <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
+          <div className="flip-card-inner">
+            {/* Front Side (Question) */}
+            <div 
+              onClick={handleFlip}
+              className="flip-card-front card-container p-6 md:p-8
+                flex flex-col items-center justify-center overflow-auto cursor-pointer"
+            >
+              <div className="absolute top-6 left-6 bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm">Question</div>
+              <div className="absolute top-6 right-6 text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded-lg">
+                Click to flip
+              </div>
 
-            <div className="w-full flex flex-col items-center gap-4 mt-6">
-              {/* Question Image */}
-              {currentCard.questionImage && (
-                <div className="relative w-full max-w-md">
-                  <div className="relative border rounded-lg overflow-hidden mb-2">
-                    <img
-                      src={currentCard.questionImage}
-                      alt="Question"
-                      className="max-w-full rounded-lg h-48 object-contain mx-auto"
-                      onClick={(e) => handleImageClick(currentCard.questionImage!, e)}
-                    />
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
-                        <SearchIcon className="w-5 h-5 text-[#004a74]" />
+              <div className="w-full flex flex-col items-center gap-4 mt-6">
+                {/* Question Image */}
+                {currentCard.questionImage && (
+                  <div className="relative w-full max-w-md">
+                    <div className="relative border rounded-lg overflow-hidden mb-2">
+                      <div 
+                        className="cursor-zoom-in" 
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card flip
+                          handleImageClick(currentCard.questionImage!, e);
+                        }}
+                      >
+                        <img
+                          src={currentCard.questionImage}
+                          alt="Question"
+                          className="max-w-full rounded-lg h-48 object-contain mx-auto"
+                        />
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                          <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
+                            <SearchIcon className="w-5 h-5 text-[#004a74]" />
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
                   </div>
-                  <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
-                </div>
-              )}
+                )}
 
-              {/* Question Text */}
-              <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full">
-                {currentCard.question}
+                {/* Question Text */}
+                <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full no-select">
+                  {currentCard.question}
+                </div>
+              </div>
+            </div>
+
+            {/* Back Side (Answer) */}
+            <div
+              onClick={handleFlip}
+              className="flip-card-back card-container p-6 md:p-8
+                flex flex-col items-center justify-center overflow-auto cursor-pointer"
+            >
+              <div className="absolute top-6 left-6 bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm">Answer</div>
+              <div className="absolute top-6 right-6 text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded-lg">
+                Click to flip
+              </div>
+
+              <div className="w-full flex flex-col items-center gap-4 mt-6">
+                {/* Answer Image */}
+                {currentCard.answerImage && (
+                  <div className="relative w-full max-w-md">
+                    <div className="relative border rounded-lg overflow-hidden mb-2">
+                      <div 
+                        className="cursor-zoom-in" 
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card flip
+                          handleImageClick(currentCard.answerImage!, e);
+                        }}
+                      >
+                        <img
+                          src={currentCard.answerImage}
+                          alt="Answer"
+                          className="max-w-full rounded-lg h-48 object-contain mx-auto"
+                        />
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                          <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
+                            <SearchIcon className="w-5 h-5 text-[#004a74]" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
+                  </div>
+                )}
+
+                {/* Answer Text */}
+                <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full no-select">
+                  {currentCard.answer}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Back Side (Answer) */}
-          <div
-            onClick={handleCardClick}
-            className="h-full w-full bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:p-8
-              flex flex-col items-center justify-center overflow-auto cursor-pointer hover:shadow-xl
-              hover:border-[#004a74]/30 transition-all transform-gpu hover:scale-[1.01]"
-          >
-            <div className="absolute top-6 left-6 bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm">Answer</div>
-            <div className="absolute top-6 right-6 text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded-lg">
-              Click to flip
-            </div>
-
-            <div className="w-full flex flex-col items-center gap-4 mt-6">
-              {/* Answer Image */}
-              {currentCard.answerImage && (
-                <div className="relative w-full max-w-md">
-                  <div className="relative border rounded-lg overflow-hidden mb-2">
-                    <img
-                      src={currentCard.answerImage}
-                      alt="Answer"
-                      className="max-w-full rounded-lg h-48 object-contain mx-auto"
-                      onClick={(e) => handleImageClick(currentCard.answerImage!, e)}
-                    />
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
-                        <SearchIcon className="w-5 h-5 text-[#004a74]" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
-                </div>
-              )}
-
-              {/* Answer Text */}
-              <div className="text-xl md:text-2xl text-center text-gray-800 whitespace-pre-wrap break-words w-full">
-                {currentCard.answer}
-              </div>
-            </div>
-          </div>
-        </ReactCardFlip>
+        </div>
       </div>
 
-      {/* Navigation controls */}
       <div className="flex items-center justify-between w-full max-w-md mx-auto mt-2">
         <button
           onClick={goToPrevCard}
@@ -443,14 +643,16 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           <ChevronLeft className="w-5 h-5" /> Prev
         </button>
 
-        {/* Explicit Flip Button */}
+        {/* Explicit Flip Button with ID for animation */}
         <button
-          onClick={() => setIsFlipped(prev => !prev)}
+          id="flip-button"
+          onClick={handleFlip}
           disabled={isShuffling}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white bg-gradient-to-r from-[#004a74] to-[#0074c2]
             hover:from-[#00395c] hover:to-[#0068b0] transition-colors disabled:opacity-50
             disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-[0.98]"
           aria-label="Flip card"
+          title="Press Spacebar to flip"
         >
           <RefreshCcw className="w-5 h-5" /> Flip
         </button>
@@ -465,6 +667,24 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           Next <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+      
+      {/* Keyboard shortcuts hint */}
+      {showKeyboardHint && (
+        <div className="mt-6 p-3 bg-blue-50 rounded-lg text-center text-sm text-[#004a74] opacity-80 max-w-md mx-auto">
+          <div className="flex items-center justify-center gap-2">
+            <InfoIcon className="w-4 h-4" />
+            <span>
+              <strong>Keyboard shortcuts:</strong> Spacebar to flip, Arrow keys to navigate
+            </span>
+            <button 
+              onClick={() => setShowKeyboardHint(false)}
+              className="ml-2 text-[#004a74]/70 hover:text-[#004a74]"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 

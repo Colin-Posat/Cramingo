@@ -178,12 +178,12 @@ const ProfilePage: React.FC = () => {
     fetchUserProfile();
   };
 
-  // Loading state
+  // Loading state - Updated with sidebar spacing
   if ((authLoading || isLoading) && !userProfile.username) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="flex flex-col items-center">
             <div className="relative">
               <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
@@ -199,12 +199,12 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // Not authenticated state
+  // Not authenticated state - Updated with sidebar spacing
   if (!isAuthenticated && !authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="pt-24 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
           <div className="bg-white shadow-xl rounded-2xl max-w-md w-full overflow-hidden">
             <div className="h-2 bg-red-500"></div>
             <div className="p-8">
@@ -242,12 +242,12 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // Error state
+  // Error state - Updated with sidebar spacing
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
         <NavBar />
-        <div className="pt-24 px-6 pb-6">
+        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6">
           <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 animate-fade-in">
             <div className="flex items-start gap-4">
               <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
@@ -281,15 +281,15 @@ const ProfilePage: React.FC = () => {
     );
   }
 
+  // Main profile view - Updated with sidebar spacing
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
-      <div className="container mx-auto pt-24 px-6 pb-12">
+      <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-12">
         <div className="max-w-2xl mx-auto">
           {/* Profile Card */}
           <div 
             className="bg-white rounded-2xl shadow-lg overflow-hidden 
-
             hover:shadow-xl transition-all duration-300 ease-out
             border border-gray-200 hover:border-[#004a74]/30"
           >
@@ -332,7 +332,6 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
                 
-
                 {/* Email (if available) */}
                 {userProfile.email && (
                   <div className="bg-blue-50 rounded-xl p-5 shadow-sm border border-blue-100
@@ -370,8 +369,6 @@ const ProfilePage: React.FC = () => {
                   Sign Out
                 </button>
               </div>
-              
-
             </div>
           </div>
         </div>
