@@ -72,14 +72,14 @@ const ForgotPassword: React.FC = () => {
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
                      bg-black/5 backdrop-blur-md border-b border-white/5">
         <Link to="/" className="flex items-center space-x-3">
-        <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-xl h-11 w-12">
+        <div className="flex items-center justify-center bg-white bg-opacity-100 rounded-xl h-11 w-12">
               <img 
-                src="/images/fliply_logo.png" 
+                src="/images/cramingo_logo.png" 
                 alt="Fliply Logo" 
-                className="h-9 w-auto"
+                className="h-8 sm:h-11 w-auto"
               />
             </div>
-          <span className="text-white text-xl font-medium tracking-wide"></span>
+            <span className="text-white hidden lg:block ml-3 font-bold text-xl tracking-wide"></span>
         </Link>
         <nav className="flex items-center space-x-8">
           <Link 

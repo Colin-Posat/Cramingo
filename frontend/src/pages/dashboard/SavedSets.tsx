@@ -598,7 +598,7 @@ const EmptyState = () => (
       <div className="md:pl-16 lg:pl-52">
         {/* Header with Search Button - Only shown when sets exist */}
         {sets.length > 0 && (
-          <div className="fixed top-0 left-0 right-0 z-10 pt-20 md:pt-5 pb-6 px-4 bg-white shadow-md border-b border-gray-200 md:ml-16 lg:ml-48">
+          <div className="fixed top-0 left-0 right-0 z-10 pt-20 md:pt-5 pb-6 px-4 bg-white shadow-md border-b border-gray-200 md:ml-12 lg:ml-48">
             <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-3 justify-between">
               {/* Button container with responsive design */}
               <div className="flex items-center gap-3 flex-grow sm:flex-grow-0">

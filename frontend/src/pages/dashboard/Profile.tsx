@@ -9,8 +9,10 @@ import {
   LogOut as LogOutIcon,
   AlertCircle as AlertCircleIcon,
   RefreshCw as RefreshIcon,
-  CheckCircleIcon,
-  BookOpenIcon
+  CheckCircle as CheckCircleIcon,
+  BookOpen as BookOpenIcon,
+  LayoutGrid as LayoutGridIcon,
+  Folder as FolderIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
@@ -25,6 +27,12 @@ interface UserProfile {
   uid?: string;
 }
 
+interface SetCounts {
+  created: number;
+  saved: number;
+  total: number;
+}
+
 const ProfilePage: React.FC = () => {
   const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
   
@@ -33,6 +41,11 @@ const ProfilePage: React.FC = () => {
     totalLikes: 0,
     university: '',
     fieldOfStudy: ''
+  });
+  const [setCounts, setSetCounts] = useState<SetCounts>({
+    created: 0,
+    saved: 0,
+    total: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -73,6 +86,31 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Fetch the user set counts
+  const fetchUserSetCounts = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sets/counts/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSetCounts({
+          created: data.created || 0,
+          saved: data.saved || 0,
+          total: data.total || 0
+        });
+        console.log(`Fetched set counts: Created: ${data.created}, Saved: ${data.saved}, Total: ${data.total}`);
+      } else {
+        console.error('Failed to fetch set counts. Server returned:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching set counts:', error);
+    }
+  };
+
   // Fetch the user profile data
   const fetchUserProfile = async () => {
     try {
@@ -105,6 +143,9 @@ const ProfilePage: React.FC = () => {
       
       // Always sync likes first to ensure accuracy
       await syncTotalLikes();
+      
+      // Fetch set counts
+      await fetchUserSetCounts(user.uid);
       
       // Then fetch from dedicated total-likes endpoint as a backup
       try {
@@ -169,6 +210,10 @@ const ProfilePage: React.FC = () => {
     navigate('/edit-profile');
   };
 
+  const handleViewCreatedSets = () => {
+    navigate('/created-sets');
+  };
+
   const handleSignOut = async () => {
     await logout();
     navigate('/login');
@@ -178,42 +223,42 @@ const ProfilePage: React.FC = () => {
     fetchUserProfile();
   };
 
-  // Loading state - Updated with sidebar spacing
+  // Loading state - Vertically centered
   if ((authLoading || isLoading) && !userProfile.username) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50 flex flex-col">
         <NavBar />
-        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
+        <div className="flex-1 md:pl-16 lg:pl-48 px-4 md:px-6 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="relative">
               <div className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-30"></div>
-              <div className="animate-spin relative rounded-full h-16 w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
+              <div className="animate-spin relative rounded-full h-12 w-12 md:h-16 md:w-16 border-4 border-transparent border-t-4 border-t-[#004a74] border-b-4 border-b-[#004a74]"></div>
             </div>
-            <div className="mt-6 bg-blue-50 px-6 py-3 rounded-lg shadow-sm">
-              <p className="text-[#004a74] font-medium text-lg">Loading your profile...</p>
+            <div className="mt-6 bg-blue-50 px-4 md:px-6 py-3 rounded-lg shadow-sm">
+              <p className="text-[#004a74] font-medium text-base md:text-lg">Loading your profile...</p>
             </div>
-            <p className="mt-3 text-gray-500 text-sm">This may take a moment</p>
+            <p className="mt-3 text-gray-500 text-xs md:text-sm">This may take a moment</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Not authenticated state - Updated with sidebar spacing
+  // Not authenticated state - Vertically centered
   if (!isAuthenticated && !authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50 flex flex-col">
         <NavBar />
-        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6 flex items-center justify-center h-[calc(100vh-9rem)]">
-          <div className="bg-white shadow-xl rounded-2xl max-w-md w-full overflow-hidden">
+        <div className="flex-1 md:pl-16 lg:pl-48 px-4 md:px-6 flex items-center justify-center">
+          <div className="bg-white shadow-xl rounded-2xl w-full max-w-md overflow-hidden">
             <div className="h-2 bg-red-500"></div>
-            <div className="p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+            <div className="p-5 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-start gap-4 mb-6">
+                <div className="bg-red-100 p-3 rounded-full flex-shrink-0 mx-auto md:mx-0">
                   <AlertCircleIcon className="w-6 h-6 text-red-500" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800 mb-2">Authentication Required</h2>
+                <div className="text-center md:text-left">
+                  <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-2">Authentication Required</h2>
                   <p className="text-gray-600 mb-6">
                     You need to be logged in to view and manage your profile.
                   </p>
@@ -242,21 +287,21 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // Error state - Updated with sidebar spacing
+  // Error state - Vertically centered
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50 flex flex-col">
         <NavBar />
-        <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-6">
-          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 animate-fade-in">
-            <div className="flex items-start gap-4">
-              <div className="bg-red-100 p-3 rounded-full flex-shrink-0">
+        <div className="flex-1 md:pl-16 lg:pl-48 px-4 md:px-6 flex items-center justify-center">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-5 md:p-8 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-start gap-4">
+              <div className="bg-red-100 p-3 rounded-full flex-shrink-0 mx-auto md:mx-0">
                 <AlertCircleIcon className="w-6 h-6 text-red-500" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 text-center md:text-left">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Unable to Load Profile</h3>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap justify-center md:justify-start gap-3">
                   <button 
                     onClick={handleRefresh} 
                     className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 
@@ -281,95 +326,147 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // Main profile view - Updated with sidebar spacing
+  // Main profile view - Updated with spacing similar to SearchSetsPage
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50/50">
       <NavBar />
-      <div className="md:pl-16 lg:pl-48 pt-24 md:pt-8 px-6 pb-12">
+      
+      {/* Main content area - Updated to match SearchSetsPage spacing */}
+      <div className="md:pl-24 lg:pl-56 pt-24 md:pt-8 px-4 sm:px-6 pb-16">
         <div className="max-w-2xl mx-auto">
-          {/* Profile Card */}
-          <div 
-            className="bg-white rounded-2xl shadow-lg overflow-hidden 
-            hover:shadow-xl transition-all duration-300 ease-out
-            border border-gray-200 hover:border-[#004a74]/30"
-          >
-            {/* Header Section */}
-            <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white p-8 relative">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center h-24 w-24 rounded-full 
-                  bg-white/20 mb-4 ring-4 ring-white/10 shadow-inner">
-                  <UserIcon className="h-12 w-12" />
-                </div>
-                <h1 className="text-3xl font-bold mb-3">{userProfile.username}</h1>
-                
-                <div className="flex items-center justify-center gap-4">
-                  <div className="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
-                    <HeartIcon className="h-5 w-5 text-pink-200" />
-                    <span className="font-bold">{userProfile.totalLikes}</span>
-                    <span className="text-sm opacity-80">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</span>
-                    {isSyncing && (
-                      <RefreshIcon className="h-4 w-4 ml-1 animate-spin" />
-                    )}
+          
+          {/* Profile Header Card */}
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-5 md:mb-6
+                      transform-gpu hover:shadow-xl transition-all duration-300
+                      border border-gray-200 hover:border-[#004a74]/30">
+            {/* Animated Background Gradient */}
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#004a74] to-[#0060a1] opacity-100"></div>
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB4PSIwIiB5PSIwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSgzMCkiPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNwYXR0ZXJuKSIvPjwvc3ZnPg==')]"></div>
+
+              <div className="pt-6 md:pt-10 pb-6 md:pb-8 px-5 md:px-8 relative z-10">
+                <div className="flex flex-col items-center justify-between gap-6">
+                  {/* Avatar and Name Section */}
+                  <div className="flex flex-col items-center text-center">
+                    <div className="relative group">
+                      <div className="absolute inset-0 rounded-full bg-white/10 blur-md transform group-hover:scale-110 transition-all duration-300"></div>
+                      <div className="relative flex items-center justify-center h-20 w-20 md:h-24 md:w-24 bg-gradient-to-br from-white/20 to-white/5 backdrop-blur rounded-full border border-white/20 shadow-lg group-hover:shadow-white/10 transition-all duration-300">
+                        <UserIcon className="h-10 w-10 md:h-12 md:w-12 text-white group-hover:scale-110 transition-transform duration-200" />
+                      </div>
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white mt-3 drop-shadow-md">{userProfile.username}</h1>
+                  </div>
+
+                  {/* Stats Card */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-white/10 backdrop-blur-lg p-4 rounded-xl border border-white/20 shadow-lg
+                               transform-gpu hover:scale-105 transition-all duration-300">
+                      <div className="flex items-center gap-8 md:gap-10 justify-center">
+                        {/* Likes counter with animation */}
+                        <div className="text-center">
+                          <div className="bg-pink-500/20 h-14 w-14 rounded-full flex items-center justify-center mb-2 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/30 to-pink-600/30 group-hover:opacity-100 opacity-0 transition-opacity duration-300"></div>
+                            <HeartIcon className={`h-7 w-7 text-pink-200 ${isSyncing ? 'animate-pulse' : 'group-hover:scale-110 group-hover:text-pink-100'} transition-all duration-300`} fill={userProfile.totalLikes > 0 ? "rgba(244, 114, 182, 0.6)" : "none"} />
+                            {isSyncing && (
+                              <RefreshIcon className="h-5 w-5 text-white absolute animate-spin" />
+                            )}
+                          </div>
+                          <div className="text-white font-bold text-2xl">{userProfile.totalLikes}</div>
+                          <div className="text-blue-100 text-sm">{userProfile.totalLikes === 1 ? 'like' : 'likes'}</div>
+                        </div>
+                        
+                        {/* Sets counter - Now showing CREATED sets count */}
+                        <div className="text-center">
+                          <div className="bg-blue-500/20 h-14 w-14 rounded-full flex items-center justify-center mb-2 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 group-hover:opacity-100 opacity-0 transition-opacity duration-300"></div>
+                            <FolderIcon className="h-7 w-7 text-blue-200 group-hover:scale-110 group-hover:text-blue-100 transition-all duration-300" />
+                          </div>
+                          <div className="text-white font-bold text-2xl">{setCounts.created}</div>
+                          <div className="text-blue-100 text-sm">{setCounts.created === 1 ? 'set' : 'sets'}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            
-            {/* Content Section */}
-            <div className="p-8">
-              <div className="space-y-5 mb-8">
-                {/* University */}
-                <div className="bg-blue-50 rounded-xl p-5 shadow-sm border border-blue-100
-                  hover:shadow-md transition-shadow duration-300">
+          </div>
+
+          {/* Profile Content Cards */}
+          <div className="grid grid-cols-1 gap-4 md:gap-5 mb-5">
+            {/* University Card */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden
+                       transform-gpu hover:shadow-xl hover:-translate-y-1 transition-all duration-300
+                       border border-gray-200 hover:border-[#004a74]/30 group">
+              <div className="p-4 md:p-5">
+                <div className="flex items-start">
+                  <div className="bg-gradient-to-br from-[#004a74] to-[#0074c2] text-white rounded-lg p-3 mr-4 shadow-md
+                             group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 flex-shrink-0">
+                    <SchoolIcon className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">University</h3>
+                    <p className="text-base md:text-lg font-semibold text-[#004a74] group-hover:text-[#0074c2] transition-colors break-words hyphens-auto truncate">
+                      {userProfile.university}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="h-1 w-full bg-gradient-to-r from-[#004a74] to-[#0074c2] transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+            </div>
+
+            {/* Email Card */}
+            {userProfile.email && (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden
+                         transform-gpu hover:shadow-xl hover:-translate-y-1 transition-all duration-300
+                         border border-gray-200 hover:border-[#004a74]/30 group">
+                <div className="p-4 md:p-5">
                   <div className="flex items-start">
-                    <div className="bg-[#004a74] text-white rounded-lg p-3 mr-4 shadow-sm">
-                      <SchoolIcon className="h-6 w-6" />
+                    <div className="bg-gradient-to-br from-[#004a74] to-[#0074c2] text-white rounded-lg p-3 mr-4 shadow-md
+                               group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 flex-shrink-0">
+                      <MailIcon className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">University</h3>
-                      <p className="text-xl font-semibold text-[#004a74]">{userProfile.university}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
+                      <p className="text-base md:text-lg font-semibold text-[#004a74] group-hover:text-[#0074c2] transition-colors break-words hyphens-auto truncate">
+                        {userProfile.email}
+                      </p>
                     </div>
                   </div>
                 </div>
-                
-                {/* Email (if available) */}
-                {userProfile.email && (
-                  <div className="bg-blue-50 rounded-xl p-5 shadow-sm border border-blue-100
-                    hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-start">
-                      <div className="bg-[#004a74] text-white rounded-lg p-3 mr-4 shadow-sm">
-                        <MailIcon className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Email</h3>
-                        <p className="text-xl font-semibold text-[#004a74]">{userProfile.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="h-1 w-full bg-gradient-to-r from-[#004a74] to-[#0074c2] transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
               </div>
-              
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={handleEditProfile}
-                  className="w-full bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl 
-                  hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2"
-                >
-                  <EditIcon className="h-5 w-5" />
-                  Edit Profile
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full bg-white border border-[#004a74] text-[#004a74] font-bold py-3 px-6 
-                  rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all shadow-sm 
-                  flex items-center justify-center gap-2"
-                >
-                  <LogOutIcon className="h-5 w-5" />
-                  Sign Out
-                </button>
+            )}
+          </div>
+
+          
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-4 md:gap-5">
+            <button
+              onClick={handleEditProfile}
+              className="relative overflow-hidden bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white font-bold 
+                      py-4 px-4 md:px-5 rounded-xl 
+                      hover:from-[#00395c] hover:to-[#0068b0] active:scale-[0.98] transition-all duration-300 shadow-md
+                      flex items-center justify-center gap-3 group touch-manipulation text-base md:text-lg"
+            >
+              <div className="relative bg-white/20 p-2 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <EditIcon className="h-5 w-5 md:h-6 md:w-6" />
               </div>
-            </div>
+              <span className="relative">Edit Profile</span>
+            </button>
+            
+            <button
+              onClick={handleSignOut}
+              className="relative overflow-hidden bg-white border-2 border-[#004a74] text-[#004a74] font-bold 
+                      py-4 px-4 md:px-5 
+                      rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all duration-300 shadow-sm 
+                      flex items-center justify-center gap-3 group touch-manipulation text-base md:text-lg"
+            >
+              <div className="relative bg-blue-100 p-2 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <LogOutIcon className="h-5 w-5 md:h-6 md:w-6" />
+              </div>
+              <span className="relative">Sign Out</span>
+            </button>
           </div>
         </div>
       </div>

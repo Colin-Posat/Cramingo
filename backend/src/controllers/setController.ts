@@ -825,3 +825,46 @@ export const checkSavedStatus = async (req: Request, res: Response): Promise<voi
     });
   }
 };
+export const getUserSetCounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.params.userId;
+    
+    if (!userId) {
+      res.status(400).json({ message: "User ID is required" });
+      return;
+    }
+    
+    // Count sets created by the user
+    const createdSetsQuery = db.collection("flashcardSets")
+      .where("userId", "==", userId)
+      .where("isDerived", "==", false); // Only count original sets
+    
+    // Count sets saved by the user
+    const savedSetsQuery = db.collection("userSavedSets")
+      .where("userId", "==", userId);
+    
+    // Execute both queries in parallel
+    const [createdSetsSnapshot, savedSetsSnapshot] = await Promise.all([
+      createdSetsQuery.count().get(),
+      savedSetsQuery.count().get()
+    ]);
+    
+    const createdCount = createdSetsSnapshot.data().count || 0;
+    const savedCount = savedSetsSnapshot.data().count || 0;
+    const totalCount = createdCount + savedCount;
+    
+    console.log(`User ${userId} has ${createdCount} created sets and ${savedCount} saved sets`);
+    res.status(200).json({
+      userId,
+      created: createdCount,
+      saved: savedCount,
+      total: totalCount
+    });
+  } catch (error) {
+    console.error("Error getting user set counts:", error);
+    res.status(500).json({
+      message: "Failed to get user set counts",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};

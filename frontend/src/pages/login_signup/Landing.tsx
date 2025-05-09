@@ -286,17 +286,17 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
   // Testimonials data
   const testimonials = [
     {
-      quote: "Fliply helped me ace my Biology final! The AI-generated flashcards saved me hours of study time.",
+      quote: "Cramingo helped me ace my Biology final! The AI-generated flashcards saved me hours of study time.",
       name: "Alex J.",
       school: "UC Santa Cruz"
     },
     {
-      quote: "I use Fliply for all my classes now. The flashcards are perfect and I can study anywhere.",
+      quote: "I use Cramingo for all my classes now. The flashcards are perfect and I can study anywhere.",
       name: "Taylor M.",
       school: "Stanford University"
     },
     {
-      quote: "As a student with ADHD, Fliply has been a game-changer for my study routine.",
+      quote: "As a student with ADHD, Cramingo has been a game-changer for my study routine.",
       name: "Jordan P.",
       school: "UC Berkeley"
     }
@@ -332,14 +332,14 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
         <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
                          bg-black/5 backdrop-blur-md border-b border-white/5">
           <Link to="/" className="flex items-center space-x-3">
-            <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-xl h-11 w-12 ">
+            <div className="flex items-center justify-center bg-white bg-opacity-100 rounded-xl h-11 w-12 ">
               <img 
-                src="/images/fliply_logo.png" 
-                alt="Fliply Logo" 
-                className="h-9 w-auto"
+                src="/images/cramingo_logo.png" 
+                alt="Cramingo Logo" 
+                className="h-11 w-auto"
               />
             </div>
-            <span className="text-white text-xl font-medium tracking-wide"></span>
+            <span className="text-white hidden lg:block ml-3 font-bold text-xl tracking-wide"></span>
           </Link>
           <nav className="flex items-center space-x-8">
             <button 
@@ -370,7 +370,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
                   </span>
                   <div className="relative inline-block animate-pop">
                     <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">
-                      {" Fliply"}
+                      {"Cramingo"}
                     </span>
                     <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-blue-400 to-cyan-300 opacity-30 blur-sm animate-pulse"></span>
                   </div>
@@ -560,7 +560,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
       ) : (
         <>
           {!schoolSearch.trim() 
-            ? 'Is your school on Fliply? Type to see!' 
+            ? 'Your school on Cramingo? Type to see!' 
             : isSchoolRecognized(schoolSearch)
               ? `See Flashcards for ${schoolSearch.trim()}` 
               : 'Create Flashcards with AI'}
@@ -610,7 +610,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
             <section id="features" ref={featuresRef} className="w-full max-w-6xl mx-auto mb-20 mt-3 px-4">
               <h2 className="text-4xl font-bold text-white text-center mb-12 animate-slideUp">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">
-                  Why Students Love Fliply
+                  Why Students Love Cramingo
                 </span>
               </h2>
               
@@ -738,7 +738,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
     }`}
   >
     <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 animate-float">Ready to find the perfect flashcards?</h2>
-    <p className="text-xl text-white/80 mb-8 max-w-xl mx-auto">Join thousands of students who are already saving time and improving their grades with Fliply.</p>
+    <p className="text-xl text-white/80 mb-8 max-w-xl mx-auto">Join thousands of students who are already saving time and improving their grades with Cramingo.</p>
     
     {/* Updated CTA Button with "Create an account for free" text */}
     <button 
@@ -792,7 +792,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
         <footer className="container mx-auto px-4 py-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row md:justify-between items-center text-white/50 text-sm gap-4">
             <div>
-              © {new Date().getFullYear()} Fliply. All rights reserved.
+              © {new Date().getFullYear()} Cramingo. All rights reserved.
             </div>
             <div className="flex gap-6">
               <button

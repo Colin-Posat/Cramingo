@@ -62,23 +62,23 @@ const NavBar = () => {
     <>
       {/* Desktop - Left Sidebar - Only for main section pages */}
       {isMainSection && (
-        <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-16 lg:w-48 bg-gradient-to-b from-[#004a74] to-[#0060a1] text-white z-50 shadow-xl transition-all duration-300 border-r border-white/10">
-          {/* Logo area */}
-          <div className="py-4 flex justify-center lg:justify-start lg:px-4">
+        <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-16 lg:w-52 bg-gradient-to-b from-[#004a74] to-[#0060a1] text-white z-50 shadow-xl transition-all duration-300 border-r border-white/10">
+          {/* Logo area with refined alignment */}
+          <div className="py-5 flex justify-center lg:justify-start lg:px-5">
             <Link to="/created-sets" className="transition-all duration-300 transform hover:scale-105 flex items-center">
-              <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+              <div className="mt-1 flex items-center justify-center bg-white rounded-xl h-10 w-10 shadow-md">
                 <img 
-                  src="/images/fliply_logo.png" 
+                  src="/images/cramingo_logo.png" 
                   alt="Fliply Logo" 
-                  className="h-8 w-auto"
+                  className="h-9 w-auto"
                 />
               </div>
-              <span className="hidden lg:block ml-3 font-bold text-xl tracking-wide">Fliply</span>
+              <span className="mt-1 hidden lg:block ml-3 font-bold text-lg tracking-wide">Cramingo</span>
             </Link>
           </div>
           
-          {/* Navigation Items */}
-          <div className="flex flex-col py-6 flex-grow space-y-1 px-2">
+          {/* Navigation Items with refined styling */}
+          <div className="flex flex-col py-6 flex-grow space-y-1.5 px-3">
             {navItems.map(item => {
               const isActive = activeTab === item.to;
               const Icon = item.icon;
@@ -88,14 +88,24 @@ const NavBar = () => {
                   to={item.to}
                   className={`relative py-3 transition-all duration-200 flex flex-col lg:flex-row items-center rounded-xl
                     ${isActive 
-                      ? 'bg-white/15 text-white shadow-lg' 
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/30' 
+                      : 'text-white/80 hover:bg-white/15 hover:text-white hover:backdrop-blur-sm'
                     }
-                    group`}
+                    group overflow-hidden`}
                   onClick={() => setActiveTab(item.to)}
                 >
-                  <div className={`flex items-center justify-center w-full lg:justify-start lg:px-4`}>
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''} transition-colors`} />
+                  {/* Subtle gradient overlay for active item */}
+                  {isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-white/0"></div>
+                  )}
+                  
+                  {/* Light beam animation effect on hover */}
+                  <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+                  
+                  <div className={`z-10 flex items-center justify-center w-full lg:justify-start lg:px-4`}>
+                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/10' : 'group-hover:bg-white/5'} transition-all duration-200`}>
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''} transition-colors`} />
+                    </div>
                     <span className={`hidden lg:block text-sm ml-3 ${isActive ? 'font-medium' : ''} transition-all`}>
                       {item.label}
                     </span>
@@ -106,26 +116,26 @@ const NavBar = () => {
                     )}
                   </div>
                   
-                  {/* Active indicator dot for mobile view */}
-                  {isActive && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full lg:hidden"></div>
-                  )}
+ 
                 </Link>
               );
             })}
           </div>
           
           {/* Feedback button at bottom */}
-          <div className="py-4 border-t border-white border-opacity-10 flex justify-center lg:px-4">
+          <div className="py-4 border-t border-white/20 flex justify-center lg:px-4">
             <button
               onClick={toggleFeedback}
-              className="flex flex-col lg:flex-row items-center justify-center lg:justify-start lg:gap-3 w-full py-2 lg:px-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-all duration-200"
+              className="flex flex-col lg:flex-row items-center justify-center lg:justify-start lg:gap-3 w-full py-2 lg:px-3 rounded-lg hover:bg-white/15 transition-all duration-200 group"
               aria-label="Give Feedback"
             >
-              <MessageCircleQuestionIcon className="w-5 h-5" />
+              <div className="p-1.5 rounded-lg group-hover:bg-white/10 transition-all duration-200">
+                <MessageCircleQuestionIcon className="w-5 h-5" />
+              </div>
               <span className="hidden lg:block text-xs lg:text-sm">Feedback</span>
             </button>
           </div>
+
         </aside>
       )}
 
@@ -145,14 +155,14 @@ const NavBar = () => {
                   : <MenuIcon className="w-6 h-6" />}
               </button>
               <Link to="/created-sets" className="flex items-center">
-                <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+                <div className="flex items-center justify-center bg-white rounded-xl h-9 w-9 shadow-inner">
                   <img 
-                    src="/images/fliply_logo.png" 
+                    src="/images/cramingo_logo.png" 
                     alt="Fliply Logo" 
                     className="h-8 w-auto"
                   />
                 </div>
-                <span className="ml-3 font-bold text-lg tracking-wide">Fliply</span>
+                <span className="ml-3 font-bold text-lg tracking-wide">Cramingo</span>
               </Link>
             </div>
             <button 
@@ -182,14 +192,14 @@ const NavBar = () => {
                   : <MenuIcon className="w-6 h-6" />}
               </button>
               <Link to="/created-sets" className="flex items-center group">
-                <div className="flex items-center justify-center bg-white bg-opacity-20 rounded-xl h-10 w-10 shadow-inner backdrop-blur-sm">
+                <div className="flex items-center justify-center bg-white rounded-xl h-10 w-10 shadow-inner">
                   <img 
-                    src="/images/fliply_logo.png" 
+                    src="/images/cramingo_logo.png" 
                     alt="Fliply Logo" 
-                    className="h-8 w-auto"
+                    className="h-9 w-auto"
                   />
                 </div>
-                <span className="ml-3 font-bold text-lg tracking-wide">Fliply</span>
+                <span className="ml-3 font-bold text-lg tracking-wide">Cramingo</span>
               </Link>
             </div>
             <button 
@@ -203,28 +213,31 @@ const NavBar = () => {
         </nav>
       )}
 
-      {/* Menu - For both Mobile and Desktop - FIXED THIS SECTION */}
+      {/* Menu - For both Mobile and Desktop - with improved animations */}
       <div 
         className={`fixed inset-0 z-40 transition-opacity duration-300 ease-in-out ${
           isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-        {/* Backdrop with blur effect */}
+        {/* Backdrop with enhanced blur effect */}
         <div 
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={() => setIsMenuOpen(false)}
         ></div>
         
-        {/* Menu panel with animation */}
+        {/* Menu panel with improved animation */}
         <div 
-          className={`absolute top-0 left-0 w-72 h-full bg-gradient-to-b from-[#004a74] to-[#0060a1] shadow-2xl transform transition-transform duration-300 ease-in-out ${
-            isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          className={`absolute top-0 left-0 w-72 h-full bg-gradient-to-b from-[#004a74] to-[#0060a1] shadow-2xl transform transition-all duration-300 ease-out ${
+            isMenuOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-95'
           }`}
         >
-          {/* User profile area */}
-          <div className="pt-20 pb-6 px-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center border border-white/20">
+          {/* Enhanced glass effect overlay */}
+          <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]"></div>
+          
+          {/* User profile area with smoother styling */}
+          <div className="relative pt-20 pb-6 px-6 z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center border border-white/30 shadow-inner">
                 <UserIcon className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -234,11 +247,11 @@ const NavBar = () => {
             </div>
           </div>
           
-          {/* Divider */}
-          <div className="border-t border-white/10 mx-4"></div>
+          {/* Refined divider */}
+          <div className="relative z-10 border-t border-white/15 mx-4"></div>
           
-          {/* Navigation Items */}
-          <div className="px-3 py-6">
+          {/* Navigation Items with improved hover effects */}
+          <div className="relative z-10 px-3 py-6">
             <div className="space-y-1.5">
               {navItems.map(item => {
                 const isActive = activeTab === item.to;
@@ -251,15 +264,20 @@ const NavBar = () => {
                       setActiveTab(item.to);
                       setIsMenuOpen(false);
                     }}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 overflow-hidden relative
                       ${isActive 
-                        ? 'bg-white/15 text-white shadow-lg' 
-                        : 'text-white/80 hover:bg-white/10 hover:text-white'
-                      }`}
+                        ? 'bg-white/20 text-white shadow-md border border-white/10' 
+                        : 'text-white/80 hover:bg-white/15 hover:text-white'
+                      } group`}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
-                    <span className={`${isActive ? 'font-medium' : ''}`}>{item.label}</span>
-                    {isActive && <ChevronRightIcon className="w-4 h-4 ml-auto text-white/80" />}
+                    {/* Light beam animation on hover */}
+                    <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+                    
+                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/10' : 'group-hover:bg-white/10'} transition-all duration-200 z-10`}>
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
+                    </div>
+                    <span className={`${isActive ? 'font-medium' : ''} z-10`}>{item.label}</span>
+                    {isActive && <ChevronRightIcon className="w-4 h-4 ml-auto text-white/80 z-10" />}
                   </Link>
                 );
               })}
@@ -267,17 +285,22 @@ const NavBar = () => {
           </div>
           
           {/* Bottom section with feedback and logout */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10">
+          <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/15 z-10">
             <div className="space-y-1.5 mb-6">
               <button
                 onClick={() => {
                   toggleFeedback();
                   setIsMenuOpen(false);
                 }}
-                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 relative overflow-hidden group"
               >
-                <MessageCircleQuestionIcon className="w-5 h-5" />
-                <span>Give Feedback</span>
+                {/* Light beam animation on hover */}
+                <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+                
+                <div className="p-1.5 rounded-lg group-hover:bg-white/10 transition-all duration-200 z-10">
+                  <MessageCircleQuestionIcon className="w-5 h-5" />
+                </div>
+                <span className="z-10">Give Feedback</span>
               </button>
               
               <button
@@ -286,15 +309,20 @@ const NavBar = () => {
                   if (logout) logout();
                   setIsMenuOpen(false);
                 }}
-                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl w-full text-left text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 relative overflow-hidden group"
               >
-                <LogOutIcon className="w-5 h-5" />
-                <span>Sign Out</span>
+                {/* Light beam animation on hover */}
+                <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+                
+                <div className="p-1.5 rounded-lg group-hover:bg-white/10 transition-all duration-200 z-10">
+                  <LogOutIcon className="w-5 h-5" />
+                </div>
+                <span className="z-10">Sign Out</span>
               </button>
             </div>
             
             <div className="px-4 py-3 text-center">
-              <div className="text-white/50 text-xs">Fliply</div>
+              <div className="text-white/50 text-xs">Fliply • 2024</div>
             </div>
           </div>
         </div>
@@ -308,5 +336,18 @@ const NavBar = () => {
     </>
   );
 };
+
+// Add these animations to your global CSS or tailwind.config.js
+// @keyframes shine {
+//   100% {
+//     right: -10%;
+//   }
+// }
+// 
+// extend: {
+//   animation: {
+//     shine: 'shine 1s ease',
+//   },
+// },
 
 export default NavBar;

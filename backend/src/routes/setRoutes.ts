@@ -10,7 +10,8 @@ import {
   saveSet,
   unsaveSet,
   getTopPopularSets,
-  checkSavedStatus // Added the new function
+  checkSavedStatus,
+  getUserSetCounts // Added the new function
 } from "../controllers/setController";
 
 const router = express.Router();
@@ -26,6 +27,8 @@ router.get("/user/:userId", getUserSets);
 
 // Get saved sets for a specific user
 router.get("/saved/:userId", getSavedSets);
+
+router.get("/counts/:userId", getUserSetCounts);
 
 // Get top popular sets
 router.get('/popular', getTopPopularSets);
