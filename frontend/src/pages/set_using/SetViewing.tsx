@@ -21,6 +21,9 @@ import {
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import OptimizedFlashcardPreview, {
+  FlashcardSet as PreviewFlashcardSet
+} from '../../components/OptimizedFlashcardPreview';
 
 // Save Success Animation Component (included directly to avoid creating separate file)
 interface SaveSuccessNotificationProps {
@@ -721,94 +724,11 @@ const SetViewingPage: React.FC = () => {
         </h2>
 
         {/* Flashcards */}
-        <div className="space-y-6">
-          {flashcardSet.flashcards.length === 0 ? (
-            <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl text-center">
-              <p className="text-xl text-[#004a74] mb-4">This set doesn't have any flashcards yet.</p>
-              {isCreator ? (
-                <button 
-                  onClick={handleEditSet}
-                  className="bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white px-6 py-2.5 rounded-xl 
-                    hover:from-[#00395c] hover:to-[#0068b0] transition-all shadow-md hover:shadow-lg"
-                >
-                  Add Flashcards
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            flashcardSet.flashcards.map((card, index) => (
-              <div 
-                key={index}
-                className="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden 
-                  hover:shadow-lg transition-all hover:border-[#004a74]/30 transform-gpu hover:scale-[1.01]"
-              >
-                <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white px-6 py-3 
-                  flex items-center justify-between group-hover:from-[#00395c] group-hover:to-[#0074c2] 
-                  transition-colors duration-300">
-                  <span className="font-bold">Card {index + 1}</span>
-                </div>
-                <div className="p-6 grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
-                      <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">Q</span>
-                      Question
-                    </h3>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-[#004a74]/30 transition-colors">
-                      {card.questionImage && (
-                        <div className="mb-3">
-                          <div className="relative border rounded-lg overflow-hidden mb-2">
-                            <img 
-                              src={card.questionImage} 
-                              alt="Question" 
-                              className="w-full h-auto max-h-[150px] object-contain cursor-zoom-in" 
-                              onClick={() => showImagePreview(card.questionImage || '')}
-                            />
-                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                              <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
-                                <SearchIcon className="w-5 h-5 text-[#004a74]" />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
-                        </div>
-                      )}
-                      
-                      {card.question && <p className="text-gray-800 whitespace-pre-wrap">{card.question}</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#004a74] mb-3 flex items-center">
-                      <span className="bg-[#e3f3ff] text-[#004a74] px-3 py-1 rounded-lg text-sm mr-2">A</span>
-                      Answer
-                    </h3>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-[#004a74]/30 transition-colors">
-                      {card.answerImage && (
-                        <div className="mb-3">
-                          <div className="relative border rounded-lg overflow-hidden mb-2">
-                            <img 
-                              src={card.answerImage} 
-                              alt="Answer" 
-                              className="w-full h-auto max-h-[150px] object-contain cursor-zoom-in" 
-                              onClick={() => showImagePreview(card.answerImage || '')}
-                            />
-                            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                              <div className="bg-white/70 backdrop-blur-sm p-1.5 rounded-lg">
-                                <SearchIcon className="w-5 h-5 text-[#004a74]" />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-center text-xs text-gray-500 mt-1">Click image to enlarge</div>
-                        </div>
-                      )}
-                      
-                      {card.answer && <p className="text-gray-800 whitespace-pre-wrap">{card.answer}</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        <OptimizedFlashcardPreview
+          flashcardSet={{ flashcards: flashcardSet.flashcards } as PreviewFlashcardSet}
+          setPreviewImage={showImagePreview}
+        />
+        
         
         {/* Actions footer */}
         {flashcardSet.flashcards.length > 0 && (
@@ -822,7 +742,7 @@ const SetViewingPage: React.FC = () => {
               <div className="bg-blue-100 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
                 <BookIcon className="w-5 h-5" />
               </div>
-              <span className="font-bold">Start Studying</span>
+              <span className="font-bold">Study Flashcards</span>
             </button>
             
             <button 
