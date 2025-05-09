@@ -920,7 +920,7 @@ const isSchoolRecognized = (searchInput: any) => {
             {/* Terms of Service Statement */}
             <div className="mt-5 sm:mt-6 text-center">
               <p className="text-xs sm:text-sm text-gray-600">
-                By using Fliply, you agree to our {" "}
+                By using Cramingo, you agree to our {" "}
                 <button
                   type="button"
                   onClick={openPrivacyPopup}

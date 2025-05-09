@@ -41,7 +41,7 @@ const PrivacyPolicyPopup: React.FC<PrivacyPolicyPopupProps> = ({ isOpen, onClose
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-[#004a74]">1. Introduction</h3>
             <p className="text-gray-700">
-              Welcome to Fliply ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our flashcard generation platform.
+              Welcome to Cramingo ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our flashcard generation platform.
             </p>
           </section>
           
