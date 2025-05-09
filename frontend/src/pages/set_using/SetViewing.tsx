@@ -708,17 +708,7 @@ const SetViewingPage: React.FC = () => {
             </button>
           </div>
           
-          {/* Additional actions */}
-          <div className="flex justify-center gap-3 mt-4">
-            <button className="flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm text-[#004a74] hover:bg-blue-50 rounded-lg transition-colors">
-              <Share2Icon className="w-3 h-3 sm:w-4 sm:h-4" />
-              Share
-            </button>
-            <button className="flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm text-[#004a74] hover:bg-blue-50 rounded-lg transition-colors">
-              <DownloadIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-              Export
-            </button>
-          </div>
+
         </div>
         </div>
             

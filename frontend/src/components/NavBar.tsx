@@ -294,7 +294,7 @@ const NavBar = () => {
             </div>
             
             <div className="px-4 py-3 text-center">
-              <div className="text-white/50 text-xs">Fliply v2.0</div>
+              <div className="text-white/50 text-xs">Fliply</div>
             </div>
           </div>
         </div>

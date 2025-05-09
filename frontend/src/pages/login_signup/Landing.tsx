@@ -332,7 +332,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
         <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 
                          bg-black/5 backdrop-blur-md border-b border-white/5">
           <Link to="/" className="flex items-center space-x-3">
-            <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-full h-11 w-12 ">
+            <div className="flex items-center justify-center bg-gray-200 bg-opacity-10 rounded-xl h-11 w-12 ">
               <img 
                 src="/images/fliply_logo.png" 
                 alt="Fliply Logo" 
