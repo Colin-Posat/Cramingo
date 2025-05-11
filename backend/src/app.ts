@@ -28,7 +28,8 @@ app.use(
       "https://fliply-backend.onrender.com",
       "https://fliply-frontend.onrender.com",
       "https://fliply.org",
-      "https://fliplyai.com"
+      "https://fliplyai.com",
+      "https://cramingo.com"
     ],
     credentials: true,
   })
