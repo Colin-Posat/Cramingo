@@ -305,12 +305,7 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
               <span className="text-sm font-medium text-[#004a74]">{set.classCode}</span>
             </div>
           )}
-          
-          {set.description && (
-            <p className="text-sm text-gray-600 line-clamp-2 mt-1 mb-4">
-              {set.description}
-            </p>
-          )}
+
           
           {/* Stats row */}
           <div className="flex flex-wrap gap-4 mt-2">

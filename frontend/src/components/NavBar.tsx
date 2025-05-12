@@ -69,7 +69,7 @@ const NavBar = () => {
               <div className="mt-1 flex items-center justify-center bg-white rounded-xl h-10 w-10 shadow-md">
                 <img 
                   src="/images/cramingo_logo.png" 
-                  alt="Fliply Logo" 
+                  alt="Cramingo Logo" 
                   className="h-9 w-auto"
                 />
               </div>
@@ -158,7 +158,7 @@ const NavBar = () => {
                 <div className="flex items-center justify-center bg-white rounded-xl h-9 w-9 shadow-inner">
                   <img 
                     src="/images/cramingo_logo.png" 
-                    alt="Fliply Logo" 
+                    alt="Cramingo Logo" 
                     className="h-8 w-auto"
                   />
                 </div>
@@ -195,7 +195,7 @@ const NavBar = () => {
                 <div className="flex items-center justify-center bg-white rounded-xl h-10 w-10 shadow-inner">
                   <img 
                     src="/images/cramingo_logo.png" 
-                    alt="Fliply Logo" 
+                    alt="Cramingo Logo" 
                     className="h-9 w-auto"
                   />
                 </div>

@@ -14,7 +14,10 @@ import {
   Image as ImageIcon,
   Trash2 as TrashIcon,
   Calculator as CalculatorIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  MoveUp as MoveUpIcon,
+  MoveDown as MoveDownIcon,
+  Copy as CopyIcon
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import AIGenerateOverlay from '../../components/AIGenerateOverlay';
@@ -176,6 +179,34 @@ const hasUnsavedChanges = useCallback(() => {
   
   return true;
 }, [flashcards, editingSet, title, classCode, description]);
+
+const duplicateFlashcard = (index: number) => {
+  // Create a deep copy of the card to duplicate
+  const cardToDuplicate = { ...flashcards[index] };
+  
+  // Generate a new ID for the duplicated card
+  const duplicatedCard = {
+    ...cardToDuplicate,
+    id: crypto.randomUUID() // Generate a new unique ID
+  };
+  
+  // Insert the duplicated card after the original
+  const updatedFlashcards = [...flashcards];
+  updatedFlashcards.splice(index + 1, 0, duplicatedCard);
+  
+  setFlashcards(updatedFlashcards);
+  setFlashcardError(''); // Clear any error messages
+  
+  // Optional: scroll to the new card
+  setTimeout(() => {
+    if (cardsContainerRef.current) {
+      const cards = cardsContainerRef.current.querySelectorAll('.flashcard-card');
+      if (cards[index + 1]) {
+        cards[index + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, 100);
+};
 
 
   const slugifyUniversityName = (universityName: string): string => {
@@ -387,6 +418,30 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
     setFlashcards(updatedFlashcards);
     setFlashcardError('');
   };
+
+  // Function to move a card up
+const moveCardUp = (index: number) => {
+  if (index === 0) return; // Already at the top
+  
+  const updatedCards = Array.from(flashcards);
+  const temp = updatedCards[index];
+  updatedCards[index] = updatedCards[index - 1];
+  updatedCards[index - 1] = temp;
+  
+  setFlashcards(updatedCards);
+};
+
+// Function to move a card down
+const moveCardDown = (index: number) => {
+  if (index === flashcards.length - 1) return; // Already at the bottom
+  
+  const updatedCards = Array.from(flashcards);
+  const temp = updatedCards[index];
+  updatedCards[index] = updatedCards[index + 1];
+  updatedCards[index + 1] = temp;
+  
+  setFlashcards(updatedCards);
+};
 
   // Handle image upload for a flashcard
   const handleImageUpload = async (
@@ -840,6 +895,7 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
                       <li>• Fill in the set title and select a class code</li>
                       <li>• Add flashcards with questions and answers (text, images, or equations)</li>
                       <li>• Save as private (only you can see) or publish publicly (everyone can see)</li>
+                      <li>• Reorder cards using the up and down arrows on each card</li>
                     </ul>
                     
                   </div>
@@ -1003,18 +1059,47 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
                 className="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden 
                   hover:shadow-lg transition-all hover:border-[#004a74]/30 transform-gpu hover:scale-[1.01]"
               >
-                 <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white px-6 py-3 
-  flex items-center justify-between group-hover:from-[#00395c] group-hover:to-[#0074c2] 
-  transition-colors duration-300">
-                    <span className="font-bold">Card {index + 1}</span>
-                    <button 
-                      onClick={() => deleteFlashcard(index)}
-                      className="text-white hover:text-red-300 transition-colors"
-                      aria-label="Delete card"
-                    >
-                      <XIcon className="w-5 h-5" />
-                    </button>
-                  </div>
+                 <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] text-white px-4 py-3 
+  flex items-center justify-between transition-colors duration-300">
+  <span className="font-bold">Card {index + 1}</span>
+  <div className="flex items-center space-x-2">
+  {/* Card Reordering Controls */}
+  <button
+    onClick={() => moveCardUp(index)}
+    disabled={index === 0}
+    className={`p-1 rounded ${index === 0 ? 'text-white/40 cursor-not-allowed' : 'hover:bg-white/20 transition-colors'}`}
+    title="Move card up"
+  >
+    <MoveUpIcon className="w-4 h-4" />
+  </button>
+  <button
+    onClick={() => moveCardDown(index)}
+    disabled={index === flashcards.length - 1}
+    className={`p-1 rounded ${index === flashcards.length - 1 ? 'text-white/40 cursor-not-allowed' : 'hover:bg-white/20 transition-colors'}`}
+    title="Move card down"
+  >
+    <MoveDownIcon className="w-4 h-4" />
+  </button>
+  
+  {/* Duplicate Card Button */}
+  <button
+    onClick={() => duplicateFlashcard(index)}
+    className="p-1 rounded hover:bg-white/20 transition-colors"
+    title="Duplicate card"
+  >
+    <CopyIcon className="w-4 h-4" />
+  </button>
+  
+  <button 
+    onClick={() => deleteFlashcard(index)}
+    className="ml-2 text-white hover:text-red-300 transition-colors p-1 rounded hover:bg-white/20"
+    aria-label="Delete card"
+    title="Delete card"
+  >
+    <TrashIcon className="w-4 h-4" />
+  </button>
+</div>
+</div>
                   <div className="p-6 grid md:grid-cols-2 gap-6">
                     {/* Question Side */}
                     <div>
@@ -1368,4 +1453,3 @@ const handleClassCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement
 
 
 export default SetCreator;
-

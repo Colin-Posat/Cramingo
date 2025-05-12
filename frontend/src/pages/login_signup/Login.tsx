@@ -182,7 +182,7 @@ const Login: React.FC = () => {
           <div className="flex items-center justify-center bg-white bg-opacity-100 rounded-xl h-9 w-9 sm:h-11 sm:w-12">
             <img 
               src="/images/cramingo_logo.png" 
-              alt="Fliply Logo" 
+              alt="Cramingo Logo" 
               className="h-8 sm:h-11 w-auto"
             />
           </div>

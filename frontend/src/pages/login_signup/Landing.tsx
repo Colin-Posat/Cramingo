@@ -560,7 +560,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
       ) : (
         <>
           {!schoolSearch.trim() 
-            ? 'Your school on Cramingo? Type to see!' 
+            ? 'Is your school on Cramingo? Type to see!' 
             : isSchoolRecognized(schoolSearch)
               ? `See Flashcards for ${schoolSearch.trim()}` 
               : 'Create Flashcards with AI'}
