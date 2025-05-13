@@ -63,19 +63,31 @@ const NavBar = () => {
       {/* Desktop - Left Sidebar - Only for main section pages */}
       {isMainSection && (
         <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-16 lg:w-52 bg-gradient-to-b from-[#004a74] to-[#0060a1] text-white z-50 shadow-xl transition-all duration-300 border-r border-white/10">
-          {/* Logo area with refined alignment */}
-          <div className="py-5 flex justify-center lg:justify-start lg:px-5">
-            <Link to="/created-sets" className="transition-all duration-300 transform hover:scale-105 flex items-center">
-              <div className="mt-1 flex items-center justify-center bg-white rounded-xl h-10 w-10 shadow-md">
-                <img 
-                  src="/images/cramingo_logo.png" 
-                  alt="Cramingo Logo" 
-                  className="h-9 w-auto"
-                />
-              </div>
-              <span className="mt-1 hidden lg:block ml-3 font-bold text-lg tracking-wide">Cramingo</span>
-            </Link>
-          </div>
+          {/* Updated Logo Section for Sidebar */}
+<div className="py-6 flex justify-center lg:justify-start lg:px-6">
+  <Link to="/created-sets" className="transition-all duration-300 transform hover:scale-105 flex items-center group">
+    {/* Enhanced logo container with gradient background and better shadow */}
+    <div className="relative flex items-center justify-center bg-gradient-to-br from-white to-white/90 rounded-xl h-12 w-12 shadow-lg border border-white/40 group-hover:shadow-cyan-200/30 overflow-hidden">
+      {/* Logo with subtle animation */}
+      <img 
+        src="/images/cramingo_logo.png" 
+        alt="Cramingo Logo" 
+        className="h-10 w-auto relative z-10 group-hover:-translate-y-0.5 transition-transform duration-300 ease-out"
+      />
+      {/* Subtle shine effect on hover */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out"></div>
+    </div>
+    
+    {/* Enhanced typography for brand name */}
+    <div className="hidden lg:flex flex-col ml-4">
+      <span className="font-bold text-xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-white/90 drop-shadow-sm">
+        Cramingo
+      </span>
+
+    </div>
+  </Link>
+</div>
+
           
           {/* Navigation Items with refined styling */}
           <div className="flex flex-col py-6 flex-grow space-y-1.5 px-3">
@@ -154,16 +166,25 @@ const NavBar = () => {
                   ? <XIcon className="w-6 h-6" />
                   : <MenuIcon className="w-6 h-6" />}
               </button>
-              <Link to="/created-sets" className="flex items-center">
-                <div className="flex items-center justify-center bg-white rounded-xl h-9 w-9 shadow-inner">
-                  <img 
-                    src="/images/cramingo_logo.png" 
-                    alt="Cramingo Logo" 
-                    className="h-8 w-auto"
-                  />
-                </div>
-                <span className="ml-3 font-bold text-lg tracking-wide">Cramingo</span>
-              </Link>
+              {/* Updated Logo for Mobile Navigation */}
+            <Link to="/created-sets" className="flex items-center group">
+              {/* Enhanced logo container */}
+              <div className="flex items-center justify-center bg-gradient-to-br from-white to-white/90 rounded-xl h-10 w-10 shadow-lg border border-white/40">
+                <img 
+                  src="/images/cramingo_logo.png" 
+                  alt="Cramingo Logo" 
+                  className="h-8 w-auto group-hover:-translate-y-0.5 transition-transform duration-300 ease-out"
+                />
+              </div>
+              
+              {/* Enhanced typography for brand name */}
+              <div className="flex flex-col ml-3">
+                <span className="font-bold text-lg tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-white/90 drop-shadow-sm">
+                  Cramingo
+                </span>
+  
+              </div>
+            </Link>
             </div>
             <button 
               onClick={toggleFeedback} 

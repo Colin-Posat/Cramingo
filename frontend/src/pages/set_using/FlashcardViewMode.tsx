@@ -38,8 +38,6 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [showKeyboardHint, setShowKeyboardHint] = useState(true);
   
-  // Remove isHovering state which was causing issues
-  
   // State for standalone mode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,53 +64,6 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     }
   }, []);
 
-  const flipCardStyles = `
-  .flip-card {
-    background-color: transparent;
-    width: 100%;
-    height: 400px;
-    perspective: 1000px;
-  }
-
-  .flip-card-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    transition: transform 0.8s;
-    transform-style: preserve-3d;
-  }
-
-  .flip-card.flipped .flip-card-inner {
-    transform: rotateY(180deg);
-  }
-
-  .flip-card-front, .flip-card-back {
-    box-shadow: 0 8px 14px 0 rgba(0,0,0,0.2);
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    border-radius: 1rem;
-    padding: 2rem;
-  }
-
-  .flip-card-front {
-    background-color: white;
-    box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 2px, rgba(0, 0, 0, 0.1) 0px 7px 13px -3px, rgba(0, 0, 0, 0.1) 0px -1px 0px inset;
-  }
-
-  .flip-card-back {
-    background-color: white;
-    transform: rotateY(180deg);
-    box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 2px, rgba(0, 0, 0, 0.1) 0px 7px 13px -3px, rgba(0, 0, 0, 0.1) 0px -1px 0px inset;
-  }
-`;
-
   const isStandalone = !propFlashcards;
 
   // Add the style to the document head
@@ -123,13 +74,14 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
       const styleElement = document.createElement('style');
       styleRef.current = styleElement;
       styleElement.innerHTML = `
+        /* New flip card styles based on the credit card example */
         .flip-card {
           perspective: 1000px;
           width: 100%;
           height: 400px;
           transform: translateZ(0);
-          user-select: none; /* Make all text in flip card unhighlightable */
-          position: relative; /* Important for the animation */
+          user-select: none;
+          position: relative;
         }
         
         .flip-card-inner {
@@ -139,46 +91,11 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
           transform-style: preserve-3d;
           will-change: transform;
-          border-radius: 1rem; /* Match card border radius */
+          border-radius: 1rem;
         }
         
         .flip-card.flipped .flip-card-inner {
           transform: rotateY(180deg);
-        }
-        
-        /* Replace the old animation with a pseudo-element based approach */
-        .flip-card::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: 1rem;
-          box-shadow: 0 0 0 0 rgba(0, 74, 116, 0);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          pointer-events: none;
-          z-index: -1;
-        }
-        
-        .flip-card.flipped::after {
-          animation: clean-card-pulse 0.5s ease-out forwards;
-        }
-        
-        @keyframes clean-card-pulse {
-          0% { 
-            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
-            opacity: 0;
-          }
-          50% { 
-            box-shadow: 0 0 25px 5px rgba(0, 74, 116, 0.25); 
-            opacity: 1;
-          }
-          100% { 
-            box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
-            opacity: 0;
-          }
         }
         
         .flip-card-front, .flip-card-back {
@@ -188,15 +105,16 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           -webkit-backface-visibility: hidden;
           backface-visibility: hidden;
           transform: translateZ(0);
-          border-radius: 1rem; /* Ensure consistent border radius */
-          overflow: hidden; /* Prevent content from spilling outside the border radius */
+          border-radius: 1rem;
+          overflow: hidden;
+          box-shadow: 0 8px 14px 0 rgba(0,0,0,0.1);
         }
         
         .flip-card-back {
           transform: rotateY(180deg) translateZ(0);
         }
         
-        /* Simplified card styling - removed conflicting transitions */
+        /* Card container styling */
         .card-container {
           border: 1px solid rgba(209, 213, 219, 1);
           border-radius: 1rem;
@@ -210,7 +128,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           border-color: rgba(0, 74, 116, 0.3);
         }
         
-        /* Completely revised button glow effect */
+        /* Revised button glow effect */
         #flip-button {
           position: relative;
           overflow: visible;
@@ -223,7 +141,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           left: -4px;
           right: -4px;
           bottom: -4px;
-          border-radius: 0.875rem; /* Slightly larger than the button */
+          border-radius: 0.875rem;
           box-shadow: 0 0 0 0 rgba(0, 74, 116, 0);
           opacity: 0;
           transition: opacity 0.2s ease;
@@ -249,7 +167,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           }
         }
         
-        /* Add some animations for image modal */
+        /* Image modal animations */
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -276,12 +194,12 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         
         /* Ensure text cannot be selected anywhere in the component */
         .no-select {
-          -webkit-touch-callout: none; /* iOS Safari */
-          -webkit-user-select: none;   /* Safari */
-          -khtml-user-select: none;    /* Konqueror HTML */
-          -moz-user-select: none;      /* Firefox */
-          -ms-user-select: none;       /* Internet Explorer/Edge */
-          user-select: none;           /* Non-prefixed version, supported by Chrome and Opera */
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
         }
       `;
       document.head.appendChild(styleElement);
@@ -382,7 +300,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   };
 
   const handleImageClick = (imageUrl: string, event: React.MouseEvent) => {
-    // The stopPropagation is now done in the click handler of the div wrapping the image
+    event.stopPropagation(); // Prevent card flip
     setExpandedImage(imageUrl);
   };
 
@@ -549,11 +467,9 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     );
   };
 
-  // Flashcard Element - cleaned up version
+  // Flashcard Element - updated with new flip card animation
   const FlashcardElement = () => (
     <div className="flex flex-col items-center w-full no-select">
-      {/* CSS is now injected via useEffect */}
-      
       {/* Image expanded modal */}
       <ImageExpandedModal />
 
@@ -580,7 +496,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Improved and Cleaned Up Flashcard Implementation */}
+      {/* Updated Flashcard Implementation with New Flip Animation */}
       <div className="w-full max-w-4xl mb-8 mx-auto">
         <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
           <div className="flip-card-inner">
@@ -724,7 +640,10 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
               <strong>Keyboard shortcuts:</strong> Spacebar to flip, Arrow keys to navigate
             </span>
             <button 
-              onClick={() => setShowKeyboardHint(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowKeyboardHint(false);
+              }}
               className="ml-2 text-[#004a74]/70 hover:text-[#004a74]"
             >
               <XIcon className="w-4 h-4" />
