@@ -16,6 +16,7 @@ import {
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL, getApiUrl } from '../../config/api'; // Adjust path as needed
 import { useAuth } from '../../context/AuthContext'; // Import the auth context hook
+import EmptyState from '../../components/EmptyStateSS';
 
 // Type for Flashcard Set
 type FlashcardSet = {
@@ -422,122 +423,16 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
     </div>
   );
 
-// Updated EmptyState component
-const EmptyState = () => (
-  <div className="flex items-center justify-center min-h-[calc(100vh-16rem)] py-8 w-full">
-    <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-12 shadow-xl max-w-lg w-full text-center border border-blue-100">
-      <div className="relative mb-10">
-        <BookmarkIcon className="mx-auto w-28 h-28 text-[#004a74] relative z-10" />
-      </div>
-      <h2 className="text-3xl font-bold text-[#004a74] mb-4">
-        No Saved Sets Yet
-      </h2>
-      <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-        You haven't saved any flashcard sets yet. Search for sets to find and save your favorites.
-      </p>
-      
-      {/* Get started steps */}
-      <div className="mb-8 text-left">
-        <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
-          <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
-            <SearchIcon className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-md font-semibold text-[#004a74]">Find Sets</h3>
-            <p className="text-sm text-gray-600">Search for sets created by others</p>
-          </div>
-        </div>
-        
-        <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
-          <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
-            <BookmarkIcon className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-md font-semibold text-[#004a74]">Save Sets</h3>
-            <p className="text-sm text-gray-600">Bookmark sets you want to study later</p>
-          </div>
-        </div>
-      </div>
-
-      <button 
-        onClick={goToSearch}
-        className="mx-auto flex items-center justify-center gap-2 bg-[#004a74] text-white font-bold 
-          py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-lg w-full"
-      >
-        <SearchIcon className="w-5 h-5" />
-        <span>Find Sets</span>
-      </button>
+  {sets.length > 0 ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+      {sets.map((set) => (
+        <FlashcardSetCard key={set.id} set={set} />
+      ))}
     </div>
-  </div>
-);
+  ) : (
+    <EmptyState />
+  )}
 
-  // Helper modal component with better styling
-  const HelperModal = () => (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="relative bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
-        {/* Top decorative bar */}
-        <div className="h-2 bg-gradient-to-r from-[#004a74] to-[#0080d4]"></div>
-        
-        {/* Close button in corner */}
-        <button 
-          onClick={() => setShowHelper(false)}
-          className="absolute top-4 right-4 bg-gray-100 text-gray-600 p-2 rounded-full 
-            hover:bg-gray-200 transition-colors z-10"
-          aria-label="Close modal"
-        >
-          <XIcon className="w-5 h-5" />
-        </button>
-        
-        <div className="p-10 pt-8 text-center">
-          {/* Header with decorative elements */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 flex items-center justify-center opacity-10">
-              <BookOpenIcon className="w-48 h-48 text-[#004a74]" />
-            </div>
-            <BookmarkIcon className="mx-auto w-24 h-24 text-[#004a74] mb-4" />
-            <h2 className="text-3xl font-bold text-[#004a74]">
-              Welcome to Your Saved Sets!
-            </h2>
-          </div>
-          
-          {/* Content with step indicators */}
-          <div className="max-w-xl mx-auto mb-8">
-            <div className="bg-blue-50 rounded-xl p-6 mb-6">
-              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
-                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">1</div>
-                <span>Find Flashcard Sets</span>
-              </h3>
-              <p className="text-gray-700">
-                Click "Find Sets" to discover flashcards created by your classmates and instructors.
-              </p>
-            </div>
-            
-            <div className="bg-blue-50 rounded-xl p-6">
-              <h3 className="text-xl font-semibold text-[#004a74] mb-4 flex items-center justify-center gap-3">
-                <div className="bg-[#004a74] text-white w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold">2</div>
-                <span>Save Sets for Later</span>
-              </h3>
-              <p className="text-gray-700">
-                Bookmark sets you want to study, and return to them anytime on this page.
-              </p>
-            </div>
-          </div>
-          
-          {/* Action button */}
-          <button 
-            onClick={() => setShowHelper(false)}
-            className="bg-[#004a74] text-white px-8 py-3 rounded-xl 
-              hover:bg-[#00659f] transition-all flex items-center 
-              justify-center mx-auto gap-2 text-lg font-medium shadow-lg
-              hover:shadow-xl active:scale-[0.98]"
-          >
-            <CheckCircleIcon className="w-5 h-5" />
-            <span>Got it!</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   // Unsave confirmation modal with better styling
   const UnsaveModal = () => (
@@ -644,7 +539,7 @@ const EmptyState = () => (
           )}
 
           {/* Modals */}
-          {showHelper && <HelperModal />}
+
           {showUnsaveModal && <UnsaveModal />}
         </div>
       </div>

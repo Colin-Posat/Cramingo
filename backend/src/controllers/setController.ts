@@ -290,9 +290,25 @@ export const getSetById = async (req: Request, res: Response): Promise<void> => 
       }
     }
     
+    // Get username of creator
+    let creatorUsername = null;
+    if (setData.userId) {
+      try {
+        const userDoc = await db.collection("users").doc(setData.userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data() || {};
+          creatorUsername = userData.username || userData.displayName || null;
+        }
+      } catch (error) {
+        console.error(`Error fetching user info for ${setData.userId}:`, error);
+      }
+    }
+    
+    // Return the set data with the creator's username
     res.status(200).json({
       id: docSnapshot.id,
-      ...setData
+      ...setData,
+      createdBy: creatorUsername || `User ${setData.userId?.substring(0, 6) || 'unknown'}`
     });
   } catch (error) {
     console.error("Error getting flashcard set:", error);

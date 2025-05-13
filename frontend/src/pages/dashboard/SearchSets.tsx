@@ -421,26 +421,26 @@ const SearchSetsPage: React.FC = () => {
               )}
               
               {/* Search container */}
-              <div className="relative mb-6 transition-all duration-200">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <SearchIcon className="w-5 h-5 text-gray-400" />
-                </div>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  className={`w-full pl-12 pr-4 py-4 text-base bg-gray-50 border ${
-                    errorMessage ? 'border-[#e53935]' : 'border-gray-200'
-                  } rounded-xl focus:outline-none focus:ring-3 transition-all ${
-                    errorMessage ? 'focus:ring-[#e53935]/20' : 'focus:ring-[#004a74]/20'
-                  } focus:border-[#004a74] focus:bg-white shadow-sm`}
-                  placeholder="Enter Class Code (e.g. PSYCH1 or ENG101)"
-                  value={searchTerm}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  onBlur={handleBlur}
-                  autoComplete="off"
-                  aria-label="Class code search"
-                />
+              <div className="relative mb-6 transition-all duration-200" style={{ position: 'relative', zIndex: 30 }}>
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <SearchIcon className="w-5 h-5 text-gray-400" />
+              </div>
+              <input
+                ref={inputRef}
+                type="text"
+                className={`w-full pl-12 pr-4 py-4 text-base bg-gray-50 border ${
+                  errorMessage ? 'border-[#e53935]' : 'border-gray-200'
+                } rounded-xl focus:outline-none focus:ring-3 transition-all ${
+                  errorMessage ? 'focus:ring-[#e53935]/20' : 'focus:ring-[#004a74]/20'
+                } focus:border-[#004a74] focus:bg-white shadow-sm`}
+                placeholder="Enter Class Code (e.g. PSYCH1 or ENG101)"
+                value={searchTerm}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onBlur={handleBlur}
+                autoComplete="off"
+                aria-label="Class code search"
+              />
                 
                 {/* Autocomplete with improved styling and highlighting */}
                 {autocompleteResults.length > 0 && (
@@ -448,10 +448,12 @@ const SearchSetsPage: React.FC = () => {
                     ref={autocompleteRef}
                     className="absolute left-0 right-0 z-[1000] mt-1 bg-white border border-gray-100 rounded-xl shadow-lg"
                     style={{
-                      maxHeight: '296px', // Increased height for more results
+                      maxHeight: '296px', 
                       overflowY: 'auto',
                       overscrollBehavior: 'contain',
-                      position: 'absolute'
+                      position: 'absolute',
+                      zIndex: 1050, // Increased z-index to prevent being cut off
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)' // Stronger shadow for better visibility
                     }}
                     role="listbox"
                     aria-label="Suggested class codes"

@@ -270,7 +270,7 @@ const OptimizedFlashcardPreview: React.FC<OptimizedFlashcardPreviewProps> = ({
             Showing {filteredCards.length} of {flashcardSet.flashcards.length} cards
           </div>
           {viewType === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {sortedCards.map((card, i) => (
                 <GridCard key={card.id} card={card} index={i} />
               ))}

@@ -40,7 +40,7 @@ const NavBar = () => {
   const navItems = [
     { to: "/created-sets", icon: FolderIcon, label: "Created Sets" },
     { to: "/saved-sets", icon: BookmarkIcon, label: "Saved Sets" },
-    { to: "/search-sets", icon: SearchIcon, label: "Search Sets" },
+    { to: "/search-sets", icon: SearchIcon, label: "Find Sets" },
     { to: "/profile", icon: UserIcon, label: "Profile" },
   ];
 

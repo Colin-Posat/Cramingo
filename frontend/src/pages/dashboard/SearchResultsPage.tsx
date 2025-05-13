@@ -325,12 +325,14 @@ const SearchResultsPage: React.FC = () => {
       <div className="container mx-auto px-4 pt-24 pb-12">
         {/* Header with back button and search info */}
         <div className="flex justify-between items-center mb-6">
-          <button 
-            onClick={navigateToSearch}
-            className="flex items-center text-sm bg-white px-3 py-2 rounded-lg shadow-sm border border-[#004a74]/20 text-[#004a74] hover:bg-[#e3f3ff] transition-colors"
-          >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" /> Back to Search
-          </button>
+        <button 
+  onClick={navigateToSearch}
+  className="flex items-center text-sm bg-white px-3 py-2 rounded-xl shadow-sm 
+    border border-[#004a74]/20 text-[#004a74] hover:bg-blue-50 transition-colors
+    group active:scale-[0.98]"
+>
+  <ChevronLeftIcon className="w-4 h-4 mr-1 group-hover:scale-110 transition-transform" /> Back to Search
+</button>
           
           <div className="px-4 py-2 bg-[#e3f3ff] rounded-lg text-[#004a74] font-medium flex items-center">
             <SearchIcon className="w-4 h-4 mr-2" />
@@ -357,12 +359,12 @@ const SearchResultsPage: React.FC = () => {
         
         {/* Results section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-[#004a74] text-white p-6">
-            <h1 className="text-2xl font-bold">Search Results for {query}</h1>
-            <p className="mt-2 text-sm">
-              Found {searchResults.length} public flashcard set{searchResults.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+        <div className="bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white p-6">
+  <h1 className="text-2xl font-bold">Search Results for {query}</h1>
+  <p className="mt-2 text-sm opacity-80">
+    Found {searchResults.length} public flashcard set{searchResults.length !== 1 ? 's' : ''}
+  </p>
+</div>
           
           {/* New search and filter bar */}
           {searchResults.length > 0 && (
@@ -385,29 +387,29 @@ const SearchResultsPage: React.FC = () => {
                 {/* Filter options */}
                 <div className="flex gap-2">
                   
-                  <button 
-                    onClick={() => handleSortChange('recent')}
-                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
-                      sortOption === 'recent' 
-                        ? 'bg-[#004a74] text-white border-[#004a74]' 
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <ClockIcon className="w-4 h-4 mr-1" />
-                    Most Recent
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleSortChange('popular')}
-                    className={`px-3 py-2 rounded-lg border flex items-center text-sm ${
-                      sortOption === 'popular' 
-                        ? 'bg-[#004a74] text-white border-[#004a74]' 
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <HeartIcon className="w-4 h-4 mr-1" />
-                    Most Liked
-                  </button>
+                <button 
+                onClick={() => handleSortChange('recent')}
+                className={`px-3 py-2 rounded-lg border flex items-center text-sm transition-colors ${
+                  sortOption === 'recent' 
+                    ? 'bg-[#004a74] text-white border-[#004a74]' 
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <ClockIcon className="w-4 h-4 mr-1" />
+                Most Recent
+              </button>
+
+              <button 
+                onClick={() => handleSortChange('popular')}
+                className={`px-3 py-2 rounded-lg border flex items-center text-sm transition-colors ${
+                  sortOption === 'popular' 
+                    ? 'bg-[#004a74] text-white border-[#004a74]' 
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <HeartIcon className="w-4 h-4 mr-1" />
+                Most Liked
+              </button>
                 </div>
               </div>
               
@@ -467,49 +469,49 @@ const SearchResultsPage: React.FC = () => {
               <div className="grid md:grid-cols-2 gap-6">
                 {filteredResults.map((set) => (
                   <div 
-                    key={set.id}
-                    className="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => viewSet(set.id)}
-                  >
-                    <div className="bg-[#e3f3ff] p-4 flex gap-4 items-center">
-                      <div className="w-12 h-12 bg-[#004a74] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <BookOpenIcon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-[#004a74] truncate">{set.title}</h3>
-                        <div className="flex items-center mt-1">
-                          <span className="bg-[#004a74]/10 text-[#004a74] px-2 py-0.5 rounded text-xs font-medium">
-                            {set.classCode}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {set.numCards || set.flashcards.length} {(set.numCards === 1 || (!set.numCards && set.flashcards.length === 1)) ? 'card' : 'cards'}
-                          </span>
-                          <span className="text-xs text-rose-500 ml-2 flex items-center">
-                            <HeartIcon className="w-3 h-3 mr-1 fill-rose-500" />
-                            {set.likes || 0} {set.likes === 1 ? 'like' : 'likes'}
-                          </span>
-                        </div>
-                      </div>
+                  key={set.id}
+                  className="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-[#004a74]/20 transition-all cursor-pointer"
+                  onClick={() => viewSet(set.id)}
+                >
+                  <div className="bg-[#e3f3ff] p-4 flex gap-4 items-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-[#004a74] to-[#0074c2] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <BookOpenIcon className="w-6 h-6 text-white" />
                     </div>
-                    
-                    <div className="p-4 bg-white">
-                      {set.description && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{set.description}</p>
-                      )}
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center text-xs text-gray-500">
-                          <UsersIcon className="w-3 h-3 mr-1" />
-                          {set.createdBy ? `Created by ${set.createdBy}` : 
-                           set.username ? `Created by ${set.username}` : 
-                           set.userId ? `User ${set.userId.substring(0, 6)}` : 
-                           'Public set'}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {set.createdAt ? `Created ${formatDate(set.createdAt)}` : ''}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-[#004a74] truncate">{set.title}</h3>
+                      <div className="flex items-center mt-1">
+                        <span className="bg-[#004a74]/10 text-[#004a74] px-2 py-0.5 rounded text-xs font-medium">
+                          {set.classCode}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          {set.numCards || set.flashcards.length} {(set.numCards === 1 || (!set.numCards && set.flashcards.length === 1)) ? 'card' : 'cards'}
+                        </span>
+                        <span className="text-xs text-rose-500 ml-2 flex items-center">
+                          <HeartIcon className="w-3 h-3 mr-1" style={{ fill: '#f43f5e' }} />
+                          {set.likes || 0} {set.likes === 1 ? 'like' : 'likes'}
+                        </span>
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="p-4 bg-white">
+                    {set.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{set.description}</p>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <UsersIcon className="w-3 h-3 mr-1" />
+                        {set.createdBy ? `Created by ${set.createdBy}` : 
+                         set.username ? `Created by ${set.username}` : 
+                         set.userId ? `User ${set.userId.substring(0, 6)}` : 
+                         'Public set'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {set.createdAt ? `Created ${formatDate(set.createdAt)}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 ))}
               </div>
             )}

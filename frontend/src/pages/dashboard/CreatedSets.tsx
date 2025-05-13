@@ -11,12 +11,24 @@ import {
   SearchIcon,
   CheckCircleIcon,
   BookOpenIcon,
-  FolderIcon
+  FolderIcon,
+  Sparkles as SparklesIcon,
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import CreatedSetsHelperModal from '../../components/CreatedSetsHelperModal';
+import EmptyState from '../../components/EmptySateCS';
+import AIGenerateOverlay from '../../components/AIGenerateOverlay';
+
+type Flashcard = {
+  question: string;
+  answer: string;
+  questionImage?: string;
+  answerImage?: string;
+  hasQuestionImage?: boolean;
+  hasAnswerImage?: boolean;
+};
 
 // Enhanced type for Flashcard Set
 type FlashcardSet = {
@@ -40,6 +52,8 @@ const CreatedSets: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
+  const [showAIGenerateOverlay, setShowAIGenerateOverlay] = useState(false);
+
 
   // Fetch created sets when component mounts or user changes
   useEffect(() => {
@@ -104,6 +118,20 @@ const CreatedSets: React.FC = () => {
   // Navigation handlers
   const handleCreateSet = () => navigate('/set-creator');
   const handleSearchSets = () => navigate('/search-sets');
+
+  const handleAIGenerate = (generatedFlashcards: Flashcard[]) => {
+    // Store the generated flashcards in localStorage so SetCreator can access them
+    localStorage.setItem('aiGeneratedFlashcards', JSON.stringify(generatedFlashcards));
+    
+    // Also store a flag to indicate we should scroll to cards
+    localStorage.setItem('shouldScrollToCards', 'true');
+    
+    // Close the overlay
+    setShowAIGenerateOverlay(false);
+    
+    // Navigate to set creator
+    navigate('/set-creator');
+  };
 
   // Handle edit set
   const handleEditSet = (e: React.MouseEvent, set: FlashcardSet) => {
@@ -210,7 +238,7 @@ const CreatedSets: React.FC = () => {
     }).format(date);
   };
 
-// FlashcardSetCard component with optimized animations and updated delete button
+// FlashcardSetCard component with matching styling to SavedSets
 const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
   // Calculate card count
   const cardCount = set.numCards || set.flashcards?.length || 0;
@@ -218,26 +246,28 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
   
   return (
     <div
-      className="bg-white rounded-2xl shadow-md
+      className="bg-white rounded-2xl shadow-md 
       transform-gpu hover:scale-[1.02] hover:-translate-y-1
       hover:shadow-xl
       transition-all duration-300 ease-out relative overflow-hidden 
       cursor-pointer group border border-gray-200
-      hover:border-[#004a74]/50 flex flex-col w-full min-h-[230px]"
+      hover:border-[#004a74]/50 flex flex-col w-full min-h-[250px]"
       onClick={() => navigate(`/study/${set.id}`)}
     >
       {/* Card Header with Status Badge */}
-      <div className={`p-3 flex justify-between items-center border-b ${
+      <div className={`bg-gradient-to-r ${
         set.isPublic 
-          ? "bg-gradient-to-r from-green-50 to-blue-50" 
-          : "bg-gradient-to-r from-gray-50 to-blue-50"
-      }`}>
+          ? "from-green-50 to-green-50" 
+          : "from-blue-50 to-blue-50"
+      } p-4 flex justify-between items-center border-b`}>
         <div className="flex items-center gap-2">
-          <FolderIcon className="w-4 h-4 text-[#004a74]" />
-          <div className="text-xs font-medium text-[#004a74]">Flashcard Set</div>
+          <FolderIcon className="w-5 h-5 text-[#004a74]" />
+          <div className="text-sm font-medium text-[#004a74]">
+            {set.isPublic ? "Public Set" : "Private Set"}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+          <span className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${
             set.isPublic 
               ? "bg-green-100 text-green-800" 
               : "bg-gray-100 text-gray-700"
@@ -251,30 +281,32 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
       </div>
       
       {/* Card content */}
-      <div className="p-4 flex-grow flex flex-col">
+      <div className="p-5 flex-grow flex flex-col">
         <div className="flex-grow">
-          <h3 className="text-lg font-bold text-[#004a74] mb-2.5 line-clamp-2 transition-colors duration-300">
+          <h3 className="text-xl font-bold text-[#004a74] mb-3 line-clamp-2 transition-colors duration-300">
             {set.title}
           </h3>
           
-          <div className="px-2.5 py-1.5 bg-blue-50 rounded-lg inline-block mb-3">
-            <span className="text-xs font-medium text-[#004a74]">{set.classCode}</span>
-          </div>
+          {set.classCode && (
+            <div className="px-3 py-2 bg-blue-50 rounded-lg inline-block mb-4">
+              <span className="text-sm font-medium text-[#004a74]">{set.classCode}</span>
+            </div>
+          )}
           
           {/* Stats row */}
-          <div className="flex flex-wrap gap-3 mt-2">
+          <div className="flex flex-wrap gap-4 mt-2">
             {/* Cards count */}
-            <div className="bg-white border border-blue-100 rounded-lg px-2.5 py-1 flex items-center">
-              <BookOpenIcon className="w-3.5 h-3.5 mr-1.5 text-[#004a74]" />
-              <span className="text-xs font-medium text-gray-700">
+            <div className="bg-white border border-blue-100 rounded-lg px-3 py-1.5 flex items-center">
+              <BookOpenIcon className="w-4 h-4 mr-2 text-[#004a74]" />
+              <span className="text-sm font-medium text-gray-700">
                 {cardCount} {cardCount === 1 ? 'card' : 'cards'}
               </span>
             </div>
             
             {/* Likes count */}
-            <div className="bg-white border border-rose-100 rounded-lg px-2.5 py-1 flex items-center">
-              <HeartIcon className={`w-3.5 h-3.5 mr-1.5 ${likeCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}`} />
-              <span className="text-xs font-medium text-gray-700">
+            <div className="bg-white border border-rose-100 rounded-lg px-3 py-1.5 flex items-center">
+              <HeartIcon className={`w-4 h-4 mr-2 ${likeCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}`} />
+              <span className="text-sm font-medium text-gray-700">
                 {likeCount} {likeCount === 1 ? 'like' : 'likes'}
               </span>
             </div>
@@ -282,84 +314,35 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
         </div>
         
         {set.createdAt && (
-          <div className="text-xs text-gray-500 mt-3">
+          <div className="text-xs text-gray-500 mt-4">
             Created: {formatDate(set.createdAt)}
           </div>
         )}
       </div>
       
       {/* Action buttons footer */}
-      <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] p-3 flex justify-between items-center 
+      <div className="bg-gradient-to-r from-[#004a74] to-[#0060a1] p-4 flex justify-between items-center 
         transition-colors duration-300 group-hover:from-[#00395c] group-hover:to-[#0074c2]">
-        <div className="text-white text-xs font-medium flex items-center gap-1.5">
-          <BookOpenIcon className="w-3.5 h-3.5 group-hover:animate-pulse" />
+        <div className="text-white text-sm font-medium flex items-center gap-2">
+          <BookOpenIcon className="w-4 h-4 group-hover:animate-pulse" />
           <span>Click to study</span>
         </div>
-        <div className="flex gap-1.5">
+        
+        <div className="flex items-center gap-2">
           <button 
             onClick={(e) => handleEditSet(e, set)}
-            className="bg-white/90 text-[#004a74] p-1.5 rounded-lg hover:bg-white transition-colors duration-150"
+            className="bg-white/90 text-[#004a74] p-2 rounded-lg hover:bg-white transition-colors duration-150"
             aria-label="Edit set"
           >
-            <Edit3Icon className="w-4 h-4" />
+            <Edit3Icon className="w-5 h-5" />
           </button>
           
-          {/* Updated Delete Button - Animation only on hover of this button */}
           <button 
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent card click event
-              confirmDelete(e, set.id);
-            }}
-            className="group/delete relative flex h-8 w-8 flex-col items-center justify-center overflow-hidden rounded-lg 
-              bg-white/90 hover:bg-white transition-colors duration-150"
+            onClick={(e) => confirmDelete(e, set.id)}
+            className="bg-white/90 text-red-500 p-2 rounded-lg hover:bg-white transition-colors duration-150"
             aria-label="Delete set"
           >
-            <svg
-              viewBox="0 0 1.625 1.625"
-              className="absolute -top-7 fill-red-500 delay-100 group-hover/delete:top-3.5 group-hover/delete:animate-[spin_1.4s] group-hover/delete:duration-1000"
-              height="8"
-              width="8"
-            >
-              <path
-                d="M.471 1.024v-.52a.1.1 0 0 0-.098.098v.618c0 .054.044.098.098.098h.487a.1.1 0 0 0 .098-.099h-.39c-.107 0-.195 0-.195-.195"
-              ></path>
-              <path
-                d="M1.219.601h-.163A.1.1 0 0 1 .959.504V.341A.033.033 0 0 0 .926.309h-.26a.1.1 0 0 0-.098.098v.618c0 .054.044.098.098.098h.487a.1.1 0 0 0 .098-.099v-.39a.033.033 0 0 0-.032-.033"
-              ></path>
-              <path
-                d="m1.245.465-.15-.15a.02.02 0 0 0-.016-.006.023.023 0 0 0-.023.022v.108c0 .036.029.065.065.065h.107a.023.023 0 0 0 .023-.023.02.02 0 0 0-.007-.016"
-              ></path>
-            </svg>
-            <svg
-              width="10"
-              fill="none"
-              viewBox="0 0 39 7"
-              className="origin-right duration-500 group-hover/delete:rotate-90"
-            >
-              <line stroke-width="4" stroke="red" y2="5" x2="39" y1="5"></line>
-              <line
-                stroke-width="3"
-                stroke="red"
-                y2="1.5"
-                x2="26.0357"
-                y1="1.5"
-                x1="12"
-              ></line>
-            </svg>
-            <svg width="10" fill="none" viewBox="0 0 33 39">
-              <mask fill="white" id="path-1-inside-1_8_19">
-                <path
-                  d="M0 0H33V35C33 37.2091 31.2091 39 29 39H4C1.79086 39 0 37.2091 0 35V0Z"
-                ></path>
-              </mask>
-              <path
-                mask="url(#path-1-inside-1_8_19)"
-                fill="red"
-                d="M0 0H33H0ZM37 35C37 39.4183 33.4183 43 29 43H4C-0.418278 43 -4 39.4183 -4 35H4H29H37ZM4 43C-0.418278 43 -4 39.4183 -4 35V0H4V35V43ZM37 0V35C37 39.4183 33.4183 43 29 43V35V0H37Z"
-              ></path>
-              <path stroke-width="4" stroke="red" d="M12 6L12 29"></path>
-              <path stroke-width="4" stroke="red" d="M21 6V29"></path>
-            </svg>
+            <TrashIcon className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -367,62 +350,17 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
   );
 };
 
-  const EmptyState = () => (
-    <div className="flex items-center justify-center min-h-[calc(100vh-32rem)] py-8 w-full">
-      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-12 shadow-xl max-w-lg w-full text-center border border-blue-100">
-        <div className="relative mb-10">
-          <BookIcon className="mx-auto w-28 h-28 text-[#004a74] relative z-10" />
-        </div>
-        <h2 className="text-3xl font-bold text-[#004a74] mb-4">
-          No Flashcard Sets Yet
-        </h2>
-        <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-          Create your first set to start studying or find existing sets from your classmates.
-        </p>
-        
-        {/* Get started steps */}
-        <div className="mb-8 text-left">
-          <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
-            <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
-              <PlusIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-md font-semibold text-[#004a74]">Create a Set</h3>
-              <p className="text-sm text-gray-600">Make personalized flashcards for your classes</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
-            <div className="bg-[#004a74] text-white rounded-full p-2 flex-shrink-0">
-              <SearchIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-md font-semibold text-[#004a74]">Find Sets</h3>
-              <p className="text-sm text-gray-600">Search for sets created by others</p>
-            </div>
-          </div>
-        </div>
-  
-        {/* Button group */}
-        <div className="mx-auto flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button
-            onClick={handleCreateSet}
-            className="flex items-center justify-center gap-2 bg-[#004a74] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#00659f] active:scale-[0.98] transition-all shadow-md text-lg w-full"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Set</span>
-          </button>
-          <button
-            onClick={handleSearchSets}
-            className="flex items-center justify-center gap-2 bg-white text-[#004a74] font-bold py-3 px-6 rounded-xl border-2 border-[#004a74] hover:bg-[#e6f2fa] active:scale-[0.98] transition-all shadow-md text-lg w-full"
-          >
-            <SearchIcon className="w-5 h-5" />
-            <span>Find Sets</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+// … inside CreatedSets.tsx
+
+{sets.length > 0 ? (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+    {sets.map((set) => (
+      <FlashcardSetCard key={set.id} set={set} />
+    ))}
+  </div>
+) : (
+  <EmptyState onShowAIGenerateOverlay={() => setShowAIGenerateOverlay(true)} />
+)}
 
 
   // Delete confirmation modal
@@ -647,21 +585,29 @@ const FlashcardSetCard = ({ set }: { set: FlashcardSet }) => {
 
           {/* Show grid of sets or empty state */}
           {sets.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
-              {sets.map((set) => (
-                <FlashcardSetCard key={set.id} set={set} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState />
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+          {sets.map((set) => (
+            <FlashcardSetCard key={set.id} set={set} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState onShowAIGenerateOverlay={() => setShowAIGenerateOverlay(true)} />
+      )}
 
           {/* Modals */}
           {showHelper && <CreatedSetsHelperModal setShowHelper={setShowHelper} />}
           {showDeleteModal && <DeleteModal />}
+          {/* AI Generate Overlay */}
+      {showAIGenerateOverlay && (
+        <AIGenerateOverlay 
+          onClose={() => setShowAIGenerateOverlay(false)}
+          onGenerate={handleAIGenerate}
+        />
+      )}
+        </div>
         </div>
       </div>
-    </div>
+
   );
 };
 

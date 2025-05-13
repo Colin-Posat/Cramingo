@@ -215,9 +215,9 @@ const PopularSets: React.FC = () => {
             onClick={() => viewSet(set.id)}
             className="flex items-start border border-gray-100 rounded-xl p-3 hover:bg-[#e3f3ff]/30 transition-colors cursor-pointer"
           >
-            <div className="w-10 h-10 bg-[#004a74] rounded-lg flex items-center justify-center flex-shrink-0 mr-3">
-              <BookOpenIcon className="w-5 h-5 text-white" />
-            </div>
+            <div className="w-10 h-10 bg-gradient-to-r from-[#004a74] to-[#0074c2] rounded-lg flex items-center justify-center flex-shrink-0 mr-3">
+      <BookOpenIcon className="w-6 h-6 text-white" />
+    </div>
             
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-[#004a74] truncate">{set.title}</h3>

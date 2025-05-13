@@ -54,12 +54,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const MIN_FLASHCARDS = 5;
   const MAX_FLASHCARDS = 50;
 
-  // Auto-focus textarea
-  useEffect(() => {
-    if (!uploadedFile && notesRef.current && !isParsing && !isGenerating) {
-      notesRef.current.focus();
-    }
-  }, [uploadedFile, isParsing, isGenerating]);
+
 
   // Detect if device is mobile
   useEffect(() => {
@@ -75,12 +70,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
     };
   }, []);
 
-  // Modified auto-focus code to skip on mobile
-  useEffect(() => {
-    if (!isMobile && !uploadedFile && notesRef.current && !isParsing && !isGenerating) {
-      notesRef.current.focus();
-    }
-  }, [uploadedFile, isParsing, isGenerating, isMobile]);
+
 
   
 

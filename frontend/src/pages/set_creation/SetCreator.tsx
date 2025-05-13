@@ -249,7 +249,6 @@ const duplicateFlashcard = (index: number) => {
     }
   };
 
-  // Fetch class codes and check for editing mode on component mount
   useEffect(() => {
     fetchClassCodes();
     
@@ -259,8 +258,61 @@ const duplicateFlashcard = (index: number) => {
         console.log('No authenticated user found, redirecting to landing page');
         navigate('/');
       } else {
-        // Only check for editing mode if user is authenticated
-        checkForEditingMode();
+        // First check if there are AI generated flashcards
+        const aiGeneratedCards = localStorage.getItem('aiGeneratedFlashcards');
+        if (aiGeneratedCards) {
+          try {
+            const parsedCards = JSON.parse(aiGeneratedCards) as Flashcard[];
+            
+            // Make sure AI-generated cards have image properties
+            const processedFlashcards = parsedCards.map(card => ({
+              ...card,
+              hasQuestionImage: !!card.questionImage,
+              hasAnswerImage: !!card.answerImage
+            }));
+            
+            setFlashcards(processedFlashcards);
+            
+            // Show generation success notification
+            setGeneratedCardsCount(processedFlashcards.length);
+            setShowGenerationSuccess(true);
+            setTimeout(() => {
+              setShowGenerationSuccess(false);
+            }, 3000);
+            
+            // Clear the localStorage
+            localStorage.removeItem('aiGeneratedFlashcards');
+            
+            // Check for the scroll flag
+            const shouldScroll = localStorage.getItem('shouldScrollToCards') === 'true';
+            if (shouldScroll) {
+              localStorage.removeItem('shouldScrollToCards');
+              
+              // Scroll to the cards section after a brief delay
+              setTimeout(() => {
+                if (cardsContainerRef.current) {
+                  cardsContainerRef.current.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                  });
+                  
+                  // Optional - focus on the first card's question textarea
+                  setTimeout(() => {
+                    const questionTextareas = document.querySelectorAll('textarea[placeholder*="question"]');
+                    if (questionTextareas && questionTextareas.length > 0) {
+                      (questionTextareas[0] as HTMLTextAreaElement).focus();
+                    }
+                  }, 300);
+                }
+              }, 500);
+            }
+          } catch (error) {
+            console.error("Error parsing AI generated flashcards:", error);
+          }
+        } else {
+          // Only check for editing mode if there are no AI generated cards
+          checkForEditingMode();
+        }
       }
     }
   }, [navigate, loading, isAuthenticated, user]);
@@ -743,6 +795,10 @@ const moveCardDown = (index: number) => {
       saveFlashcardSet(false);
       setShowExitModal(false);
     }
+    else{
+      setShowExitModal(false);
+
+    }
   };
 
   const handleExitWithoutSaving = () => {
@@ -760,8 +816,7 @@ const moveCardDown = (index: number) => {
     card.hasAnswerImage
   );
 
-  // Handler for AI Generated Flashcards
-  const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[], shouldScroll: boolean = false) => {
+  const handleAIGeneratedFlashcards = (generatedFlashcards: Flashcard[]) => {
     // Make sure AI-generated cards have image properties
     const processedFlashcards = generatedFlashcards.map(card => ({
       ...card,
@@ -789,23 +844,35 @@ const moveCardDown = (index: number) => {
     // Show the success notification
     setShowGenerationSuccess(true);
     
-    // Auto-hide the notification after 4 seconds
+    // Auto-hide the notification after 3 seconds
     setTimeout(() => {
       setShowGenerationSuccess(false);
-    }, 1000);
+    }, 3000);
     
-    // If shouldScroll is true, scroll to the cards container
-    if (shouldScroll) {
-      // We need a slight delay to ensure the DOM has updated
-      setTimeout(() => {
-        if (cardsContainerRef.current) {
-          cardsContainerRef.current.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start'
-          });
-        }
-      }, 200);
-    }
+    // Scroll to the cards container after a brief delay
+    setTimeout(() => {
+      if (cardsContainerRef.current) {
+        cardsContainerRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+        
+        // Focus on the first newly added card's question field
+        setTimeout(() => {
+          const questionTextareas = document.querySelectorAll('textarea[placeholder*="question"]');
+          const startIndex = currentFlashcards.length; // Index of first new card
+          
+          if (questionTextareas && questionTextareas.length > startIndex) {
+            const textareaToFocus = questionTextareas[startIndex] as HTMLTextAreaElement;
+            textareaToFocus.focus();
+            
+            // Optional: Move cursor to the end of existing text
+            const length = textareaToFocus.value.length;
+            textareaToFocus.setSelectionRange(length, length);
+          }
+        }, 300);
+      }
+    }, 500);
   };
 
   // Show loading state while auth context is loading

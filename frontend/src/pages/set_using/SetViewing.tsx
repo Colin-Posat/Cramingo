@@ -16,7 +16,9 @@ import {
   Search as SearchIcon,
   Download as DownloadIcon,
   Share2 as Share2Icon,
-  Printer as PrinterIcon
+  Printer as PrinterIcon,
+  Users as UsersIcon,
+  Clock as ClockIcon,
 } from 'lucide-react';
 import NavBar from '../../components/NavBar';
 import { API_BASE_URL } from '../../config/api';
@@ -31,6 +33,9 @@ interface SaveSuccessNotificationProps {
   onClose: () => void;
   navigateToSavedSets: () => void;
 }
+
+
+
 
 const EnhancedSaveSuccessNotification: React.FC<SaveSuccessNotificationProps> = ({ 
   show, 
@@ -162,6 +167,10 @@ type FlashcardSet = {
   isDerived?: boolean;
   originalSetId?: string;
   likes?: number;
+  username?: string;
+  createdBy?: string;
+  originalCreatorId?: string;
+  originalCreatorUsername?: string;
 };
 
 const SetViewingPage: React.FC = () => {
@@ -594,6 +603,7 @@ const SetViewingPage: React.FC = () => {
         
         {/* Set Info Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6 border border-gray-200 hover:border-[#004a74]/20 transition-all">
+
           {/* Header */}
           <div className="bg-gradient-to-r from-[#004a74] to-[#0074c2] text-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
