@@ -1,3 +1,6 @@
+// The main change is in the CSS styles that handle the flip animation
+// Look for the updated flip-card styles in the useEffect hook
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +40,8 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
   const [isShuffling, setIsShuffling] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [showKeyboardHint, setShowKeyboardHint] = useState(true);
+  // Add a state to track initial load to prevent animation stutter
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // State for standalone mode
   const [loading, setLoading] = useState(false);
@@ -110,8 +115,34 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
           box-shadow: 0 8px 14px 0 rgba(0,0,0,0.1);
         }
         
+        /* NEW: Add fade effect when flipping */
+        .flip-card-front {
+          opacity: 1;
+        }
+        
+        .ready-for-animation .flip-card-front {
+          transition: opacity 0.3s ease;
+        }
+        
+        .flip-card.flipped .flip-card-front {
+          opacity: 0;
+        }
+        
         .flip-card-back {
           transform: rotateY(180deg) translateZ(0);
+          opacity: 0;
+        }
+        
+        .ready-for-animation .flip-card-back {
+          transition: opacity 0.3s ease;
+        }
+        
+        .flip-card.flipped .flip-card-back {
+          opacity: 1;
+        }
+        
+        .ready-for-animation.flip-card.flipped .flip-card-back {
+          transition: opacity 0.3s ease 0.3s; /* Delay the fade-in until rotation starts */
         }
         
         /* Card container styling */
@@ -165,6 +196,16 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
             box-shadow: 0 0 0 0 rgba(0, 74, 116, 0); 
             opacity: 0;
           }
+        }
+        
+        /* Added fade animation for card content */
+        @keyframes contentFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .flip-card-content {
+          animation: contentFadeIn 0.4s ease-out;
         }
         
         /* Image modal animations */
@@ -229,6 +270,11 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
     setLocalFlashcards([...cards]);
     setCurrentIndex(0);
     setIsFlipped(false);
+    
+    // Set a small timeout to handle the initial load state
+    setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
   }, [propFlashcards, flashcardSet.flashcards]);
 
   // Keyboard event handler
@@ -496,9 +542,9 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
         </div>
       </div>
 
-      {/* Updated Flashcard Implementation with New Flip Animation */}
+      {/* Updated Flashcard Implementation with New Flip and Fade Animation */}
       <div className="w-full max-w-4xl mb-8 mx-auto">
-        <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
+        <div className={`flip-card ${isFlipped ? 'flipped' : ''} ${!isInitialLoad ? 'ready-for-animation' : ''}`}>
           <div className="flip-card-inner">
             {/* Front Side (Question) */}
             <div 
@@ -511,7 +557,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
                 Click to flip
               </div>
 
-              <div className="w-full flex flex-col items-center gap-4 mt-6">
+              <div className={`w-full flex flex-col items-center gap-4 mt-6 ${!isInitialLoad ? 'flip-card-content' : ''}`}>
                 {/* Question Image */}
                 {currentCard.questionImage && (
                   <div className="relative w-full max-w-md">
@@ -557,7 +603,7 @@ const FlashcardViewMode: React.FC<FlashcardViewModeProps> = ({ flashcards: propF
                 Click to flip
               </div>
 
-              <div className="w-full flex flex-col items-center gap-4 mt-6">
+              <div className={`w-full flex flex-col items-center gap-4 mt-6 ${!isInitialLoad ? 'flip-card-content' : ''}`}>
                 {/* Answer Image */}
                 {currentCard.answerImage && (
                   <div className="relative w-full max-w-md">

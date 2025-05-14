@@ -701,33 +701,7 @@ const inputContainerRef = useRef<HTMLDivElement>(null);
                 ))}
               </div>
             </section>
-            
-            {/* Stats Bar */}
-            <section className="w-full max-w-5xl mx-auto mb-20 px-4 overflow-hidden">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 border border-white/20">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                  {[
-                    { number: "10,000+", label: "Active Students", icon: <Users className="w-6 h-6" /> },
-                    { number: "50,000+", label: "Flashcards Created", icon: <BookOpen className="w-6 h-6" /> },
-                    { number: "95%", label: "Better Grades", icon: <Award className="w-6 h-6" /> },
-                    { number: "2.5 hrs", label: "Time Saved Per Week", icon: <Zap className="w-6 h-6" /> }
-                  ].map((stat, index) => (
-                    <div 
-                      key={index} 
-                      className="flex flex-col items-center text-center group"
-                    >
-                      <div className="text-cyan-300 mb-2 transform transition-transform duration-500 group-hover:scale-125 group-hover:rotate-12">
-                        {stat.icon}
-                      </div>
-                      <div className="text-white text-3xl font-bold animate-count-up">
-                        {stat.number}
-                      </div>
-                      <div className="text-white/60 text-sm mt-1">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
+
           {/* Final CTA - Updated with "Create an account for free" text */}
 <section id="finalCta" ref={finalCtaRef} className="w-full max-w-4xl mx-auto mt-10 mb-20 px-6">
   <div 
