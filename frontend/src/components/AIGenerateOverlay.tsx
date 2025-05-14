@@ -87,9 +87,9 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
       return 'Only PDF files are supported';
     }
     
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 30 * 1024 * 1024; // 10MB
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size exceeds the 10MB limit';
+      return 'File size exceeds the 30MB limit';
     }
     
     return null;

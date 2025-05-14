@@ -262,8 +262,16 @@ export const generateFlashcards = async (req: Request, res: Response) => {
             .replace(/^Evaluate /i, 'What is the value of ');
           
           // Add question mark if missing
-          if (!cleanQuestion.endsWith('?')) {
-            cleanQuestion += '?';
+          if (cleanQuestion.match(/^(what|where|when|why|who|how|which|is|are|can|could|do|does|did|will|should|would|may|might)/i)) {
+            // It's likely a question - add question mark if missing
+            if (!cleanQuestion.endsWith('?')) {
+              cleanQuestion = cleanQuestion.replace(/\.$/, '') + '?';
+            }
+          } else {
+            // It's likely a statement - add period if missing
+            if (!cleanQuestion.endsWith('.')) {
+              cleanQuestion = cleanQuestion.replace(/\?$/, '') + '.';
+            }
           }
           
           return {
