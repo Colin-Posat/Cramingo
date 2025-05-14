@@ -50,7 +50,7 @@ const AIGenerateOverlay: React.FC<AIGenerateOverlayProps> = ({ onClose, onGenera
   const { user, isAuthenticated } = useAuth();
   
   const MIN_CHARACTERS = 100;
-  const MAX_CHARACTERS = 30000;
+  const MAX_CHARACTERS = 40000;
   const MIN_FLASHCARDS = 5;
   const MAX_FLASHCARDS = 50;
 
