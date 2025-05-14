@@ -114,27 +114,35 @@ export const generateFlashcards = async (req: Request, res: Response) => {
           content: `You are an expert educator helping to create high-quality, concise flashcards from study notes.
           
     Guidelines for creating flashcards:
-    - Generate clear, highly concise, and educational flashcards
+    - Generate clear, highly informative flashcards with FULL CONTEXT in every question
+    - CRITICAL: NEVER include the answer or hints to the answer within the question itself
+    - NO PART of the answer should ever appear anywhere in the question
+    - NEVER include point values, expected answers, or solution notes in the question
+    - QUESTIONS MUST ASK FOR THE ANSWER, not instruct how to find it
+    - Questions should be phrased to directly ask for information (e.g., "What is X?" not "Calculate X")
     - Create test-like questions focusing on:
-      * Fill-in-the-blank prompts with single terms
-      * Brief, direct recall questions 
-      * Key concept identification
-    - Keep answers extremely concise (1-2 sentences maximum)
+      * Fill-in-the-blank prompts with necessary context
+      * Direct recall questions with complete reference information
+      * Key concept identification with sufficient background
+    - CRITICAL: Include ALL necessary context in the question - don't refer to content without showing it
+    - For code examples, ALWAYS include the relevant code snippet in the question, but NEVER show the output/result
+    - Keep answers concise (1-2 sentences maximum)
     - Use bullet points for multi-part answers
-    - Remove unnecessary words and focus only on essential information
+    - Remove unnecessary words while ensuring ALL ESSENTIAL CONTEXT remains
     - Generate EXACTLY the specified number of flashcards requested
     - ALWAYS provide proper context when mentioning specialized concepts, rules, or formulas
       * For scientific concepts, include relevant equations or conditions
       * For historical events, include approximate dates or time periods
       * For processes or methods, include key steps or components
       * For relationships between concepts, clearly specify how they connect
-      - For problems requiring calculations or specific data:
-        * Always include all necessary information in the question to solve the problem
-        * For physics problems, include relevant measurements, units, and conditions
-        * For math problems, include all variables and constraints needed to work out the solution
-        * For chemistry problems, include concentrations, temperatures, or other relevant parameters
-        * Never separate crucial data from the question that would be needed to arrive at the answer
-      
+      * For code-related questions, include the specific code being referenced
+    - For problems requiring calculations or specific data:
+      * Always include all necessary information in the question to solve the problem
+      * For physics problems, include relevant measurements, units, and conditions
+      * For math problems, include all variables and constraints needed to work out the solution
+      * For chemistry problems, include concentrations, temperatures, or other relevant parameters
+      * Never separate crucial data from the question that would be needed to arrive at the answer
+      * For code evaluation questions, include the COMPLETE code block being referenced
     
     Output Format: 
     Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
@@ -142,8 +150,8 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     Example:
     [
       {
-        "question": "The process of converting light energy to chemical energy in plants is called ___.",
-        "answer": "photosynthesis"
+        "question": "In the code 'const x = 5; const y = 10; console.log(x < y);', what will be logged to the console?",
+        "answer": "true"
       }
     ]`
         },
@@ -154,32 +162,61 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     
     IMPORTANT: 
     - Generate EXACTLY ${targetCount} flashcards, no more and no less
-    - Whenever you reference specialized concepts, rules, or terminology, 
-    ALWAYS include proper context and explanation.
+    - NEVER reference content without including it directly in the question
+    - NEVER include the answer in the question text - not even part of it
+    - NEVER include point values, scoring information, or expected answers in the question
+    - REMOVE any text like "(1 point for X)" or "answer: Y" from the question
+    - Questions should directly ASK for information, not INSTRUCT how to find it
+    - For code questions, ALWAYS include the specific code snippet being referenced, but NEVER show the result
+    - Word limits are flexible if more words are needed to provide sufficient context
     
     For example:
-    - Instead of just "Apply Boyle's Law", say "Apply Boyle's Law (P₁V₁ = P₂V₂ at constant temperature) to predict the new volume"
-    - Instead of just "This shows cognitive dissonance", say "This shows cognitive dissonance (psychological stress from holding contradictory beliefs)"
-    - Instead of just "This uses PCR technique", say "This uses PCR (Polymerase Chain Reaction) technique to amplify DNA sequences"
-    - Instead of just "During the Renaissance period", say "During the Renaissance period (14th-17th centuries in Europe)"
+    - INCORRECT: "What is the result on line 3?" (missing code)
+    - CORRECT: "In the code 'x = 5; y = 2; console.log(x > y);', what will be logged to the console?"
     
-    - When creating flashcards for problems with calculations or specific data:
-      * Instead of "Calculate the force", say "Calculate the force when a 5kg object accelerates at 2m/s²"
-      * Instead of "Find the concentration", say "Find the concentration when 20g of NaCl is dissolved in 500mL of water"
-      * Instead of "What is the derivative?", say "What is the derivative of f(x) = 3x² + 2x - 5?"
-      * Instead of "Calculate the economic growth", say "Calculate the economic growth rate when GDP increases from $2.1T to $2.3T in one year"
-      * NEVER omit data from the question that would be needed to understand or calculate the answer
-
+    - INCORRECT: "What is the result when 5 > 2?" (contains answer)
+    - CORRECT: "Is the expression '5 > 2' true or false?"
+    
+    - INCORRECT: "What is the value of x? x = 5 + 10*10 // 10**2, 6 (1 point for 6.0)" (includes answer and point value)
+    - CORRECT: "What is the value of x in the equation: x = 5 + 10*10 // 10**2?"
+    
+    - INCORRECT: "Calculate the number of members playing only one sport" (gives instruction, not question)
+    - CORRECT: "How many members play exactly one of the three sports offered by the club?"
+    
+    - INCORRECT: "Apply Boyle's Law to solve the problem"
+    - CORRECT: "Apply Boyle's Law (P₁V₁ = P₂V₂ at constant temperature) to calculate the final volume when pressure increases from 2atm to 4atm"
+    
+    - When creating flashcards for code or specific references:
+      * BAD: "What happens on line 3?" (doesn't show the code)
+      * GOOD: "What is output when this code runs: 'let x = 5; let y = '5'; console.log(x == y);'?"
+      * BAD: "Is the statement on page 42 true?" (doesn't show the statement)
+      * GOOD: "Is the statement 'Mitochondria contain their own circular DNA molecules' true or false?"
+      * BAD: "The comparison 'let x = 5; let y = '5'; console.log(x == y);' yields true" (includes answer)
+      * GOOD: "What will this code return: 'let x = 5; let y = '5'; console.log(x == y);'?"
+      * BAD: "Calculate x = 5 + 3*4, answer: 17" (includes answer)
+      * GOOD: "What is the value of x: x = 5 + 3*4?"
+      * BAD: "What is the value of x? x = 10 // 2, 5 points" (includes answer and points)
+      * GOOD: "What is the value of x in this expression: x = 10 // 2?"
+      * BAD: "Find the derivative of f(x) = x² + 2x" (instruction, not question)
+      * GOOD: "What is the derivative of f(x) = x² + 2x?"
+      * BAD: "Solve for the equilibrium price when supply is S = 2p and demand is D = 10 - p" (instruction)
+      * GOOD: "What is the equilibrium price when supply is S = 2p and demand is D = 10 - p?"
+    
     FORMATTING REQUIREMENTS:
-    - Questions must be under 15 words whenever possible
-    - Answers must be under 20 words whenever possible
+    - Questions must be complete with ALL necessary context
+    - Questions must NEVER contain the answer or any part of it
+    - REMOVE all point values, grading notes, or "answer: X" text from questions
+    - Questions should ASK for information, not INSTRUCT how to find it (use "What is" not "Calculate")
+    - Include ALL relevant code, equations, or references directly in the question
+    - Answers should be under 30 words whenever possible
     - Use concise terminology and remove filler words
     - For multi-part answers, use brief bullet points
     
     Focus on concepts that would most likely appear on an exam, including:
-    - Essential definitions (single term preferred)
+    - Essential definitions (with proper context)
     - Critical formulas (in their most compact form)
     - Key relationships between concepts (expressed concisely)
+    - Code evaluation (with complete code snippets)
     
     Respond ONLY with a JSON array of EXACTLY ${targetCount} flashcard objects. Ensure each has a 'question' and 'answer' key.`
         }
@@ -204,6 +241,38 @@ export const generateFlashcards = async (req: Request, res: Response) => {
       if (!Array.isArray(flashcards)) {
         throw new Error('Invalid response format');
       }
+      
+      // Additional cleanup to remove any answers that might be in the questions
+      flashcards = flashcards.map((card: any) => {
+        if (typeof card.question === 'string' && typeof card.answer === 'string') {
+          // Remove any instances of the answer in the question
+          let cleanQuestion = card.question
+            .replace(/\(\d+ points?\)/gi, '') // Remove point values
+            .replace(/\(\d+ points? for [^)]+\)/gi, '') // Remove "points for X" notes
+            .replace(/answer:\s*[^,\n]+/gi, '') // Remove "answer: X" text
+            .trim();
+          
+          // Convert instructional phrases to questions
+          cleanQuestion = cleanQuestion
+            .replace(/^Calculate /i, 'What is ')
+            .replace(/^Find /i, 'What is ')
+            .replace(/^Determine /i, 'What is ')
+            .replace(/^Solve /i, 'What is the solution for ')
+            .replace(/^Compute /i, 'What is ')
+            .replace(/^Evaluate /i, 'What is the value of ');
+          
+          // Add question mark if missing
+          if (!cleanQuestion.endsWith('?')) {
+            cleanQuestion += '?';
+          }
+          
+          return {
+            ...card,
+            question: cleanQuestion
+          };
+        }
+        return card;
+      });
     } catch (parseError) {
       console.error('Parsing error:', responseText);
       return res.status(500).json({
