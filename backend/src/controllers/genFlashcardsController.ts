@@ -284,7 +284,7 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     } catch (parseError) {
       console.error('Parsing error:', responseText);
       return res.status(500).json({
-        message: 'Failed to parse AI response',
+        message: 'Failed to parse AI response. Please try again.',
         error: parseError instanceof Error ? parseError.message : 'Unknown error',
         rawResponse: responseText
       });
