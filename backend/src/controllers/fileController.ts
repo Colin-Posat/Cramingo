@@ -101,24 +101,30 @@ export const parsePdf = async (req: Request, res: Response): Promise<void> => {
     } catch (pdfError) {
       console.error('Error parsing PDF:', pdfError);
       
-      // Provide more detailed error information
-      let errorMessage = 'Failed to parse PDF file.';
+      // Get the error message
+      const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown error';
       
-      if (pdfError instanceof Error) {
-        console.error('PDF error details:', {
-          name: pdfError.name,
-          message: pdfError.message,
-          stack: pdfError.stack
+      // Check if it's a size-related error
+      const isSizeError = 
+        errorMessage.toLowerCase().includes('size') || 
+        errorMessage.toLowerCase().includes('large') ||
+        errorMessage.toLowerCase().includes('limit') ||
+        errorMessage.toLowerCase().includes('memory');
+      
+      if (isSizeError) {
+        // For size errors, inform about the size limit
+        res.status(400).json({
+          message: 'The PDF file exceeds the maximum allowed size of 10MB. Please upload a smaller file.',
+          error: errorMessage
         });
-        
-        // Include the actual error message for troubleshooting
-        errorMessage += ' ' + pdfError.message;
+      } else {
+        // For all other parsing errors, include a try again message
+        res.status(400).json({
+          message: 'Failed to parse PDF file. Please try uploading again.',
+          error: errorMessage,
+          action: 'retry'
+        });
       }
-      
-      res.status(400).json({
-        message: errorMessage,
-        error: pdfError instanceof Error ? pdfError.message : 'Unknown error'
-      });
     } finally {
       // Clean up: delete the uploaded file after processing
       try {
@@ -129,9 +135,20 @@ export const parsePdf = async (req: Request, res: Response): Promise<void> => {
     }
   } catch (error) {
     console.error('Error handling PDF upload:', error);
-    res.status(500).json({
-      message: 'Failed to process PDF file',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    
+    // Check if it's a multer error (which includes size limits)
+    if (error instanceof Error && error.name === 'MulterError' && error.message.includes('limit')) {
+      res.status(400).json({
+        message: 'The PDF file exceeds the maximum allowed size of 10MB. Please upload a smaller file.',
+        error: error.message
+      });
+    } else {
+      // For general server errors, also suggest trying again
+      res.status(500).json({
+        message: 'Failed to process PDF file. Please try again later.',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        action: 'retry'
+      });
+    }
   }
 };
