@@ -365,271 +365,284 @@ const Landing: React.FC = () => {
         
         {/* Content Container */}
         <div className="container mx-auto px-4 flex-grow flex flex-col pt-28 pb-12">
-          {/* Hero Section - Now with two columns for video and search */}
+          {/* Hero Section - Modified layout with title and search on left, video on right */}
           <main className="flex-1 flex flex-col justify-center items-center">
-            <section className="max-w-6xl mx-auto mb-8 text-center">
-              <div className="relative z-10 animate-slideDown">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-5 leading-tight">
-              <span className="inline-block animate-fadeIn">
-                Cram Smarter with
-              </span>
-              <div className="block mt-2 animate-pop">
-                <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">
-                  Cramingo
-                </span>
-                <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-40 md:w-72 h-3 bg-gradient-to-r from-blue-400 to-cyan-300 opacity-30 blur-sm animate-pulse"></span>
-              </div>
-            </h1>
-                <p className="text-lg md:text-xl text-white/80 mb-6 max-w-2xl mx-auto leading-relaxed animate-fadeIn animation-delay-200">
-                  Create and find perfect flashcards in seconds with AI.
-                </p>
-              </div>
+            <section className="max-w-6xl mx-auto mb-8 text-center lg:text-left w-full">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 justify-between">
+                {/* Left Column: Title + Search */}
+                <div className="w-full lg:w-1/2 flex flex-col lg:pr-8">
+                  {/* Title Section */}
+                  <div className="relative z-10 animate-slideDown mb-8">
+                    <h1 className="text-5xl md:text-6xl font-bold text-white mb-5 leading-tight">
+                      <span className="inline-block animate-fadeIn">
+                        Cram Smarter
+                      </span>
+                      <div className="block mt-2 animate-pop">
+                        <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">
+                          Cramingo
+                        </span>
+                      
+                      </div>
+                    </h1>
+                    <p className="text-lg md:text-xl text-white/80 mb-6 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-fadeIn animation-delay-200">
+                    Instant AI-powered flashcards for any class
+                    </p>
+                  </div>
 
-
-<div className="flex flex-col lg:flex-row gap-8 items-center justify-center animate-fadeIn animation-delay-400">
-  {/* Search Column - Now on the left */}
-  <div className="w-full lg:w-1/2 flex flex-col items-center">
-    <div className="max-w-lg w-full mx-auto mb-6 relative z-50 overflow-visible">
-      {/* Enhanced School Input with Animated Border */}
-      <div
-        ref={inputContainerRef}
-        className="relative flex items-center animate-fadeIn transition-all duration-500 group"
-      >
-        {/* Animated gradient border */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 to-cyan-300 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="absolute inset-0 rounded-full animate-pulse"></div>
-        </div>
-        
-        {/* Input container with glass effect */}
-        <div className="w-full flex items-center relative bg-white/90 backdrop-blur-sm rounded-full shadow-lg z-10">
-          {/* Search icon */}
-          <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-500">
-            <Search className="h-5 w-5" />
-          </div>
-          
-          {/* The actual input */}
-          <input
-            ref={schoolInputRef}
-            type="text"
-            value={schoolSearch}
-            onChange={handleSchoolSearchChange}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && schoolSearch.trim()) {
-                navigateToSignup();
-              }
-            }}
-            onFocus={() => {
-              setIsFocused(true);
-              if (schoolSuggestions.length > 0) {
-                setIsDropdownVisible(true);
-              }
-            }}
-            onBlur={() => setIsFocused(false)}
-            placeholder={
-              isLoadingSchools
-                ? "Loading schools..."
-                : (!isFocused && !schoolSearch)
-                  ? `${displayText}${cursorVisible ? '|' : ''}`
-                  : "Find flashcards for your school..."
-            }
-            className="w-full py-4 pl-12 pr-10 rounded-full text-gray-900 text-lg
-                      focus:outline-none focus:ring-0 bg-transparent
-                      transition-all duration-300"
-            disabled={isLoadingSchools || isLoading}
-            autoComplete="off"
-          />
-          
-          {/* Loading spinner */}
-          {isLoading && (
-            <div className="absolute right-5 top-1/2 transform -translate-y-1/2 z-10">
-              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          )}
-          
-          {/* Clear button - only shows when there's text */}
-          {schoolSearch && !isLoading && (
-            <button 
-              onClick={() => {
-                setSchoolSearch('');
-                setSchoolSuggestions([]);
-                setIsDropdownVisible(false);
-                if (schoolInputRef.current) {
-                  schoolInputRef.current.focus();
-                }
-              }}
-              className="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Enhanced School Suggestions Dropdown */}
-      {schoolSuggestions.length > 0 && isDropdownVisible && (
-        <div 
-          ref={dropdownRef}
-          className="absolute z-[9999] mt-2 w-full bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-blue-100/50 overflow-hidden" 
-          style={{ 
-            maxHeight: '300px', 
-            overflowY: 'auto',
-            animation: 'fadeInDown 0.3s ease-out forwards',
-            transformOrigin: 'top center'
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-50/30 to-transparent pointer-events-none rounded-xl"></div>
-          
-          <ul className="py-1 relative">
-            {schoolSuggestions.map((school, index) => {
-              const isExactMatch = allSchools.some(s => s.toLowerCase() === school.toLowerCase());
-              const numberOfSets = schoolSetsMap[school] || 30;
-              
-              return (
-                <li 
-                  key={index}
-                  className={`px-4 py-3 cursor-pointer hover:bg-blue-50/80 transition-colors flex items-center justify-between
-                            ${index !== schoolSuggestions.length - 1 ? 'border-b border-blue-50' : ''}`}
-                  onClick={() => handleSchoolSelect(school)}
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  <div className="flex items-center">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100/70 mr-3">
-                      <School className="h-4 w-4 text-blue-500" />
+                  {/* Search Section */}
+                  <div className="max-w-lg w-full mx-auto lg:mx-0 mb-6 relative z-50 overflow-visible animate-fadeIn animation-delay-400">
+                    {/* Enhanced School Input with Animated Border */}
+                    <div
+                      ref={inputContainerRef}
+                      className="relative flex items-center animate-fadeIn transition-all duration-500 group"
+                    >
+                      {/* Animated gradient border */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 to-cyan-300 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <div className="absolute inset-0 rounded-full animate-pulse"></div>
+                      </div>
+                      
+                      {/* Input container with glass effect */}
+                      <div className="w-full flex items-center relative bg-white/90 backdrop-blur-sm rounded-full shadow-lg z-10">
+                        {/* Search icon */}
+                        <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-500">
+                          <Search className="h-5 w-5" />
+                        </div>
+                        
+                        {/* The actual input */}
+                        <input
+                          ref={schoolInputRef}
+                          type="text"
+                          value={schoolSearch}
+                          onChange={handleSchoolSearchChange}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && schoolSearch.trim()) {
+                              navigateToSignup();
+                            }
+                          }}
+                          onFocus={() => {
+                            setIsFocused(true);
+                            if (schoolSuggestions.length > 0) {
+                              setIsDropdownVisible(true);
+                            }
+                          }}
+                          onBlur={() => setIsFocused(false)}
+                          placeholder={
+                            isLoadingSchools
+                              ? "Loading schools..."
+                              : (!isFocused && !schoolSearch)
+                                ? `${displayText}${cursorVisible ? '|' : ''}`
+                                : "Find flashcards for your school..."
+                          }
+                          className="w-full py-4 pl-12 pr-10 rounded-full text-gray-900 text-lg
+                                    focus:outline-none focus:ring-0 bg-transparent
+                                    transition-all duration-300"
+                          disabled={isLoadingSchools || isLoading}
+                          autoComplete="off"
+                        />
+                        
+                        {/* Loading spinner */}
+                        {isLoading && (
+                          <div className="absolute right-5 top-1/2 transform -translate-y-1/2 z-10">
+                            <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          </div>
+                        )}
+                        
+                        {/* Clear button - only shows when there's text */}
+                        {schoolSearch && !isLoading && (
+                          <button 
+                            onClick={() => {
+                              setSchoolSearch('');
+                              setSchoolSuggestions([]);
+                              setIsDropdownVisible(false);
+                              if (schoolInputRef.current) {
+                                schoolInputRef.current.focus();
+                              }
+                            }}
+                            className="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-gray-800 font-medium">{school}</span>
+
+                    {/* Enhanced School Suggestions Dropdown */}
+                    {schoolSuggestions.length > 0 && isDropdownVisible && (
+                      <div 
+                        ref={dropdownRef}
+                        className="absolute z-[9999] mt-2 w-full bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-blue-100/50 overflow-hidden" 
+                        style={{ 
+                          maxHeight: '300px', 
+                          overflowY: 'auto',
+                          animation: 'fadeInDown 0.3s ease-out forwards',
+                          transformOrigin: 'top center'
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/30 to-transparent pointer-events-none rounded-xl"></div>
+                        
+                        <ul className="py-1 relative">
+                          {schoolSuggestions.map((school, index) => {
+                            const isExactMatch = allSchools.some(s => s.toLowerCase() === school.toLowerCase());
+                            const numberOfSets = schoolSetsMap[school] || 30;
+                            
+                            return (
+                              <li 
+                                key={index}
+                                className={`px-4 py-3 cursor-pointer hover:bg-blue-50/80 transition-colors flex items-center justify-between
+                                          ${index !== schoolSuggestions.length - 1 ? 'border-b border-blue-50' : ''}`}
+                                onClick={() => handleSchoolSelect(school)}
+                                onMouseDown={(e) => e.preventDefault()}
+                              >
+                                <div className="flex items-center">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100/70 mr-3">
+                                    <School className="h-4 w-4 text-blue-500" />
+                                  </div>
+                                  <span className="text-gray-800 font-medium">{school}</span>
+                                </div>
+                                
+                                {isExactMatch ? (
+                                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100/80 text-blue-700 flex items-center space-x-1">
+                                    {isSchoolRecognized(school) ? (
+                                      <>
+                                        <BookOpen className="h-3 w-3 mr-1" />
+                                        <span>{numberOfSets} Sets</span>
+                                      </>
+                                    ) : 'New School'}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100/80 text-gray-600 flex items-center">
+                                    <span>Create</span>
+                                    <ChevronRight className="h-3 w-3 ml-0.5" />
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        
+                        {/* Footer with info text */}
+                        <div className="bg-blue-50/50 px-4 py-2 text-xs text-blue-700 border-t border-blue-100/50">
+                          <div className="flex items-center">
+                            <Sparkles className="h-3 w-3 mr-1.5" />
+                            <span>Select a school to continue</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Find Flashcards Button */}
+                  <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-6 animate-fadeIn animation-delay-600 z-0">
+                    <div className="relative inline-flex items-center justify-center gap-4 group z-0">
+                      {/* Gradient blur */}
+                      <div
+                        className="absolute inset-0 duration-1000 opacity-60 transition-all 
+                                  bg-gradient-to-r from-[#00c2ff] to-[#33ccff]
+                                  rounded-xl blur-lg filter 
+                                  group-hover:opacity-100 group-hover:duration-200"
+                      />
+                      {/* Button with loading state and lower z-index */}
+                      <button
+                        onClick={navigateToSignup}
+                        disabled={!schoolSearch.trim() || isLoading}
+                        className={`${
+                          !schoolSearch.trim() 
+                            ? 'bg-[#00c2ff]/70 cursor-not-allowed' 
+                            : 'bg-[#00c2ff] hover:bg-[#33ccff] hover:shadow-lg hover:-translate-y-0.5 hover:shadow-[#004a74]/30'
+                        } relative inline-flex items-center justify-center
+                          text-xl rounded-xl z-0
+                          px-8 py-4 font-semibold text-white
+                          transition-all duration-200 w-full`}
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                          </div>
+                        ) : (
+                          <>
+                            {!schoolSearch.trim() 
+                              ? 'Is your school on Cramingo? Type to see!' 
+                              : isSchoolRecognized(schoolSearch)
+                                ? `See Flashcards for ${schoolSearch.trim()}` 
+                                : 'Create Flashcards with AI'}
+                            {schoolSearch.trim() && (
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 10 10"
+                                height="10"
+                                width="10"
+                                fill="none"
+                                className="ml-2 stroke-white stroke-2"
+                              >
+                                <path
+                                  d="M0 5h7"
+                                  className="transition opacity-0 group-hover:opacity-100"
+                                />
+                                <path
+                                  d="M1 1l4 4-4 4"
+                                  className="transition group-hover:translate-x-[3px]"
+                                />
+                              </svg>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   
-                  {isExactMatch ? (
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100/80 text-blue-700 flex items-center space-x-1">
-                      {isSchoolRecognized(school) ? (
-                        <>
-                          <BookOpen className="h-3 w-3 mr-1" />
-                          <span>{numberOfSets} Sets</span>
-                        </>
-                      ) : 'New School'}
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100/80 text-gray-600 flex items-center">
-                      <span>Create</span>
-                      <ChevronRight className="h-3 w-3 ml-0.5" />
-                    </span>
+                  {/* University request message */}
+                  {schoolSearch.trim() && !isSchoolRecognized(schoolSearch) && (
+                    <div className="text-white/80 text-sm mt-3 animate-fadeIn text-center lg:text-left">
+                      Don't see your university? <button 
+                        onClick={openContactPopup} 
+                        className="text-cyan-300 hover:text-cyan-200 underline transition-colors"
+                      >
+                        Request it to be added
+                      </button>
+                    </div>
                   )}
-                </li>
-              );
-            })}
-          </ul>
-          
-          {/* Footer with info text */}
-          <div className="bg-blue-50/50 px-4 py-2 text-xs text-blue-700 border-t border-blue-100/50">
-            <div className="flex items-center">
-              <Sparkles className="h-3 w-3 mr-1.5" />
-              <span>Select a school to continue</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-
-    {/* Find Flashcards Button */}
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6 animate-fadeIn animation-delay-600 z-0">
-      <div className="relative inline-flex items-center justify-center gap-4 group z-0">
-        {/* Gradient blur */}
-        <div
-          className="absolute inset-0 duration-1000 opacity-60 transition-all 
-                    bg-gradient-to-r from-[#00c2ff] to-[#33ccff]
-                    rounded-xl blur-lg filter 
-                    group-hover:opacity-100 group-hover:duration-200"
-        />
-        {/* Button with loading state and lower z-index */}
-        <button
-          onClick={navigateToSignup}
-          disabled={!schoolSearch.trim() || isLoading}
-          className={`${
-            !schoolSearch.trim() 
-              ? 'bg-[#00c2ff]/70 cursor-not-allowed' 
-              : 'bg-[#00c2ff] hover:bg-[#33ccff] hover:shadow-lg hover:-translate-y-0.5 hover:shadow-[#004a74]/30'
-          } relative inline-flex items-center justify-center
-            text-xl rounded-xl z-0
-            px-8 py-4 font-semibold text-white
-            transition-all duration-200 w-full`}
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Loading...
-            </div>
-          ) : (
-            <>
-              {!schoolSearch.trim() 
-                ? 'Is your school on Cramingo? Type to see!' 
-                : isSchoolRecognized(schoolSearch)
-                  ? `See Flashcards for ${schoolSearch.trim()}` 
-                  : 'Create Flashcards with AI'}
-              {schoolSearch.trim() && (
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 10 10"
-                  height="10"
-                  width="10"
-                  fill="none"
-                  className="ml-2 stroke-white stroke-2"
-                >
-                  <path
-                    d="M0 5h7"
-                    className="transition opacity-0 group-hover:opacity-100"
-                  />
-                  <path
-                    d="M1 1l4 4-4 4"
-                    className="transition group-hover:translate-x-[3px]"
-                  />
-                </svg>
-              )}
-            </>
-          )}
-        </button>
-      </div>
-    </div>
+                </div>
+                
+{/* Right Column: Video */}
+<div className="w-full lg:w-1/2 animate-fadeIn animation-delay-400">
+  {/* Hero Video Container with glow effect */}
+  <div className="lg:mt-20 xl:mt-10 relative">
+    {/* Enhanced stronger glow effect behind the video */}
+    <div className="absolute -inset-3 bg-gradient-to-r from-blue-500/40 to-cyan-400/40 rounded-xl blur-xl animate-pulse"></div>
+    <div className="absolute -inset-2 bg-blue-400/30 rounded-xl blur-lg"></div>
     
-    {/* University request message */}
-    {schoolSearch.trim() && !isSchoolRecognized(schoolSearch) && (
-      <div className="text-white/80 text-sm mt-3 animate-fadeIn">
-        Don't see your university? <button 
-          onClick={openContactPopup} 
-          className="text-cyan-300 hover:text-cyan-200 underline transition-colors"
+    {/* Actual video container */}
+    <div className="relative rounded-xl overflow-hidden shadow-2xl border-2 border-white/10 bg-black/40 backdrop-blur-sm">
+      <div className="w-full h-full min-h-[210px] md:min-h-[380px] lg:min-h-[260px] xl:min-h-[300px]">
+        <video 
+          ref={videoRef}
+          className="w-full h-full object-cover md:object-contain lg:object-cover"
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          poster="/images/video-poster.jpg"
         >
-          Request it to be added
-        </button>
+          <source src="/videos/ai-demo.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 to-transparent pointer-events-none rounded-xl"></div>
       </div>
-    )}
-  </div>
-  
-  {/* Video Demo Column - Now on the right */}
-  <div className="w-full lg:w-1/2 flex-shrink-0 lg:pl-4 mt-6 lg:mt-0">
-    <div className="rounded-xl overflow-hidden shadow-2xl border-2 border-white/10 bg-black/40 backdrop-blur-sm relative">
-      {/* Video placeholder - replace with actual video path */}
-      <video 
-        ref={videoRef}
-        className="w-full h-auto"
-        autoPlay 
-        loop 
-        muted 
-        playsInline
-        poster="/images/video-poster.jpg" // Optional: Add a poster image
-      >
-        <source src="/videos/ai-demo.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
     </div>
   </div>
 </div>
+              </div>
             </section>
             
             {/* Features Section */}
