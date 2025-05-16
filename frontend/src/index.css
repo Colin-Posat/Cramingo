@@ -142,3 +142,9 @@ div:hover::-webkit-scrollbar {
 }
 
 
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
