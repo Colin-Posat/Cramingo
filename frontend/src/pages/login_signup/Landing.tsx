@@ -389,8 +389,10 @@ const Landing: React.FC = () => {
                     </p>
                   </div>
 
+                  
+
                   {/* Search Section */}
-                  <div className="max-w-lg w-full mx-auto lg:mx-0 mb-6 relative z-50 overflow-visible animate-fadeIn animation-delay-400">
+                  <div className="max-w-lg xl:max-w-[29rem] w-full mx-auto lg:mx-0 mb-6 relative z-50 overflow-visible animate-fadeIn animation-delay-400">
                     {/* Enhanced School Input with Animated Border */}
                     <div
                       ref={inputContainerRef}
