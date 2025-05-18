@@ -118,19 +118,19 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
     setMobileMenuOpen(prev => !prev);
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (): Promise<void> => {
     try {
-      // Validate university input first
+      // Validate university input first (keep your existing validation)
       if (!university.trim()) {
         setError("Please select your university before continuing with Google");
         return;
       }
       
-      // Check if the university is valid
+      // Check if the university is valid (keep your existing validation)
       const isValidUniversity = allUniversities.some(school =>
         school.toLowerCase() === university.trim().toLowerCase()
       );
-        
+          
       if (!isValidUniversity) {
         setError("Please select a valid university from the list");
         return;
@@ -138,25 +138,25 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
       
       setGoogleLoading(true);
       setError("");
-        
-      // Create a Google Auth Provider
+          
+      // Create a Google Auth Provider (keep your existing code)
       const provider = new GoogleAuthProvider();
-        
-      // Optional: Set custom parameters
+          
+      // Optional: Set custom parameters (keep your existing code)
       provider.setCustomParameters({
         prompt: 'select_account'
       });
-        
-      // Sign in with popup
+          
+      // Sign in with popup (keep your existing code)
       const result = await signInWithPopup(auth, provider);
-        
-      // Get the Firebase ID token
+          
+      // Get the Firebase ID token (keep your existing code)
       const firebaseToken = await result.user.getIdToken();
-        
-      // The signed-in user info
+          
+      // The signed-in user info (keep your existing code)
       const user = result.user;
       
-      // Save university to localStorage
+      // Save university to localStorage (keep your existing code)
       localStorage.setItem('selectedSchool', university);
       
       try {
@@ -171,14 +171,18 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
           })
         });
         
-        const checkData = await checkResponse.json();
+        const checkData = await checkResponse.json() as {
+          accountExists: boolean;
+          hasGoogleProvider?: boolean;
+          hasFirestoreData?: boolean;
+        };
         
-        // If account exists and has Google provider, show the account found popup
-        if (checkData.accountExists) {
-          // Tell our auth context that a delayed navigation is happening
+        // CHANGED LOGIC: Only consider an account "existing" if it has Firestore data
+        // This ensures that accounts that only exist in Firebase Auth but haven't completed signup
+        // are treated as new users
+        if (checkData.accountExists && checkData.hasGoogleProvider && checkData.hasFirestoreData) {
+          // This is a true existing account with completed signup - show the popup
           setDelayedNavigationAfterLogin(true);
-          
-          // Show the custom popup
           setFoundAccountEmail(user.email || '');
           setShowAccountFoundPopup(true);
           
@@ -195,11 +199,11 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
           });
           
           if (!loginResponse.ok) {
-            const errorData = await loginResponse.json();
+            const errorData = await loginResponse.json() as { message?: string };
             throw new Error(errorData.message || "Failed to login with Google");
           }
           
-          const loginData = await loginResponse.json();
+          const loginData = await loginResponse.json() as { token?: string };
           
           // Store the backend JWT token
           if (loginData.token) {
@@ -213,7 +217,8 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
           return;
         }
         
-        // For new users or non-Google accounts, proceed with signup
+        // If we get here, this is a new user or an incomplete signup
+        // Proceed with signup directly
         const response = await fetch(`${API_BASE_URL}/auth/google-signup`, {
           method: 'POST',
           headers: {
@@ -226,13 +231,17 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
             photoURL: user.photoURL || '',
             university: university,
             token: firebaseToken,
-            isNewSignup: !checkData.accountExists // Flag indicating this is a new signup
+            isNewSignup: true
           })
         });
         
-        // Handle any errors
+        // Handle any errors (keep your existing code)
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json() as { 
+            message?: string;
+            emailInUse?: boolean;
+          };
+          
           if (errorData.emailInUse) {
             setError("This email is already registered with a different authentication method. Please use a different email or sign in with your existing account.");
             setGoogleLoading(false);
@@ -241,9 +250,9 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
           throw new Error(errorData.message || "Failed to complete signup");
         }
         
-        const data = await response.json();
+        const data = await response.json() as { token?: string };
         
-        // Store the backend JWT token
+        // Store the backend JWT token (keep your existing code)
         if (data.token) {
           // Use the loginWithGoogle function
           await loginWithGoogle(user.email || '', data.token);
@@ -253,13 +262,14 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
         } else {
           throw new Error("No authentication token received from server");
         }
-      } catch (backendError) {
+      } catch (backendError: any) {
         console.error("Google authentication error:", backendError);
-        setError("Failed to authenticate with Google. Please try again.");
+        setError(backendError.message || "Failed to authenticate with Google. Please try again.");
       }
     } catch (error: any) {
+      // Error handling (keep your existing code)
       console.error("Google Sign In Error:", error);
-        
+      
       if (error.code === 'auth/popup-closed-by-user') {
         setError("Sign in was cancelled");
       } else if (error.code === 'auth/popup-blocked') {

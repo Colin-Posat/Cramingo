@@ -387,6 +387,7 @@ export const checkUsernameAvailability = async (req: Request, res: Response): Pr
   }
 };
 
+// TypeScript-compatible googleSignup function
 export const googleSignup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid, email, displayName, photoURL, university, token, isNewSignup } = req.body;
@@ -487,11 +488,30 @@ export const googleSignup = async (req: Request, res: Response): Promise<void> =
       return;
     }
     
-    // Create new user document
+    // CRITICAL FIX: For brand new users, create the user in Firebase Auth first
+    // This is the fix for the "User not found" error
+    try {
+      // This step might be redundant in some cases, but let's ensure the user exists in Firebase Auth
+      try {
+        await auth.getUser(uid);
+      } catch (userNotFoundError) {
+        // If user doesn't exist in Firebase Auth, create it
+        await auth.createUser({
+          uid: uid,
+          email: email,
+          displayName: displayName || email.split('@')[0]
+        });
+      }
+    } catch (authError) {
+      console.error("Error ensuring user exists in Firebase Auth:", authError);
+      // Continue with Firestore creation even if this fails
+    }
+    
+    // Create new user document in Firestore
     await db.collection("users").doc(uid).set({
       email,
       username: displayName || email.split('@')[0], // Use display name or create username from email
-      university, // Only set for new users
+      university, // Set university for new users
       photoURL: photoURL || null,
       likes: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -525,7 +545,10 @@ export const googleSignup = async (req: Request, res: Response): Promise<void> =
     
   } catch (error) {
     console.error("Google signup error:", error);
-    res.status(500).json({ message: "Google signup failed", error: (error as Error).message });
+    res.status(500).json({ 
+      message: "Google signup failed", 
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 };
 
