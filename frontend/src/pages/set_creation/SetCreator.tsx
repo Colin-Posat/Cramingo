@@ -1086,31 +1086,36 @@ const moveCardDown = (index: number) => {
 
             {/* AI Generate Button - now opens overlay */}
             <div className="mb-6">
-            <button 
-  onClick={() => setShowAIGenerateOverlay(true)}
-  className="relative overflow-hidden w-full flex items-center justify-center gap-3 
-    bg-gradient-to-r from-blue-500 to-sky-500 text-white font-bold
-    px-6 py-5 rounded-xl hover:from-blue-600 hover:to-sky-600
-    transition-all duration-200 shadow-lg hover:shadow-xl group border border-white/10"
->
-  {/* Animated sparkle effect */}
-  <div className="absolute inset-0 w-full h-full">
-    <div className="absolute h-8 w-8 rounded-full bg-white/20 animate-ping opacity-75 top-1/2 left-1/4"></div>
-    <div className="absolute h-4 w-4 rounded-full bg-white/30 animate-ping opacity-75 delay-300 top-1/4 right-1/3"></div>
-  </div>
-  
-  {/* Animated highlight */}
-  <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
-    -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-  
-  {/* Icon with animation */}
-  <div className="relative bg-white/30 p-2.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
-    <SparklesIcon className="w-6 h-6" />
-  </div>
-  
-  <span className="relative text-lg">AI Generate Cards from Notes or PDF</span>
-</button>
-            </div>
+  <button 
+    onClick={() => setShowAIGenerateOverlay(true)}
+    className="relative overflow-hidden w-full flex items-center justify-center gap-3 
+      bg-gradient-to-r from-blue-500 to-sky-500 text-white font-bold
+      px-6 py-5 rounded-xl hover:from-blue-600 hover:to-sky-600
+      transition-all duration-200 shadow-lg hover:shadow-xl group border border-white/10"
+  >
+    {/* Animated sparkle effect */}
+    <div className="absolute inset-0 w-full h-full">
+      <div className="absolute h-8 w-8 rounded-full bg-white/20 animate-ping opacity-75 top-1/2 left-1/4"></div>
+      <div className="absolute h-4 w-4 rounded-full bg-white/30 animate-ping opacity-75 delay-300 top-1/4 right-1/3"></div>
+    </div>
+    
+    {/* Animated highlight */}
+    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent 
+      -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+    
+    {/* Icon with animation */}
+    <div className="relative bg-white/30 p-2.5 rounded-lg group-hover:scale-110 transition-transform duration-200">
+      <SparklesIcon className="w-6 h-6" />
+    </div>
+    
+    <span className="relative text-lg">
+      {flashcards.some(card => card.question.trim() || card.answer.trim()) 
+        ? "Generate More Cards from Notes or PDF" 
+        : "AI Generate Cards from Notes or PDF"}
+    </span>
+  </button>
+</div>
+
 
             <h3 className="text-lg font-bold text-[#004a74] mb-4 flex items-center">
               Flashcards ({flashcards.length})
@@ -1512,6 +1517,25 @@ const moveCardDown = (index: number) => {
         </button>
       </div>
     </div>
+    
+  </div>
+)}
+{flashcards.length > 0 && (
+  <div className="fixed bottom-20 sm:bottom-32 md:bottom-32 lg:bottom-32 xl:bottom-32 right-4 sm:right-8 z-30">
+    <button 
+      onClick={() => {
+        setShowAIGenerateOverlay(true);
+        // Optional: track that this was clicked via the FAB for analytics
+      }}
+      className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-sky-500 
+        text-white p-3 rounded-full shadow-xl hover:shadow-2xl transition-all 
+        hover:scale-105 active:scale-95 group"
+      aria-label="Generate more cards with AI"
+      title="Generate more cards with AI"
+    >
+      <SparklesIcon className="w-6 h-6" />
+      <span className="sr-only">Generate more cards with AI</span>
+    </button>
   </div>
 )}
     </div>
