@@ -118,171 +118,171 @@ const [pendingGoogleAuth, setPendingGoogleAuth] = useState<{
     setMobileMenuOpen(prev => !prev);
   };
 
-  const handleGoogleSignIn = async (): Promise<void> => {
+const handleGoogleSignIn = async (): Promise<void> => {
+  try {
+    // Validate university input first (keep your existing validation)
+    if (!university.trim()) {
+      setError("Please select your university before continuing with Google");
+      return;
+    }
+    
+    // Check if the university is valid (keep your existing validation)
+    const isValidUniversity = allUniversities.some(school =>
+      school.toLowerCase() === university.trim().toLowerCase()
+    );
+        
+    if (!isValidUniversity) {
+      setError("Please select a valid university from the list");
+      return;
+    }
+    
+    setGoogleLoading(true);
+    setError("");
+        
+    // Create a Google Auth Provider (keep your existing code)
+    const provider = new GoogleAuthProvider();
+        
+    // Optional: Set custom parameters (keep your existing code)
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+        
+    // Sign in with popup (keep your existing code)
+    const result = await signInWithPopup(auth, provider);
+        
+    // Get the Firebase ID token (keep your existing code)
+    const firebaseToken = await result.user.getIdToken();
+        
+    // The signed-in user info (keep your existing code)
+    const user = result.user;
+    
+    // Save university to localStorage (keep your existing code)
+    localStorage.setItem('selectedSchool', university);
+    
     try {
-      // Validate university input first (keep your existing validation)
-      if (!university.trim()) {
-        setError("Please select your university before continuing with Google");
-        return;
-      }
-      
-      // Check if the university is valid (keep your existing validation)
-      const isValidUniversity = allUniversities.some(school =>
-        school.toLowerCase() === university.trim().toLowerCase()
-      );
-          
-      if (!isValidUniversity) {
-        setError("Please select a valid university from the list");
-        return;
-      }
-      
-      setGoogleLoading(true);
-      setError("");
-          
-      // Create a Google Auth Provider (keep your existing code)
-      const provider = new GoogleAuthProvider();
-          
-      // Optional: Set custom parameters (keep your existing code)
-      provider.setCustomParameters({
-        prompt: 'select_account'
+      // First, check if this email already has an account
+      const checkResponse = await fetch(`${API_BASE_URL}/auth/check-existing-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: user.email
+        })
       });
-          
-      // Sign in with popup (keep your existing code)
-      const result = await signInWithPopup(auth, provider);
-          
-      // Get the Firebase ID token (keep your existing code)
-      const firebaseToken = await result.user.getIdToken();
-          
-      // The signed-in user info (keep your existing code)
-      const user = result.user;
       
-      // Save university to localStorage (keep your existing code)
-      localStorage.setItem('selectedSchool', university);
+      const checkData = await checkResponse.json() as {
+        accountExists: boolean;
+        hasGoogleProvider?: boolean;
+        hasFirestoreData?: boolean;
+      };
       
-      try {
-        // First, check if this email already has an account
-        const checkResponse = await fetch(`${API_BASE_URL}/auth/check-existing-account`, {
+      // CHANGED LOGIC: Only consider an account "existing" if it has Firestore data
+      // This ensures that accounts that only exist in Firebase Auth but haven't completed signup
+      // are treated as new users
+      if (checkData.accountExists && checkData.hasGoogleProvider && checkData.hasFirestoreData) {
+        // This is a true existing account with completed signup - show the popup
+        setDelayedNavigationAfterLogin(true);
+        setFoundAccountEmail(user.email || '');
+        setShowAccountFoundPopup(true);
+        
+        // Process the login in the background while the popup is showing
+        const loginResponse = await fetch(`${API_BASE_URL}/auth/google-login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: user.email
-          })
-        });
-        
-        const checkData = await checkResponse.json() as {
-          accountExists: boolean;
-          hasGoogleProvider?: boolean;
-          hasFirestoreData?: boolean;
-        };
-        
-        // CHANGED LOGIC: Only consider an account "existing" if it has Firestore data
-        // This ensures that accounts that only exist in Firebase Auth but haven't completed signup
-        // are treated as new users
-        if (checkData.accountExists && checkData.hasGoogleProvider && checkData.hasFirestoreData) {
-          // This is a true existing account with completed signup - show the popup
-          setDelayedNavigationAfterLogin(true);
-          setFoundAccountEmail(user.email || '');
-          setShowAccountFoundPopup(true);
-          
-          // Process the login in the background while the popup is showing
-          const loginResponse = await fetch(`${API_BASE_URL}/auth/google-login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email: user.email,
-              token: firebaseToken
-            })
-          });
-          
-          if (!loginResponse.ok) {
-            const errorData = await loginResponse.json() as { message?: string };
-            throw new Error(errorData.message || "Failed to login with Google");
-          }
-          
-          const loginData = await loginResponse.json() as { token?: string };
-          
-          // Store the backend JWT token
-          if (loginData.token) {
-            // Use the loginWithGoogle function - but don't navigate yet
-            // The navigation will happen when the popup closes
-            await loginWithGoogle(user.email || '', loginData.token);
-          } else {
-            throw new Error("No authentication token received from server");
-          }
-          
-          return;
-        }
-        
-        // If we get here, this is a new user or an incomplete signup
-        // Proceed with signup directly
-        const response = await fetch(`${API_BASE_URL}/auth/google-signup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            uid: user.uid,
             email: user.email,
-            displayName: user.displayName || '',
-            photoURL: user.photoURL || '',
-            university: university,
-            token: firebaseToken,
-            isNewSignup: true
+            token: firebaseToken
           })
         });
         
-        // Handle any errors (keep your existing code)
-        if (!response.ok) {
-          const errorData = await response.json() as { 
-            message?: string;
-            emailInUse?: boolean;
-          };
-          
-          if (errorData.emailInUse) {
-            setError("This email is already registered with a different authentication method. Please use a different email or sign in with your existing account.");
-            setGoogleLoading(false);
-            return;
-          }
-          throw new Error(errorData.message || "Failed to complete signup");
+        if (!loginResponse.ok) {
+          const errorData = await loginResponse.json() as { message?: string };
+          throw new Error(errorData.message || "Failed to login with Google");
         }
         
-        const data = await response.json() as { token?: string };
+        const loginData = await loginResponse.json() as { token?: string };
         
-        // Store the backend JWT token (keep your existing code)
-        if (data.token) {
-          // Use the loginWithGoogle function
-          await loginWithGoogle(user.email || '', data.token);
-          
-          // Now that AuthContext is updated, navigate to created-sets
-          navigate('/created-sets');
+        // Store the backend JWT token
+        if (loginData.token) {
+          // Use the loginWithGoogle function - but don't navigate yet
+          // The navigation will happen when the popup closes
+          await loginWithGoogle(user.email || '', loginData.token);
         } else {
           throw new Error("No authentication token received from server");
         }
-      } catch (backendError: any) {
-        console.error("Google authentication error:", backendError);
-        setError(backendError.message || "Failed to authenticate with Google. Please try again.");
+        
+        return;
       }
-    } catch (error: any) {
-      // Error handling (keep your existing code)
-      console.error("Google Sign In Error:", error);
       
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError("Sign in was cancelled");
-      } else if (error.code === 'auth/popup-blocked') {
-        setError("Popup was blocked by the browser. Please allow popups for this site.");
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        setError("An account already exists with the same email address but different sign-in credentials.");
-      } else {
-        setError(`Sign in failed: ${error.message || 'Unknown error'}`);
+      // If we get here, this is a new user or an incomplete signup
+      // Proceed with signup directly
+      const response = await fetch(`${API_BASE_URL}/auth/google-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '',
+          university: university,
+          token: firebaseToken,
+          isNewSignup: true
+        })
+      });
+      
+      // Handle any errors (keep your existing code)
+      if (!response.ok) {
+        const errorData = await response.json() as { 
+          message?: string;
+          emailInUse?: boolean;
+        };
+        
+        if (errorData.emailInUse) {
+          setError("This email is already registered with a different authentication method. Please use a different email or sign in with your existing account.");
+          setGoogleLoading(false);
+          return;
+        }
+        throw new Error(errorData.message || "Failed to complete signup");
       }
-    } finally {
-      setGoogleLoading(false);
+      
+      const data = await response.json() as { token?: string };
+      
+      // Store the backend JWT token (keep your existing code)
+      if (data.token) {
+        // Use the loginWithGoogle function
+        await loginWithGoogle(user.email || '', data.token);
+        
+        // Now that AuthContext is updated, navigate to created-sets
+        navigate('/created-sets');
+      } else {
+        throw new Error("No authentication token received from server");
+      }
+    } catch (backendError: any) {
+      console.error("Google authentication error:", backendError);
+      setError(backendError.message || "Failed to authenticate with Google. Please try again.");
     }
-  };
+  } catch (error: any) {
+    // Error handling (keep your existing code)
+    console.error("Google Sign In Error:", error);
+    
+    if (error.code === 'auth/popup-closed-by-user') {
+      setError("Sign in was cancelled");
+    } else if (error.code === 'auth/popup-blocked') {
+      setError("Popup was blocked by the browser. Please allow popups for this site.");
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      setError("An account already exists with the same email address but different sign-in credentials.");
+    } else {
+      setError(`Sign in failed: ${error.message || 'Unknown error'}`);
+    }
+  } finally {
+    setGoogleLoading(false);
+  }
+};
   useEffect(() => {
     // Only set the university from localStorage if it exists
     const storedUniversity = localStorage.getItem('selectedSchool');

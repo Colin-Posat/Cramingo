@@ -208,7 +208,7 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     - REMOVE all point values, grading notes, or "answer: X" text from questions
     - Questions should ASK for information, not INSTRUCT how to find it (use "What is" not "Calculate")
     - Include ALL relevant code, equations, or references directly in the question
-    - Answers should be under 30 words whenever possible
+    - Answers should be under 17 words whenever possible
     - Use concise terminology and remove filler words
     - For multi-part answers, use brief bullet points
     
