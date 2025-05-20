@@ -21,7 +21,7 @@ const Landing: React.FC = () => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   
-  // Animation control states
+  // Animation control statesss
   const [animationTriggered, setAnimationTriggered] = useState<{[key: string]: boolean}>({
     features: false,
     howItWorks: false,
