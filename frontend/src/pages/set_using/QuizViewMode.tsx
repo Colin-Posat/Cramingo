@@ -5,6 +5,7 @@ import NavBar from '../../components/NavBar'; // Adjust the import path as neede
 import { API_BASE_URL } from '../../config/api'; // Adjust path as needed
 // Import the modal component directly - adjust the path as needed
 import QuizSettingsModal from '../../components/QuizSettingsModal';
+import { useRef } from 'react';
 
 // Updated Flashcard type to include image properties
 type Flashcard = {
@@ -29,6 +30,10 @@ type QuizViewModeProps = {
   quizType?: 'text-input' | 'multiple-choice';
 };
 
+type PendingRequestsMap = {
+  [index: number]: AbortController;
+};
+
 type QuizState = {
   currentIndex: number;
   showAnswer: boolean;
@@ -49,6 +54,7 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
 }) => {
   const { setId } = useParams<{ setId: string }>();
   const navigate = useNavigate();
+  const pendingRequestsRef = useRef<PendingRequestsMap>({});
 
   // State for standalone mode
   const [loading, setLoading] = useState(false);
@@ -110,6 +116,16 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
   const [filteredFlashcards, setFilteredFlashcards] = useState<Flashcard[]>([]);
 
   // --- Effects ---
+  useEffect(() => {
+    return () => {
+      // Cancel all pending requests on unmount
+      Object.values(pendingRequestsRef.current).forEach(controller => {
+        controller.abort();
+      });
+      pendingRequestsRef.current = {};
+    };
+  }, []);
+  
   useEffect(() => {
     const filtered = allFlashcards.filter(card => !card.answerImage);
     setFilteredFlashcards(filtered);
@@ -181,12 +197,26 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
   };
 
   const generateOptionsForCardIfNeeded = async (index: number, cards = filteredFlashcards, currentOptions: string[][]) => {
-    if (currentAnswerMode !== 'multiple-choice' || cards.length === 0 || index >= cards.length || (currentOptions[index] && currentOptions[index].length > 0) || loadingOptions) {
+    if (currentAnswerMode !== 'multiple-choice' || 
+        cards.length === 0 || 
+        index >= cards.length || 
+        (currentOptions[index] && currentOptions[index].length > 0) || 
+        loadingOptions) {
       return;
     }
 
     const currentCard = cards[index];
     setLoadingOptions(true);
+
+    // Cancel any existing request for this index
+    if (pendingRequestsRef.current[index]) {
+      pendingRequestsRef.current[index].abort();
+      delete pendingRequestsRef.current[index];
+    }
+
+    // Create a new abort controller for this request
+    const abortController = new AbortController();
+    pendingRequestsRef.current[index] = abortController;
 
     try {
       const response = await fetch(`${API_BASE_URL}/quiz/generate-distractors`, {
@@ -197,14 +227,25 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
           question: currentCard.question,
           numberOfDistractors: 3
         }),
-        credentials: 'include'
+        credentials: 'include',
+        signal: abortController.signal // Add the signal to the fetch request
       });
+
+      // If this request was aborted, just return
+      if (abortController.signal.aborted) {
+        return;
+      }
 
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
       const distractors = await response.json();
       const allOptions = [currentCard.answer, ...distractors];
       const shuffledOptions = shuffleArray(allOptions);
+
+      // If component unmounted or index changed, don't update
+      if (abortController.signal.aborted) {
+        return;
+      }
 
       setQuizState(prev => {
         const updatedOptions = [...prev.options];
@@ -214,16 +255,26 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
         return { ...prev, options: updatedOptions };
       });
     } catch (error) {
+      // Don't handle AbortError as an actual error
+      if ((error as Error).name === 'AbortError') {
+        return;
+      }
+      
       console.error(`Error generating options for index ${index}:`, error);
       setQuizState(prev => {
         const updatedOptions = [...prev.options];
         if (!updatedOptions[index] || updatedOptions[index].length === 0) {
+          // Fallback to just showing the correct answer as the only option
           updatedOptions[index] = [currentCard.answer];
         }
         return { ...prev, options: updatedOptions };
       });
     } finally {
-      setLoadingOptions(false);
+      // Clean up only if this request is still the active one
+      if (pendingRequestsRef.current[index] === abortController) {
+        delete pendingRequestsRef.current[index];
+        setLoadingOptions(false);
+      }
     }
   };
 
@@ -395,9 +446,18 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
     if (index >= 0 && index < filteredFlashcards.length) {
       const actualIndex = quizState.questionsOrder[index];
       
-      // Pre-load options if needed
+      // Pre-load options for current question if needed
       if (currentAnswerMode === 'multiple-choice') {
         generateOptionsForCardIfNeeded(actualIndex, filteredFlashcards, quizState.options);
+        
+        // Also pre-load options for the next question if it exists
+        if (index < filteredFlashcards.length - 1) {
+          const nextActualIndex = quizState.questionsOrder[index + 1];
+          // Use setTimeout to avoid blocking the UI while navigating
+          setTimeout(() => {
+            generateOptionsForCardIfNeeded(nextActualIndex, filteredFlashcards, quizState.options);
+          }, 100);
+        }
       }
       
       setQuizState(prev => ({
@@ -441,6 +501,10 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
   };
 
   const resetQuiz = () => {
+    Object.values(pendingRequestsRef.current).forEach(controller => {
+      controller.abort();
+    });
+    pendingRequestsRef.current = {};
     const newQuizState = initializeQuizState(filteredFlashcards, quizSettings);
     setQuizState(newQuizState);
     setUserInput('');
@@ -573,8 +637,14 @@ const EnhancedQuiz: React.FC<QuizViewModeProps> = ({
     
     if (options.length === 0 && !loadingOptions) {
       return (
-        <div className="text-center text-red-600 p-4 bg-red-50 rounded">
-          Could not load options for this question.
+        <div className="text-center p-4 bg-yellow-50 rounded border border-yellow-200">
+          <p className="text-yellow-700 mb-2">Could not load options for this question.</p>
+          <button 
+            onClick={() => generateOptionsForCardIfNeeded(actualIndex, filteredFlashcards, quizState.options)}
+            className="px-4 py-2 bg-[#004a74] text-white rounded hover:bg-[#00659f] transition-colors"
+          >
+            <RotateCw className="w-4 h-4 mr-2 inline-block" /> Try Again
+          </button>
         </div>
       );
     }
