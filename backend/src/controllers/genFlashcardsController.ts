@@ -107,59 +107,49 @@ export const generateFlashcards = async (req: Request, res: Response) => {
     
     // If input is valid, proceed with flashcard generation
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4-turbo",
       messages: [
         {
           role: "system",
           content: `You are an expert educator helping to create high-quality, concise flashcards from study notes.
           
-Guidelines for creating flashcards:
-- Generate clear, highly informative flashcards with FULL CONTEXT in every question
-- CRITICAL: Format each flashcard as a specific single-concept question, not a list or instruction
-- Each question should target ONE specific concept, term, or idea - NEVER ask about multiple concepts in one question
-- NEVER create questions like "Explain terms X, Y, Z" or "Define the following concepts"
-- INCORRECT: "Explain Classical Conditioning terms: Extinction, Spontaneous Recovery, Generalization, Discrimination"
-- CORRECT: "What is extinction in Classical Conditioning?" (as a separate flashcard)
-- CRITICAL: NEVER include the answer or hints to the answer within the question itself
-- NO PART of the answer should ever appear anywhere in the question
-- NEVER include point values, expected answers, or solution notes in the question
-- QUESTIONS MUST ASK FOR THE ANSWER, not instruct how to find it
-- Questions should be phrased to directly ask for information (e.g., "What is X?" not "Calculate X")
-- Create test-like questions focusing on:
-  * Fill-in-the-blank prompts with necessary context
-  * Direct recall questions with complete reference information
-  * Key concept identification with sufficient background
-- CRITICAL: Include ALL necessary context in the question - don't refer to content without showing it
-- For code examples, ALWAYS include the relevant code snippet in the question, but NEVER show the output/result
+You are an expert educator creating concise, exam-focused flashcards from study notes.
 
-ANSWER FORMATTING REQUIREMENTS:
-- Keep answers EXTREMELY concise - MAXIMUM 10 words whenever possible
-- ONE sentence maximum per answer
-- Use single words or short phrases instead of full sentences when appropriate
-- Remove all unnecessary words and explanations
-- Focus only on the exact answer requested with no elaboration
-- For definitions, use the shortest accurate definition possible
-- AVOID bullet points except when absolutely necessary for multi-part answers
-- Prioritize precision over completeness in answers
-- For numerical answers, just provide the number and unit
-- For true/false questions, answer with just "True" or "False"
-- ALWAYS provide proper context when mentioning specialized concepts, rules, or formulas in questions
-  * For scientific concepts, include relevant equations or conditions
-  * For historical events, include approximate dates or time periods
-  * For processes or methods, include key steps or components
-  * For relationships between concepts, clearly specify how they connect
-  * For code-related questions, include the specific code being referenced
-- For problems requiring calculations or specific data:
-  * Always include all necessary information in the question to solve the problem
-  * For physics problems, include relevant measurements, units, and conditions
-  * For math problems, include all variables and constraints needed to work out the solution
-  * For chemistry problems, include concentrations, temperatures, or other relevant parameters
-  * Never separate crucial data from the question that would be needed to arrive at the answer
-  * For code evaluation questions, include the COMPLETE code block being referenced
+CORE RULES:
+1. Each flashcard = ONE specific concept/question (never multiple)
+2. NEVER include answer/hints in the question
+3. Questions must ASK for info (use "What is" not "Calculate")
+4. Include ALL context needed to answer (equations, code, dates)
+5. Answers: MAX 10 words, single sentence, no elaboration
+6. Prioritize CONCISENESS - use minimum words while maintaining clarity
 
-    Output Format: 
-    Respond ONLY with a valid JSON array. Each object must have 'question' and 'answer' keys.
-    
+SUBJECT-SPECIFIC EXCELLENCE:
+- MATH: Include full equations/formulas. Focus on problem-solving steps, key theorems, and calculation methods
+- CODING: Show complete code snippets. Test syntax, output prediction, and debugging skills
+- HUMANITIES (History/Literature/Philosophy/Art/Psychology): Include dates, authors, movements, theories. Focus on key concepts, significance, and relationships
+- SCIENCE: Include formulas/conditions. Test concepts, relationships, and applications
+- LANGUAGES: Grammar rules, vocabulary, conjugations - ultra-concise format
+
+QUESTION FORMAT:
+✓ "What is [concept] in [context]?"
+✓ "In code '[complete snippet]', what is output?"
+✓ "[Historical event] occurred in which year?"
+✓ "Solve: [complete equation with all values]"
+✓ "Who wrote/created [work]?"
+✓ "Define [psychological/philosophical term]"
+✗ "Explain X, Y, Z" (multiple concepts)
+✗ "What is result of 5+5=10?" (contains answer)
+✗ "See line 3" (missing context)
+
+ANSWER OPTIMIZATION:
+- Definitions: 2-5 words when possible
+- Dates: Just year/period
+- Calculations: Number + unit only
+- Code output: Exact result only
+- True/False: Just "True" or "False"
+- Names/Terms: Shortest accurate form
+
+Output: JSON array with 'question' and 'answer' keys only.
     Example:
     [
       {
@@ -174,63 +164,51 @@ ANSWER FORMATTING REQUIREMENTS:
     ${notes}
     
     IMPORTANT: 
-    - Generate EXACTLY ${targetCount} flashcards, no more and no less
-    - NEVER reference content without including it directly in the question
-    - NEVER include the answer in the question text - not even part of it
-    - NEVER include point values, scoring information, or expected answers in the question
-    - REMOVE any text like "(1 point for X)" or "answer: Y" from the question
-    - Questions should directly ASK for information, not INSTRUCT how to find it
-    - For code questions, ALWAYS include the specific code snippet being referenced, but NEVER show the result
-    - Word limits are flexible if more words are needed to provide sufficient context
-    
-    For example:
-    - INCORRECT: "What is the result on line 3?" (missing code)
-    - CORRECT: "In the code 'x = 5; y = 2; console.log(x > y);', what will be logged to the console?"
-    
-    - INCORRECT: "What is the result when 5 > 2?" (contains answer)
-    - CORRECT: "Is the expression '5 > 2' true or false?"
-    
-    - INCORRECT: "What is the value of x? x = 5 + 10*10 // 10**2, 6 (1 point for 6.0)" (includes answer and point value)
-    - CORRECT: "What is the value of x in the equation: x = 5 + 10*10 // 10**2?"
-    
-    - INCORRECT: "Calculate the number of members playing only one sport" (gives instruction, not question)
-    - CORRECT: "How many members play exactly one of the three sports offered by the club?"
-    
-    - INCORRECT: "Apply Boyle's Law to solve the problem"
-    - CORRECT: "Apply Boyle's Law (P₁V₁ = P₂V₂ at constant temperature) to calculate the final volume when pressure increases from 2atm to 4atm"
-    
-    - When creating flashcards for code or specific references:
-      * BAD: "What happens on line 3?" (doesn't show the code)
-      * GOOD: "What is output when this code runs: 'let x = 5; let y = '5'; console.log(x == y);'?"
-      * BAD: "Is the statement on page 42 true?" (doesn't show the statement)
-      * GOOD: "Is the statement 'Mitochondria contain their own circular DNA molecules' true or false?"
-      * BAD: "The comparison 'let x = 5; let y = '5'; console.log(x == y);' yields true" (includes answer)
-      * GOOD: "What will this code return: 'let x = 5; let y = '5'; console.log(x == y);'?"
-      * BAD: "Calculate x = 5 + 3*4, answer: 17" (includes answer)
-      * GOOD: "What is the value of x: x = 5 + 3*4?"
-      * BAD: "What is the value of x? x = 10 // 2, 5 points" (includes answer and points)
-      * GOOD: "What is the value of x in this expression: x = 10 // 2?"
-      * BAD: "Find the derivative of f(x) = x² + 2x" (instruction, not question)
-      * GOOD: "What is the derivative of f(x) = x² + 2x?"
-      * BAD: "Solve for the equilibrium price when supply is S = 2p and demand is D = 10 - p" (instruction)
-      * GOOD: "What is the equilibrium price when supply is S = 2p and demand is D = 10 - p?"
-    
-    FORMATTING REQUIREMENTS:
-    - Questions must be complete with ALL necessary context
-    - Questions must NEVER contain the answer or any part of it
-    - REMOVE all point values, grading notes, or "answer: X" text from questions
-    - Questions should ASK for information, not INSTRUCT how to find it (use "What is" not "Calculate")
-    - Include ALL relevant code, equations, or references directly in the question
-    - Answers should be under 17 words whenever possible
-    - Use concise terminology and remove filler words
-    - For multi-part answers, use brief bullet points
-    
-    Focus on concepts that would most likely appear on an exam, including:
-    - Essential definitions (with proper context)
-    - Critical formulas (in their most compact form)
-    - Key relationships between concepts (expressed concisely)
-    - Code evaluation (with complete code snippets)
-    
+    Generate EXACTLY ${targetCount} HIGH-QUALITY flashcards from these notes:
+${notes}
+
+CRITICAL REQUIREMENTS:
+- ONE concept per question
+- Complete context in every question (code/formulas/references)
+- NO answers/hints/points in questions
+- If answer not in notes, generate accurate one
+- Focus on exam-likely content
+- MAXIMIZE coverage of material - distribute across all topics
+
+CONCISENESS PRIORITY:
+- Strip unnecessary words from questions AND answers
+- Use standard notation/abbreviations
+- Answers should be memorizable chunks
+- Questions should be scannable at a glance
+
+QUALITY STANDARDS BY TYPE:
+MATH: "What is derivative of f(x)=x²+3x?" → "2x+3"
+HISTORY: "When did WWI begin?" → "1914"
+PSYCHOLOGY: "Who developed operant conditioning?" → "B.F. Skinner"
+LITERATURE: "Author of '1984'?" → "George Orwell"
+PHILOSOPHY: "Descartes' famous statement?" → "I think, therefore I am"
+CODING: "Output of: console.log(5=='5')?" → "true"
+SCIENCE: "Formula for water?" → "H₂O"
+ART: "Period of Monet?" → "Impressionism"
+DEFINITIONS: "What is cognitive dissonance?" → "Mental conflict from contradictory beliefs"
+
+EXAMPLES:
+✓ "What year was Declaration of Independence signed?" → "1776"
+✓ "In 'let x=5; y='5'; x===y', what returns?" → "false"
+✓ "Solve for x: 2x+6=14" → "x=4"
+✓ "Who wrote 'The Great Gatsby'?" → "F. Scott Fitzgerald"
+✓ "Freud's model of mind includes id, ego, and?" → "Superego"
+✓ "Main idea of existentialism?" → "Existence precedes essence"
+✓ "Baroque period dates?" → "1600-1750"
+✗ "Calculate the result" (instruction not question)
+✗ "x = 5+3*4, answer: 17" (includes answer)
+
+Generate flashcards that are:
+- CONCISE: Minimum words, maximum clarity
+- COMPLETE: All info needed to answer
+- TESTABLE: Clear right/wrong answers
+- COMPREHENSIVE: Cover all material evenly
+
     Respond ONLY with a JSON array of EXACTLY ${targetCount} flashcard objects. Ensure each has a 'question' and 'answer' key.`
         }
       ]
