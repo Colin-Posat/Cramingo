@@ -1,4 +1,4 @@
-# 🚀 Cramingo — AI-Powered Flashcard Web App
+# 🚀 Cramingo — AI-Powered Studying Platform
 
 **Cramingo** is a modern flashcard platform built with React and Node.js that helps students create, study, and share flashcards. It integrates AI to auto-generate flashcards from notes, supports personalized study sets, and offers a sleek, responsive UI for a seamless learning experience.
 
